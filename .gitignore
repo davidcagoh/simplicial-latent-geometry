@@ -1,0 +1,15 @@
+/.lake
+.env
+aristotle-docs.md
+memory/
+proofs-from-literature/
+.DS_Store
+**/.DS_Store
+.claude/settings.local.json
+results/
+my_theorems/
+reports/
+help_from_aristotle/
+AutomatedProofs/JEPA.lean
+AutomatedProofs/Lemmas.lean
+AutomatedProofs/OffDiagHelpers.lean
