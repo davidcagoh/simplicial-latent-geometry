@@ -38,9 +38,9 @@ def count_sorries(path: pathlib.Path) -> list[int]:
 
 
 def show_sorry_counts() -> int:
-    lean_files = sorted(pathlib.Path("AutomatedProofs").glob("**/*.lean"))
+    lean_files = sorted(pathlib.Path("SimplicialLatentGeometry").glob("**/*.lean"))
     if not lean_files:
-        print("  (no .lean files found in AutomatedProofs/)")
+        print("  (no .lean files found in SimplicialLatentGeometry/)")
         return 0
 
     total = 0

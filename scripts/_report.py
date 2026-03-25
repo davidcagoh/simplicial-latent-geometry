@@ -255,7 +255,7 @@ def run(tar_path: pathlib.Path, paper_path: pathlib.Path) -> None:
         ]
 
     proved_map, remaining_map = parse_summary(summary_text)
-    local_map = local_sorry_map(pathlib.Path('AutomatedProofs'))
+    local_map = local_sorry_map(pathlib.Path('SimplicialLatentGeometry'))
 
     for name, ref in result_sorry_map(result_lean_texts).items():
         if name not in local_map or (ref is not None and local_map[name] is None):

@@ -4,6 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Research Context
+
+This project formalises results on **testing for geometry in random simplicial complexes** — the simplicial analogue of the Bubeck–Ding–Eldan–Rácz (BDER 2016) graph-geometry detection problem.
+
+**The core question:** Given an observed simplicial complex on $n$ vertices, can we distinguish the null **2-parameter complex (2PC)** (edges i.i.d. with probability $p$; each 3-cycle independently filled with probability $q$) from the geometric alternative **Čech/Rips complex** (points uniform on $\mathbb{T}^d$ or $\mathbb{S}^{d-1}$, simplices formed by proximity)? What is the phase transition in $d$?
+
+**Starting materials** are in `starting-point/`:
+- `handoff-instructions.md` — full literature review (BDER 2016 through Bangachev–Bresler 2025) + detailed notes on Goh (PRUV 2023), the first work on the simplicial complex case. Includes notation, open problems, and specific next steps.
+- `new-literature-review.md` — structured literature survey with 61 references covering detection thresholds, Fourier/spectral methods, statistical-computational gaps, and extensions to simplicial complexes.
+- `old-paper.pdf` — Goh (PRUV 2023): volume computations for $V_f, V_e$, matching of $(p,q)$ parameters, expectation/variance of filled triangle count, numerical findings.
+
+**Key mathematical objects to formalise** (from the PRUV paper):
+- The 2PC and Čech complex models and their parameter matching ($p = V_d(2r)$, $q = \mathbb{E}[V_f]/\mathbb{E}[V_e]$)
+- Volume integrals for fill/empty regions: $V_f(r,s)$ and $V_e(r,s)$ on the flat torus
+- Expectation and variance of the filled triangle count $\Delta_f$ under both models
+- The SNR argument: Čech variance is $O(n^4)$ vs 2PC variance $O(n^3)$, giving a detection threshold
+
+**Open mathematical direction:** Compute leading-order asymptotics for $q(p,d)$ as $d \to \infty$ on the flat torus (likely via Laplace/steepest descent on the integral for $\mathbb{E}[V_f]$), then extend to $\mathbb{S}^{d-1}$.
+
+---
+
 ## Project Goals (in priority order)
 
 1. **Parse and verify** — Submit Lean files with `sorry` placeholders to Aristotle, parse the returned `.tar.gz`, verify the proofs compile locally.
@@ -109,7 +130,7 @@ python scripts/retrieve.py
 
 **Step 1 — Create the Lean skeleton**
 
-Create `AutomatedProofs/<TheoremName>.lean` with this structure:
+Create `SimplicialLatentGeometry/<TheoremName>.lean` with this structure:
 
 ```lean
 import Mathlib
@@ -125,24 +146,24 @@ import Mathlib
 **Step 2 — Add the import**
 
 ```lean
--- AutomatedProofs.lean
-import AutomatedProofs.Basic
-import AutomatedProofs.Lemmas   -- if helper lemmas exist
-import AutomatedProofs.<TheoremName>
+-- SimplicialLatentGeometry.lean
+import SimplicialLatentGeometry.Basic
+import SimplicialLatentGeometry.Lemmas   -- if helper lemmas exist
+import SimplicialLatentGeometry.<TheoremName>
 ```
 
 **Helper lemma pattern (Lemmas.lean / OffDiagHelpers.lean):** When a theorem file needs classical results not in Mathlib, or small bridging lemmas that don't belong in the main file, create a separate helper lean file with sorry'd lemmas and detailed `PROVIDED SOLUTION` docstrings. The theorem file imports it. This lets Aristotle fill in both helpers and the main theorem in one submission. Examples:
 - `Lemmas.lean` — Grönwall, Rayleigh quotient lower bounds (classical results)
 - `OffDiagHelpers.lean` — ε-rpow monotonicity, Bochner integral bounds (bridging lemmas specific to one proof)
 
-Import order in `AutomatedProofs.lean` matters: list files in dependency order (e.g. `Basic → Lemmas → OffDiagHelpers → JEPA`).
+Import order in `SimplicialLatentGeometry.lean` matters: list files in dependency order (e.g. `Basic → Lemmas → OffDiagHelpers → JEPA`).
 
 **Step 3 — Submit**
 
 `scripts/submit.py` builds a filtered archive automatically. It respects `.gitignore` (so `.env` is excluded) and strips `results/`, `scripts/`, `my_theorems/`, `.claude/`, `.github/`, `help_from_aristotle/` from the upload. Only the Lean project files are sent:
 
 ```
-.gitignore  AutomatedProofs.lean  AutomatedProofs/*.lean
+.gitignore  SimplicialLatentGeometry.lean  SimplicialLatentGeometry/*.lean
 lakefile.toml  lean-toolchain  lake-manifest.json  README.md
 ```
 
@@ -150,7 +171,7 @@ lakefile.toml  lean-toolchain  lake-manifest.json  README.md
 python scripts/submit.py my_theorems/<TheoremName>.md "Fill in the sorries"
 ```
 
-Use the prompt: `"Fill in all the sorries in this project"`. For a single file, add a hint: `"Fill in the sorries in AutomatedProofs/<TheoremName>.lean"`. The paper path (first positional argument) is already recorded in the `.meta.json` so `retrieve.py` can find the paper automatically.
+Use the prompt: `"Fill in all the sorries in this project"`. For a single file, add a hint: `"Fill in the sorries in SimplicialLatentGeometry/<TheoremName>.lean"`. The paper path (first positional argument) is already recorded in the `.meta.json` so `retrieve.py` can find the paper automatically.
 
 **Step 5 — Retrieve results**
 
@@ -292,8 +313,8 @@ Aristotle reads the header docstring including `PROVIDED SOLUTION`. It does **no
 
 - **Toolchain**: `leanprover/lean4:v4.28.0` (pinned in `lean-toolchain`)
 - **Mathlib**: `v4.28.0` / commit `8f9d9cff6bd728b17a24e163c9402775d9e6a365` (in `lakefile.toml`)
-- **Entry point**: `AutomatedProofs.lean` imports all submodules
-- **Source files**: `AutomatedProofs/` — add new `.lean` files here and import them from `AutomatedProofs.lean`
+- **Entry point**: `SimplicialLatentGeometry.lean` imports all submodules
+- **Source files**: `SimplicialLatentGeometry/` — add new `.lean` files here and import them from `SimplicialLatentGeometry.lean`
 
 ### Aristotle's fixed environment (what it runs remotely)
 
@@ -316,7 +337,7 @@ Aristotle reads the header docstring including `PROVIDED SOLUTION`. It does **no
 ```bash
 lake build                          # build the whole project
 lake update                         # update dependencies
-lake build AutomatedProofs.Basic    # elaborate a specific file
+lake build SimplicialLatentGeometry.Basic    # elaborate a specific file
 ```
 
 CI runs `leanprover/lean-action` → `lake build` → `docgen-action`.
@@ -905,7 +926,7 @@ async def submit_and_retrieve(prompt: str, project_dir: str, dest: str) -> str |
 
 asyncio.run(submit_and_retrieve(
     prompt="Fill in all the sorries",
-    project_dir="./AutomatedProofs",
+    project_dir="./SimplicialLatentGeometry",
     dest="results/output.tar.gz"
 ))
 ```

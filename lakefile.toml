@@ -1,7 +1,7 @@
 name = "automated-proofs"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["AutomatedProofs"]
+defaultTargets = ["SimplicialLatentGeometry"]
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
@@ -16,4 +16,4 @@ rev = "v4.28.0"
 git = "https://github.com/leanprover-community/mathlib4.git"
 
 [[lean_lib]]
-name = "AutomatedProofs"
+name = "SimplicialLatentGeometry"

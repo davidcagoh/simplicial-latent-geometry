@@ -8,8 +8,8 @@ Example:
     python scripts/init.py SGDConvergence
 
 What this does:
-  1. Renames the Lean library from 'AutomatedProofs' to <ProjectName> everywhere:
-       lakefile.toml, AutomatedProofs.lean → <ProjectName>.lean, AutomatedProofs/ → <ProjectName>/
+  1. Renames the Lean library from 'SimplicialLatentGeometry' to <ProjectName> everywhere:
+       lakefile.toml, SimplicialLatentGeometry.lean → <ProjectName>.lean, SimplicialLatentGeometry/ → <ProjectName>/
   2. Seeds project scaffolding:
        my_theorems/, help_from_aristotle/proof_decisions_log.md, results/, reports/
   3. Creates a .env template if one does not exist.
@@ -28,7 +28,7 @@ import subprocess
 import textwrap
 
 ROOT = pathlib.Path(__file__).parent.parent.resolve()
-OLD_NAME = "AutomatedProofs"
+OLD_NAME = "SimplicialLatentGeometry"
 
 
 def die(msg: str) -> None:
