@@ -1,1 +1,2 @@
 import SimplicialLatentGeometry.Basic
+import SimplicialLatentGeometry.SimplicialDetection
