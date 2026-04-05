@@ -1,2 +1,2 @@
-import SimplicialLatentGeometry.Basic
+import SimplicialLatentGeometry.DisjointTriangles
 import SimplicialLatentGeometry.SimplicialDetection

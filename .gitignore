@@ -13,3 +13,19 @@ help_from_aristotle/
 AutomatedProofs/JEPA.lean
 AutomatedProofs/Lemmas.lean
 AutomatedProofs/OffDiagHelpers.lean
+
+# Noise — never send to Aristotle
+existing-literature/
+starting-point/
+*.bak
+*.bak*
+*.backup*
+merge_*.py
+submit_job*.py
+count_sorries.py
+insert_sublemmas.py
+update_*.py
+submit_lemma*.py
+test_submission.sh
+CLAUDE.md
+README.md
