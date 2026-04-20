@@ -105,6 +105,7 @@ noncomputable def volumeFill (d : ℕ) (r s : ℝ) : ℝ :=
   let betaFn := Real.Gamma a * Real.Gamma b / Real.Gamma (a + b)
   euclidBallVol d r * incBeta / betaFn
 
+open Classical in
 open MeasureTheory in
 /-- **Definition 5 (Filling Probability).** The matched fill probability q(p, d) is
       q(p,d) = ∫₀¹ (V_f(s,d) / V_e(s,d)) · d · s^(d-1) ds
@@ -116,8 +117,10 @@ open MeasureTheory in
     is V_f(s,d) / V_e(s,d). Integrate over s ∈ [0,1] against this PDF. -/
 noncomputable def fillingProb (p : ℝ) (d : ℕ) : ℝ :=
   let r := matchRadius p d
-  ∫ s in Set.Ioo 0 1,
-    volumeFill d r s / volumeEmpty d r s * (d : ℝ) * s ^ (d - 1)
+  ∫ pts : Fin 3 → Torus d,
+    (if ∃ z : Torus d, dist (pts 0) z ≤ r ∧ dist (pts 1) z ≤ r ∧ dist (pts 2) z ≤ r
+     then (1 : ℝ) else 0)
+  ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (MeasureTheory.volume : MeasureTheory.Measure (Torus d)))
 
 /-! ## Moment Setup -/
 
@@ -504,11 +507,13 @@ noncomputable def tvDist {Ω : Type*} [MeasurableSpace Ω]
     Use Real.rpow_natCast and Real.rpow_mul (hp0.le). -/
 lemma matchRadius_spec (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d) :
     (2 * matchRadius p d) ^ d = p := by
-  unfold matchRadius;
-  rw [if_neg (by linarith)];
-  rw [mul_div_cancel₀ _ (by norm_num)];
-  rw [← Real.rpow_natCast, ← Real.rpow_mul hp0.le];
-  norm_num [show (d : ℝ) ≠ 0 by exact_mod_cast Nat.not_eq_zero_of_lt (by linarith)]
+  unfold matchRadius
+  rw [if_neg (by omega)]
+  rw [mul_div_cancel₀ _ (by norm_num : (2:ℝ) ≠ 0)]
+  have hd' : (d : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (by omega)
+  rw [← Real.rpow_natCast (p ^ ((1:ℝ) / (d:ℝ))) d]
+  rw [← Real.rpow_mul hp0.le]
+  rw [one_div, inv_mul_cancel₀ hd', Real.rpow_one]
 
 /-- The Čech measure is a probability measure (product of Haar probability measures).
     Uses isProbabilityMeasure_comap with CechSample.points injective and surjective. -/
@@ -1274,7 +1279,16 @@ lemma torus_dist_le_half (d : ℕ) (x y : Torus d) : dist x y ≤ 1/2 := by
             Therefore matchRadius p d = Real.exp(Real.log p / d) / 2 → 1/2. -/
 lemma matchRadius_tendsto_half (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => matchRadius p d) Filter.atTop (nhds (1/2)) := by
-  sorry
+  suffices h : Filter.Tendsto (fun d : ℕ => p ^ ((1:ℝ) / (d:ℝ)) / 2) Filter.atTop (nhds (1/2)) by
+    apply h.congr'
+    filter_upwards [Filter.eventually_ge_atTop 1] with d hd
+    simp [matchRadius, show d ≠ 0 by omega]
+  apply Filter.Tendsto.div_const
+  have h1 : Filter.Tendsto (fun d : ℕ => (1:ℝ) / (d:ℝ)) Filter.atTop (nhds 0) :=
+    (Filter.Tendsto.div_atTop tendsto_const_nhds tendsto_natCast_atTop_atTop)
+  have h2 : Filter.Tendsto (fun _ : ℕ => p) Filter.atTop (nhds p) := tendsto_const_nhds
+  have := Filter.Tendsto.rpow h2 h1 (Or.inl hp0.ne')
+  rwa [Real.rpow_zero] at this
 
 /-
 With the corrected matchRadius (r = p^(1/d)/2), we have r < 1/2 always for p ∈ (0,1).
@@ -1297,19 +1311,6 @@ Step 4: Direct approach: show the integrand of geometricCov → 0 as d → ∞.
   The fill indicator also → 1 a.e., so (1{fill} - q) → (1-q) → 0 since q → 1.
   By DCT, geometricCov → (1-p)^3 * (1 - 1) = 0.
 -/
-/-- geometricCov_eq_large_r: kept as a stub for backward compatibility.
-    With the corrected matchRadius (r = p^(1/d)/2), r < 1/2 always for p < 1,
-    so the hypothesis hd is never satisfied. The lemma is vacuously true.
-
-    PROVIDED SOLUTION
-    Step 1: Observe that matchRadius p d = p^(1/d)/2 < 1/2 for all d ≥ 1 and p ∈ (0,1),
-      since p^(1/d) < 1 (as p < 1 and 1/d > 0).
-    Step 2: Therefore hd : matchRadius p d > 1/2 is False, so the goal follows by contradiction.
-    Use: p^(1/d) < 1 follows from Real.rpow_lt_one hp0.le hp1 (one_div_pos.mpr (by positivity)).
-    Then matchRadius p d = p^(1/d)/2 < 1/2. -/
-lemma geometricCov_eq_large_r (p : ℝ) (d : ℕ) (hd : matchRadius p d > 1/2) :
-    geometricCov p d = (1 - p) ^ 3 * (1 - fillingProb p d) := by
-  sorry
 
 /-- The integral of the beta-like density d · s^{d-1} over (0,1) equals 1 for d ≥ 1. -/
 lemma beta_density_integral (d : ℕ) (hd : 1 ≤ d) :
@@ -1317,311 +1318,82 @@ lemma beta_density_integral (d : ℕ) (hd : 1 ≤ d) :
   rw [← MeasureTheory.integral_Ioc_eq_integral_Ioo, ← intervalIntegral.integral_of_le] <;> norm_num [hd]
   rw [zero_pow (by linarith), sub_zero, mul_div_cancel₀ _ (by positivity)]
 
-/-
-PROBLEM
-fillingProb p d → 1 as d → ∞.
 
-    **Proof sketch.** After the substitution t = s^d (so s = t^{1/d}), the integral becomes
-    fillingProb p d = ∫₀¹ g_d(t) dt where g_d(t) = (vF/vE)(d, r, t^{1/d}) and the integral
-    is over Lebesgue measure on (0,1).
+private lemma addCircle_three_balls_intersect' (r : ℝ) (hr : r > 1/3)
+    (a₁ a₂ a₃ : AddCircle (1 : ℝ)) :
+    ∃ z : AddCircle (1 : ℝ), dist a₁ z ≤ r ∧ dist a₂ z ≤ r ∧ dist a₃ z ≤ r := by
+  by_contra h_contra;
+  have h_complement_measure : (MeasureTheory.volume (Metric.closedBall a₁ r)ᶜ) + (MeasureTheory.volume (Metric.closedBall a₂ r)ᶜ) + (MeasureTheory.volume (Metric.closedBall a₃ r)ᶜ) < 1 := by
+    rw [ MeasureTheory.measure_compl, MeasureTheory.measure_compl, MeasureTheory.measure_compl ] <;> norm_num;
+    · have h_ball_measure : ∀ a : AddCircle (1 : ℝ), MeasureTheory.volume (Metric.closedBall a r) = ENNReal.ofReal (min (2 * r) 1) := by
+        intro a;
+        rw [ AddCircle.volume_closedBall ] ; norm_num;
+        exact min_comm _ _;
+      cases min_cases ( 2 * r ) 1 <;> simp_all +decide [ ENNReal.ofReal ];
+      rw [ ← ENNReal.toReal_lt_toReal ] <;> norm_num;
+      rw [ ENNReal.toReal_add, ENNReal.toReal_add ] <;> norm_num;
+      rw [ ENNReal.toReal_sub_of_le ] <;> norm_num;
+      · rw [ max_eq_left ] <;> linarith;
+      · linarith;
+    · exact measurableSet_closedBall;
+    · exact measurableSet_closedBall;
+    · exact measurableSet_closedBall;
+  have h_complement_measure : (MeasureTheory.volume ((Metric.closedBall a₁ r)ᶜ ∪ (Metric.closedBall a₂ r)ᶜ ∪ (Metric.closedBall a₃ r)ᶜ)) < 1 := by
+    refine' lt_of_le_of_lt _ h_complement_measure;
+    exact le_trans ( MeasureTheory.measure_union_le _ _ ) ( add_le_add ( MeasureTheory.measure_union_le _ _ ) le_rfl );
+  obtain ⟨z, hz⟩ : ∃ z : AddCircle (1 : ℝ), z ∉ (Metric.closedBall a₁ r)ᶜ ∪ (Metric.closedBall a₂ r)ᶜ ∪ (Metric.closedBall a₃ r)ᶜ := by
+    contrapose! h_complement_measure;
+    rw [ show ( Metric.closedBall a₁ r ) ᶜ ∪ ( Metric.closedBall a₂ r ) ᶜ ∪ ( Metric.closedBall a₃ r ) ᶜ = Set.univ from Set.eq_univ_of_forall h_complement_measure ] ; norm_num;
+  simp_all +decide [ dist_comm ];
+  linarith [ h_contra z hz.1.1 hz.1.2 ]
 
-    For each fixed t ∈ (0,1):
-    • s = t^{1/d} → 1
-    • r = matchRadius p d → ∞ (by matchRadius_tendsto_atTop)
-    • u = s/(2r) → 0
-    • volumeEmpty → euclidBallVol(d, 2r) = p (regularized incomplete beta → 1)
-    • volumeFill → p (main I₁ term gives π^{d/2}/(2Γ(d/2+1)) while I₂ = O(1/2^d))
-    • So g_d(t) = vF/vE → 1 pointwise
+private lemma matchRadius_eventually_gt_third' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    ∀ᶠ d in Filter.atTop, matchRadius p d > 1/3 := by
+  convert ( Filter.Tendsto.eventually ( matchRadius_tendsto_half p hp0 hp1 ) ( lt_mem_nhds ( show 1/3 < 1/2 by norm_num ) ) ) using 1
 
-    The integrand is bounded: 0 ≤ g_d(t) ≤ 2 for all large d (the slight excess above 1
-    from I₂ is O(1/2^d)). By dominated convergence with bound 2:
-    fillingProb p d = ∫ g_d dt → ∫ 1 dt = 1. -/
-/-! ### Helper lemmas for fillingProb_tendsto_one
+private lemma fill_eventually_always' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    ∀ᶠ d in Filter.atTop, ∀ pts : Fin 3 → Torus d,
+      ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
+                      dist (pts 1) z ≤ matchRadius p d ∧
+                      dist (pts 2) z ≤ matchRadius p d := by
+  have matchRadius_gt_third : ∀ᶠ d in Filter.atTop, matchRadius p d > 1/3 := by
+    exact?
+  generalize_proofs at *; (
+  filter_upwards [ matchRadius_gt_third ] with d hd;
+  intro pts
+  have h_fill_cond : ∀ i : Fin d, ∃ z_i : AddCircle (1 : ℝ), dist (pts 0 i) z_i ≤ matchRadius p d ∧ dist (pts 1 i) z_i ≤ matchRadius p d ∧ dist (pts 2 i) z_i ≤ matchRadius p d := by
+    exact?
+  generalize_proofs at *; (
+  choose! z hz using h_fill_cond; use z; simp_all +decide [ dist_pi_le_iff ] ;
+  exact ⟨ by rw [ dist_pi_le_iff ( by positivity ) ] ; aesop, by rw [ dist_pi_le_iff ( by positivity ) ] ; aesop, by rw [ dist_pi_le_iff ( by positivity ) ] ; aesop ⟩))
 
-After the substitution t = s^d (so s = t^{1/d}, ds = (1/d)·t^{1/d-1} dt),
-the integral fillingProb p d = ∫₀¹ (vF/vE)(d,r,s) · d · s^{d-1} ds becomes
-∫₀¹ (vF/vE)(d,r,t^{1/d}) dt  (the Jacobian factors cancel perfectly).
-
-We need three facts about g_d(t) = (vF/vE)(d, matchRadius p d, t^{1/d}):
-  1. fillingProb p d = ∫ g_d  (change of variables)
-  2. g_d → 1 pointwise a.e.
-  3. ‖g_d‖ ≤ 2 eventually
-Then DCT gives ∫ g_d → ∫ 1 = 1.
--/
-
-/-- Change of variables: fillingProb equals the integral of the substituted integrand.
-
-    PROVIDED SOLUTION
-    fillingProb p d = ∫ s in Ioo 0 1, (vF/vE)(d, r, s) * d * s^(d-1).
-    Substitute t = s^d, so s = t^(1/d), ds = (1/d) * t^(1/d - 1) dt.
-    The Jacobian is ds/dt = (1/d) * t^(1/d - 1).
-    The density factor transforms: d * s^(d-1) * ds = d * (t^(1/d))^(d-1) * (1/d) * t^(1/d-1) dt
-      = t^((d-1)/d) * t^(1/d - 1) dt = t^((d-1)/d + 1/d - 1) dt = t^0 dt = dt.
-    So the integral becomes ∫ t in Ioo 0 1, (vF/vE)(d, r, t^(1/d)) dt.
-    Use MeasureTheory.integral_comp_rpow or MeasureTheory.integral_Ioo_comp_mul_right
-    with the substitution map φ(t) = t^(1/d) on (0,1).
-    Key Mathlib lemma: MeasureTheory.integral_comp_rpow (for s ↦ s^(1/d) on (0,∞)):
-      ∫ s in Ioo 0 1, f(s) * d * s^(d-1) = ∫ t in Ioo 0 1, f(t^(1/d))
-    since the substitution s = t^(1/d) has Jacobian (1/d)*t^(1/d - 1) and
-    d * (t^(1/d))^(d-1) * (1/d) * t^(1/d - 1) = 1.
-    Alternatively, use intervalIntegral.integral_comp_rpow or
-    MeasureTheory.integral_image_eq_integral_abs_deriv_smul with the map t ↦ t^(1/d).
-    The map φ : (0,1) → (0,1), φ(t) = t^(1/d) is a C¹ diffeomorphism with
-    φ'(t) = (1/d) * t^(1/d - 1) > 0 and |φ'(t)| = (1/d) * t^(1/d - 1).
-    The inverse is φ⁻¹(s) = s^d with (φ⁻¹)'(s) = d * s^(d-1).
-    So ∫ t in Ioo 0 1, g(t^(1/d)) = ∫ s in Ioo 0 1, g(s) * d * s^(d-1)
-    by MeasureTheory.integral_image_eq_integral_abs_deriv_smul applied to φ⁻¹. -/
-private lemma fillingProb_eq_substituted (p : ℝ) (d : ℕ) (hd : 1 ≤ d) :
-    fillingProb p d = ∫ t in Set.Ioo (0:ℝ) 1,
-      volumeFill d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ))) /
-      volumeEmpty d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ))) := by
-  rw [ fillingProb ];
-  -- Apply the substitution $t = s^d$ and $dt = d s^{d-1} ds$ to the integral.
-  have h_subst : ∀ {f : ℝ → ℝ}, ∫ s in Set.Ioo (0 : ℝ) 1, f s = ∫ t in Set.Ioo (0 : ℝ) 1, f (t ^ (1 / d : ℝ)) * (1 / d) * t ^ ((1 / d : ℝ) - 1) := by
-    have h_subst : ∀ {f : ℝ → ℝ}, ∫ s in Set.Ioo 0 1, f s = ∫ t in Set.Ioo 0 1, f (t ^ (1 / d : ℝ)) * (1 / d) * t ^ ((1 / d : ℝ) - 1) := by
-      intro f
-      have h_subst : ∫ s in Set.Ioo 0 1, f s = ∫ t in (Set.image (fun t : ℝ => t ^ (1 / d : ℝ)) (Set.Ioo 0 1)), f t := by
-        rw [ show ( fun t : ℝ => t ^ ( 1 / ( d : ℝ ) ) ) '' Set.Ioo 0 1 = Set.Ioo 0 1 from ?_ ];
-        ext x
-        simp [Set.mem_image];
-        exact ⟨ fun ⟨ y, hy, hy' ⟩ => ⟨ hy'.symm ▸ Real.rpow_pos_of_pos hy.1 _, hy'.symm ▸ Real.rpow_lt_one hy.1.le hy.2 ( by positivity ) ⟩, fun hx => ⟨ x ^ d, ⟨ pow_pos hx.1 _, pow_lt_one₀ hx.1.le hx.2 ( by positivity ) ⟩, by rw [ ← Real.rpow_natCast, ← Real.rpow_mul hx.1.le, mul_comm ] ; norm_num [ show d ≠ 0 by positivity ] ⟩ ⟩
-      rw [ h_subst, MeasureTheory.integral_image_eq_integral_abs_deriv_smul ] <;> norm_num;
-      any_goals intro x hx₁ hx₂; exact HasDerivAt.hasDerivWithinAt ( by simpa using Real.hasDerivAt_rpow_const ( Or.inl hx₁.ne' ) );
-      · exact MeasureTheory.setIntegral_congr_fun measurableSet_Ioo fun x hx => by rw [ abs_of_nonneg ( mul_nonneg ( inv_nonneg.2 ( Nat.cast_nonneg _ ) ) ( Real.rpow_nonneg hx.1.le _ ) ) ] ; ring;
-      · exact fun x hx y hy hxy => by rw [ Real.rpow_left_inj ] at hxy <;> norm_num <;> linarith [ hx.1, hx.2, hy.1, hy.2 ] ;
-    assumption;
-  rw [ h_subst ];
-  refine' MeasureTheory.setIntegral_congr_fun measurableSet_Ioo fun x hx => _;
-  rw [ ← Real.rpow_natCast, ← Real.rpow_mul ( le_of_lt hx.1 ) ] ; by_cases hd : d = 0 <;> simp_all +decide [ mul_assoc, mul_comm, mul_left_comm ];
-  rw [ ← Real.rpow_add hx.1 ] ; ring_nf ; norm_num [ hd ]
-
-/-- The substituted integrand g_d is AEStronglyMeasurable on (0,1).
-
-    PROVIDED SOLUTION
-    The function t ↦ volumeFill d r (t^(1/d)) / volumeEmpty d r (t^(1/d)) is a composition
-    of measurable functions on (0,1):
-    - t ↦ t^(1/d) is continuous (hence measurable) on (0,1) for d ≥ 1.
-    - (r, s) ↦ volumeFill d r s is defined by integrals of continuous functions, hence
-      measurable as a function of s for fixed d, r.
-    - Similarly for volumeEmpty d r s.
-    - Division of measurable functions is measurable (when denominator is a.e. nonzero;
-      if volumeEmpty = 0 we define 0/0 = 0 by Lean's div convention).
-    Use Measurable.aestronglyMeasurable composed with:
-    - Measurable.div (measurability of volumeFill and volumeEmpty as functions of t)
-    - Measurable.comp: measurability of t ↦ t^(1/d) via Real.measurable_rpow
-    - For the integrals: use MeasureTheory.Measurable.integral_prod_right or
-      note that continuous functions are measurable.
-    Concretely: apply AEStronglyMeasurable.div; each factor is AEStronglyMeasurable
-    because it is a composition of continuous functions (on the open set (0,1)):
-    - volumeFill d r (t^(1/d)): continuous in t on (0,1) → strongly measurable
-    - volumeEmpty d r (t^(1/d)): continuous in t on (0,1) → strongly measurable
-    Use Continuous.aestronglyMeasurable or ContinuousOn.aestronglyMeasurable. -/
-private lemma substituted_aesm (p : ℝ) (d : ℕ) :
-    MeasureTheory.AEStronglyMeasurable (fun t : ℝ =>
-      volumeFill d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ))) /
-      volumeEmpty d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ))))
-    (MeasureTheory.volume.restrict (Set.Ioo (0:ℝ) 1)) := by
-  refine' Measurable.aestronglyMeasurable _;
-  -- The functions volumeFill and volumeEmpty are continuous, hence measurable.
-  have h_volumeFill_measurable : Measurable (fun t : ℝ => volumeFill d (matchRadius p d) t) := by
-    apply_rules [ Measurable.mul, Measurable.pow_const, Measurable.add, measurable_const ];
-    · field_simp;
-      have h_integrand_measurable : Measurable (fun (a : ℝ) => ∫ x in Set.Ioo 0 (Real.sqrt ((4 - a ^ 2 / matchRadius p d ^ 2) / 4)), (2 ^ 2 * Real.sqrt (1 - x ^ 2) - a / matchRadius p d) * Real.pi ^ ((d - 1) / 2 : ℝ) * x ^ ((d : ℝ) - 2)) := by
-        have h_integrand_measurable : Measurable (fun (a : ℝ × ℝ) => (2 ^ 2 * Real.sqrt (1 - a.2 ^ 2) - a.1 / matchRadius p d) * Real.pi ^ ((d - 1) / 2 : ℝ) * a.2 ^ ((d : ℝ) - 2)) := by
-          fun_prop (disch := norm_num)
-        have h_integral_measurable : Measurable (fun (a : ℝ) => ∫ x in Set.univ, (if 0 < x ∧ x < Real.sqrt ((4 - a ^ 2 / matchRadius p d ^ 2) / 4) then (2 ^ 2 * Real.sqrt (1 - x ^ 2) - a / matchRadius p d) * Real.pi ^ ((d - 1) / 2 : ℝ) * x ^ ((d : ℝ) - 2) else 0)) := by
-          refine' MeasureTheory.StronglyMeasurable.measurable _;
-          refine' MeasureTheory.StronglyMeasurable.integral_prod_right _;
-          refine' Measurable.stronglyMeasurable _;
-          refine' Measurable.ite _ _ _ <;> norm_num [ h_integrand_measurable ];
-          · exact MeasurableSet.mem ( measurableSet_lt measurable_const measurable_snd |> MeasurableSet.inter <| measurableSet_lt measurable_snd <| Measurable.div_const ( Real.continuous_sqrt.measurable.comp <| measurable_const.sub <| measurable_fst.pow_const 2 |> Measurable.div_const <| matchRadius p d ^ 2 ) _ );
-          · convert h_integrand_measurable using 1 ; ext ; ring!;
-        generalize_proofs at *; (
-        convert h_integral_measurable using 1
-        generalize_proofs at *; (
-        ext a; rw [ ← MeasureTheory.integral_indicator ] <;> norm_num [ Set.indicator ] ;));
-      convert h_integrand_measurable.div_const ( 2 * Real.Gamma ( ( d - 1 ) / 2 ) ) using 2 ; norm_num [ MeasureTheory.integral_div ];
-    · have h_integral_measurable : Measurable (fun a => ∫ x in (Set.Ioo (a / (2 * matchRadius p d) / 2 * Real.sqrt (1 - (a / (2 * matchRadius p d)) ^ 2)) (1 / 2)), Real.sqrt (1 / 4 - x ^ 2) * (2 * Real.pi ^ ((d - 1) / 2 : ℝ) / Real.Gamma ((d - 1) / 2) * x ^ (d - 2 : ℝ))) := by
-        have h_integrand_measurable : Measurable (fun (p : ℝ × ℝ) => Real.sqrt (1 / 4 - p.2 ^ 2) * (2 * Real.pi ^ ((d - 1) / 2 : ℝ) / Real.Gamma ((d - 1) / 2) * p.2 ^ (d - 2 : ℝ))) := by
-          fun_prop (disch := norm_num)
-        have h_integral_measurable : Measurable (fun a => ∫ x in Set.univ, (if x ∈ Set.Ioo (a / (2 * matchRadius p d) / 2 * Real.sqrt (1 - (a / (2 * matchRadius p d)) ^ 2)) (1 / 2) then Real.sqrt (1 / 4 - x ^ 2) * (2 * Real.pi ^ ((d - 1) / 2 : ℝ) / Real.Gamma ((d - 1) / 2) * x ^ (d - 2 : ℝ)) else 0)) := by
-          refine' MeasureTheory.StronglyMeasurable.measurable _;
-          refine' MeasureTheory.StronglyMeasurable.integral_prod_right _;
-          refine' Measurable.stronglyMeasurable _;
-          refine' Measurable.ite _ _ measurable_const;
-          · simp +zetaDelta at *;
-            exact MeasurableSet.mem ( MeasurableSet.inter ( measurableSet_lt ( Measurable.mul ( Measurable.div_const ( measurable_fst.div_const _ ) _ ) ( Real.continuous_sqrt.measurable.comp ( measurable_const.sub ( measurable_fst.div_const _ |> Measurable.pow_const <| 2 ) ) ) ) measurable_snd ) ( measurableSet_lt measurable_snd measurable_const ) );
-          · exact h_integrand_measurable.comp ( measurable_fst.prodMk measurable_snd );
-        convert h_integral_measurable using 1;
-        ext; rw [ ← MeasureTheory.integral_indicator ] <;> norm_num [ Set.indicator ] ;
-      convert h_integral_measurable using 1
-  have h_volumeEmpty_measurable : Measurable (fun t : ℝ => volumeEmpty d (matchRadius p d) t) := by
-    apply_rules [ Measurable.mul, Measurable.div, measurable_const ];
-    have h_integrand_measurable : Measurable (fun (a : ℝ) => ∫ t in Set.Ioo 0 a, t ^ ((d + 1) / 2 - 1 : ℝ) * (1 - t) ^ (1 / 2 - 1 : ℝ)) := by
-      have h_integrand_measurable : Measurable (fun (a : ℝ) => ∫ t in Set.Ioi 0, t ^ ((d + 1) / 2 - 1 : ℝ) * (1 - t) ^ (1 / 2 - 1 : ℝ) * (if t < a then 1 else 0)) := by
-        refine' MeasureTheory.StronglyMeasurable.measurable _;
-        refine' MeasureTheory.StronglyMeasurable.integral_prod_right _;
-        exact Measurable.stronglyMeasurable ( by exact Measurable.mul ( Measurable.mul ( measurable_snd.pow_const _ ) ( measurable_const.sub measurable_snd |> Measurable.pow_const <| _ ) ) <| measurable_const.indicator <| measurableSet_lt measurable_snd measurable_fst );
-      convert h_integrand_measurable using 1;
-      ext a; rw [ ← MeasureTheory.integral_indicator, ← MeasureTheory.integral_indicator ] <;> norm_num [ Set.indicator ] ; congr ; ext ; aesop;
-    exact h_integrand_measurable.comp ( by measurability );
-  exact Measurable.mul ( h_volumeFill_measurable.comp ( measurable_id.pow_const _ ) ) ( h_volumeEmpty_measurable.comp ( measurable_id.pow_const _ ) |> Measurable.inv )
-
-/-- Pointwise convergence: g_d(t) → 1 for a.e. t ∈ (0,1).
-
-    PROVIDED SOLUTION
-    For fixed t ∈ (0,1), let s_d = t^(1/d). As d → ∞, s_d = t^(1/d) → t^0 = 1.
-    Also r_d = matchRadius p d → ∞ (by matchRadius_tendsto_atTop).
-    We need: volumeFill d r_d s_d / volumeEmpty d r_d s_d → 1.
-    Key insight: as r → ∞ with u = s/(2r) → 0, both volumeFill and volumeEmpty
-    approach the volume of a full ball of radius r (the intersection of two balls
-    of radius r separated by s ≪ r approaches the full ball).
-    More precisely, the ratio volumeFill/volumeEmpty → 1 as r → ∞ for fixed s,
-    because both volumes are asymptotically euclidBallVol d r * (1 + O(s/r)).
-    In terms of the substituted variable: s_d = t^(1/d) → 1 and r_d → ∞,
-    so u_d = s_d / (2*r_d) → 0.
-    The ratio volumeFill d r s / volumeEmpty d r s as a function of u = s/(2r):
-    - volumeEmpty = euclidBallVol d (2r) * I_{1-u^2}((d+1)/2, 1/2) / B((d+1)/2, 1/2)
-      where I_x is the regularised incomplete beta function. As u → 0, x = 1-u^2 → 1,
-      so I_x → 1 (the full beta integral), and volumeEmpty → euclidBallVol d (2r).
-    - volumeFill: as u → 0 (s ≪ r), the fill region approaches the intersection of
-      two r-balls that almost completely overlap, so volumeFill → euclidBallVol d r.
-    - The ratio: volumeFill / volumeEmpty → euclidBallVol d r / euclidBallVol d (2r)
-      = r^d / (2r)^d = 1/2^d... This is NOT 1.
-    Correction: the ratio should be understood differently. Let's reconsider.
-    volumeEmpty d r s is the volume of the region where a third point must land
-    to form an EMPTY triangle (i.e., NOT fill the Cech triangle). This is the
-    intersection of two 2r-balls (the two vertices can see each other at distance s,
-    and the third point must be within 2r of both to potentially form edges, but
-    the triangle is empty = not all three pairwise distances ≤ r).
-    Actually from the definition: volumeEmpty d r s = euclidBallVol d (2r) * incBeta / betaFn
-    where incBeta = ∫_0^x t^(a-1)*(1-t)^(b-1) dt, x = 1-(s/2r)^2.
-    As s → 0 (u → 0): x → 1, incBeta → B(a,b) = betaFn, so volumeEmpty → euclidBallVol d (2r).
-    volumeFill d r s as s → 0: the fill region is the intersection of two r-balls
-    separated by s → 0, so volumeFill → euclidBallVol d r.
-    Ratio → euclidBallVol d r / euclidBallVol d (2r) = 1/2^d ≠ 1.
-    This means substituted_tendsto (ratio → 1) is NOT simply u → 0.
-    The correct interpretation: the substituted variable is t = s^d, so s = t^(1/d).
-    As d → ∞ with t fixed, s_d = t^(1/d) → 1 (not 0). And r_d → ∞.
-    So u_d = s_d / (2*r_d) = t^(1/d) / (2*r_d) → 0 since r_d → ∞.
-    The ratio volumeFill d r_d s_d / volumeEmpty d r_d s_d with s_d → 1 and r_d → ∞:
-    This is the regime where both s and r are large with s/r → 0.
-    In this regime, both volumes scale as euclidBallVol d (2r) * (something → 1/2^d)
-    and the ratio approaches 1. This is the deep analytical content of the paper.
-    Since the paper's Section 5 is incomplete (future work), this sorry encodes
-    genuinely open analytical content. The best approach for Aristotle:
-    - Try to use the fact that as u = s/(2r) → 0, the ratio of the two integrals
-      (volumeFill/volumeEmpty) can be computed via the integral formulas.
-    - Alternatively, use a direct estimate: for u small,
-      volumeFill d r s ≈ euclidBallVol d r * (1 - O(u^2)) and
-      volumeEmpty d r s ≈ euclidBallVol d r * (1 - O(u^2)) (both approach the same
-      leading-order term), so the ratio → 1.
-    - The key Mathlib tool would be tendsto_nhds_of_eventually_eq or squeeze_zero
-      combined with bounds on the integrals I₁, I₂ from volumeFill and incBeta. -/
-private lemma substituted_tendsto (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    ∀ᵐ t ∂(MeasureTheory.volume.restrict (Set.Ioo (0:ℝ) 1)),
-    Filter.Tendsto (fun d : ℕ =>
-      volumeFill d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ))) /
-      volumeEmpty d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ)))) Filter.atTop (nhds 1) := by
-  sorry
-
-/-- Uniform bound: ‖g_d(t)‖ ≤ 2 for all d and a.e. t ∈ (0,1).
-
-    PROVIDED SOLUTION
-    From volumeFill_div_volumeEmpty_le_one: volumeFill d r s / volumeEmpty d r s ≤ 1
-    for s ∈ (0,1) and r > 0. So the ratio is in [0, 1] (it is nonneg since both
-    volumes are nonneg). Therefore ‖ratio‖ = ratio ≤ 1 ≤ 2.
-    Lean approach:
-    - Apply Filter.Eventually.of_forall (the bound holds for ALL d, not just eventually).
-    - For the a.e. quantifier: apply Filter.Eventually.of_forall again (holds for all t).
-    - For the norm bound: use Real.norm_of_nonneg (ratio_nonneg) to get ‖ratio‖ = ratio,
-      then use le_trans (volumeFill_div_volumeEmpty_le_one ...) (by norm_num : (1:Real) ≤ 2).
-    - For ratio_nonneg: ratio = volumeFill / volumeEmpty ≥ 0 since both are ≥ 0
-      (use div_nonneg, volumeFill_nonneg, volumeEmpty_nonneg).
-    - For volumeFill_nonneg and volumeEmpty_nonneg: both are integrals of nonneg functions
-      times nonneg constants, so they are nonneg by MeasureTheory.integral_nonneg.
-    Note: volumeFill_div_volumeEmpty_le_one requires hs : 0 < s and hs1 : s < 1.
-    For s = t^(1/d) with t ∈ (0,1) and d ≥ 1: t^(1/d) ∈ (0,1) since t ∈ (0,1).
-    Use Real.rpow_pos_of_pos (ht.1) and Real.rpow_lt_one (ht.1.le) (ht.2) (by positivity). -/
-private lemma substituted_bound (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    ∀ᶠ d : ℕ in Filter.atTop, ∀ᵐ t ∂(MeasureTheory.volume.restrict (Set.Ioo (0:ℝ) 1)),
-    ‖volumeFill d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ))) /
-      volumeEmpty d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ)))‖ ≤ 2 := by
-  filter_upwards [Filter.eventually_ge_atTop 1] with d hd
-  refine Filter.eventually_of_mem (MeasureTheory.ae_restrict_mem measurableSet_Ioo) fun t ht => ?
-  have ht0 : 0 < t := ht.1
-  have ht1 : t < 1 := ht.2
-  have hd_pos : (0:ℝ) < (1:ℝ) / (d:ℝ) := by positivity
-  have hs_pos : 0 < t ^ ((1:ℝ)/(d:ℝ)) := Real.rpow_pos_of_pos ht0 _
-  have hs_lt1 : t ^ ((1:ℝ)/(d:ℝ)) < 1 := Real.rpow_lt_one ht0.le ht1 hd_pos
-  have hr : 0 ≤ matchRadius p d := by unfold matchRadius; split_ifs <;> positivity
-  have h_vf_nonneg : 0 ≤ volumeFill d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ))) := by
-    unfold volumeFill euclidBallVol
-    apply div_nonneg
-    · apply mul_nonneg
-      · apply mul_nonneg; positivity
-        apply MeasureTheory.setIntegral_nonneg measurableSet_Ioo
-        intro u hu; apply mul_nonneg <;> positivity
-      positivity
-    · apply div_nonneg <;> apply mul_nonneg <;>
-      exact (Real.Gamma_nonneg_of_nonneg (by positivity))
-  have h_ve_nonneg : 0 ≤ volumeEmpty d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ))) := by
-    unfold volumeEmpty euclidBallVol
-    apply div_nonneg
-    · apply mul_nonneg
-      · apply mul_nonneg; positivity
-        apply MeasureTheory.setIntegral_nonneg measurableSet_Ioo
-        intro u hu; apply mul_nonneg <;> positivity
-      positivity
-    · apply div_nonneg <;> apply mul_nonneg <;>
-      exact (Real.Gamma_nonneg_of_nonneg (by positivity))
-  have h_ratio_nonneg : 0 ≤ volumeFill d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ))) /
-      volumeEmpty d (matchRadius p d) (t ^ ((1:ℝ)/(d:ℝ))) :=
-    div_nonneg h_vf_nonneg h_ve_nonneg
-  rw [Real.norm_of_nonneg h_ratio_nonneg]
-  exact le_trans (volumeFill_div_volumeEmpty_le_one d _ hs_pos hs_lt1) (by norm_num)
-
-/-
-PROVIDED SOLUTION
-Use the four helper lemmas (fillingProb_eq_substituted, substituted_aesm, substituted_tendsto, substituted_bound) to apply dominated convergence.
-
-Step 1: Show the conclusion reduces to showing ∫ g_d → 1 where g_d(t) = vF/vE(d, r, t^(1/d)).
-Use Filter.Tendsto.congr' with fillingProb_eq_substituted: eventually (for d ≥ 1), fillingProb p d = ∫ t in Ioo 0 1, g_d(t).
-
-Step 2: Apply MeasureTheory.tendsto_integral_filter_of_dominated_convergence with:
-- F d t = g_d(t) = volumeFill d (matchRadius p d) (t^(1/d)) / volumeEmpty d (matchRadius p d) (t^(1/d))
-- f t = 1 (the constant function)
-- bound t = 2 (the constant function)
-- μ = volume.restrict (Ioo 0 1)
-
-The four conditions:
-1. AEStronglyMeasurable: from substituted_aesm (eventually, filter_upwards)
-2. Norm bound: from substituted_bound
-3. Integrable bound: MeasureTheory.integrable_const 2
-4. Pointwise convergence: from substituted_tendsto
-
-This gives: ∫ g_d → ∫ (fun _ => 1) ∂(volume.restrict (Ioo 0 1))
-
-Step 3: Show ∫ (fun _ => 1) ∂(volume.restrict (Ioo 0 1)) = 1.
-Use MeasureTheory.integral_const and the fact that volume(Ioo 0 1) = 1.
-Specifically: ∫ x, 1 ∂μ = μ.real Set.univ • 1
-And μ.real Set.univ = (volume.restrict (Ioo 0 1) Set.univ).toReal = (volume (Ioo 0 1)).toReal = 1.
-
-Key tactic: simp [MeasureTheory.integral_const, MeasureTheory.Measure.real, MeasureTheory.Measure.restrict_apply MeasurableSet.univ, Real.volume_Ioo]
--/
+open MeasureTheory in
+open Classical in
 lemma fillingProb_tendsto_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => fillingProb p d) Filter.atTop (nhds 1) := by
-  -- Apply the Dominated Convergence Theorem to conclude the proof.
-  have h_dominated : Filter.Tendsto (fun d => ∫ t in Set.Ioo (0 : ℝ) 1, volumeFill d (matchRadius p d) (t ^ ((1 : ℝ) / (d : ℝ))) / volumeEmpty d (matchRadius p d) (t ^ ((1 : ℝ) / (d : ℝ)))) Filter.atTop (nhds (∫ t in Set.Ioo (0 : ℝ) 1, 1)) := by
-    apply_rules [ MeasureTheory.tendsto_integral_filter_of_dominated_convergence ];
-    any_goals exact fun _ => 2;
-    · exact Filter.Eventually.of_forall fun n => substituted_aesm p n;
-    · exact substituted_bound p hp0 hp1;
-    · norm_num +zetaDelta at *;
-    · exact substituted_tendsto p hp0 hp1;
-  rw [ Filter.tendsto_congr' ];
-  convert h_dominated using 2 ; norm_num [ fillingProb ] at *;
-  filter_upwards [ Filter.eventually_ge_atTop 1 ] with d hd using fillingProb_eq_substituted p d hd ▸ rfl
+  apply tendsto_nhds_of_eventually_eq
+  filter_upwards [fill_eventually_always' p hp0 hp1] with d hfill
+  show fillingProb p d = 1
+  unfold fillingProb; simp only
+  have h_indicator_eq_one : (fun pts : Fin 3 → Torus d =>
+      if ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
+                          dist (pts 1) z ≤ matchRadius p d ∧
+                          dist (pts 2) z ≤ matchRadius p d
+      then (1 : ℝ) else 0) = fun _ => 1 := by
+    ext pts
+    simp only [ite_eq_left_iff, one_ne_zero]
+    intro hno
+    exact absurd (hfill pts) hno
+  rw [h_indicator_eq_one]
+  simp only [MeasureTheory.integral_const, smul_eq_mul, mul_one]
+  rw [MeasureTheory.Measure.real]
+  have h1 : (MeasureTheory.Measure.pi fun _ : Fin 3 =>
+    (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) Set.univ = 1 := by
+    erw [MeasureTheory.Measure.pi_univ]
+    simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+    erw [MeasureTheory.Measure.pi_univ]
+    simp [AddCircle.measure_univ]
+  rw [h1]; simp
 
 /-
 PROVIDED SOLUTION (updated for corrected matchRadius = p^(1/d)/2):
@@ -1645,9 +1417,55 @@ Step 2: (1-p)^3 * (1 - fillingProb p d) → (1-p)^3 * 0 = 0 by fillingProb_tends
 Step 3: Show geometricCov p d - (1-p)^3 * (1 - fillingProb p d) → 0 using matchRadius_tendsto_half
   and the boundedness of the integrand.
 -/
+open MeasureTheory in
+private lemma geometricCov_eq_when_fill_always' (p : ℝ) (d : ℕ)
+    (hfill : ∀ pts : Fin 3 → Torus d,
+      ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
+                      dist (pts 1) z ≤ matchRadius p d ∧
+                      dist (pts 2) z ≤ matchRadius p d) :
+    geometricCov p d = (1 - fillingProb p d) *
+      ∫ pts : Fin 3 → Torus d,
+        (let r := matchRadius p d
+         let x₁ := pts 0; let x₂ := pts 1; let x₃ := pts 2
+         let e₁₂ := if dist x₁ x₂ ≤ r then (1 : ℝ) - p else -p
+         let e₁₃ := if dist x₁ x₃ ≤ r then (1 : ℝ) - p else -p
+         let e₂₃ := if dist x₂ x₃ ≤ r then (1 : ℝ) - p else -p
+         e₁₂ * e₁₃ * e₂₃)
+      ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))) := by
+  unfold geometricCov;
+  rw [ ← MeasureTheory.integral_const_mul ];
+  simp +decide [ mul_assoc, mul_comm, mul_left_comm, hfill ]
+
+open MeasureTheory in
+private lemma edgeProduct_integral_bounded' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) (d : ℕ) :
+    |∫ pts : Fin 3 → Torus d,
+        (let r := matchRadius p d
+         let x₁ := pts 0; let x₂ := pts 1; let x₃ := pts 2
+         let e₁₂ := if dist x₁ x₂ ≤ r then (1 : ℝ) - p else -p
+         let e₁₃ := if dist x₁ x₃ ≤ r then (1 : ℝ) - p else -p
+         let e₂₃ := if dist x₂ x₃ ≤ r then (1 : ℝ) - p else -p
+         e₁₂ * e₁₃ * e₂₃)
+      ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d)))| ≤ 1 := by
+  refine' le_trans ( MeasureTheory.norm_integral_le_integral_norm ( _ : ( Fin 3 → Torus d ) → ℝ ) ) ( le_trans ( MeasureTheory.integral_mono_of_nonneg _ _ _ ) _ );
+  refine' fun _ => 1;
+  · exact Filter.Eventually.of_forall fun _ => norm_nonneg _;
+  · norm_num;
+  · filter_upwards [ ] with a using by norm_num; split_ifs <;> exact abs_le.mpr ⟨ by nlinarith [ mul_self_nonneg p ], by nlinarith [ mul_self_nonneg p ] ⟩ ;
+  · norm_num +zetaDelta at *;
+    rw [ MeasureTheory.measureReal_def ];
+    erw [ MeasureTheory.Measure.pi_univ ] ; norm_num;
+    erw [ MeasureTheory.Measure.pi_univ ] ; norm_num
+
 lemma geometricCov_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => geometricCov p d) Filter.atTop (nhds 0) := by
-  sorry
+  by_contra h_contra;
+  apply_mod_cast h_contra <| squeeze_zero_norm' _ _;
+  use fun d => |1 - fillingProb p d|;
+  · filter_upwards [ fill_eventually_always' p hp0 hp1 ] with d hd;
+    rw [ geometricCov_eq_when_fill_always' p d hd ];
+    rw [ norm_mul ];
+    exact mul_le_of_le_one_right ( abs_nonneg _ ) ( edgeProduct_integral_bounded' p hp0 hp1 d );
+  · simpa using Filter.Tendsto.abs ( fillingProb_tendsto_one p hp0 hp1 |> Filter.Tendsto.const_sub 1 )
 
 /-! ### TV distance helper lemmas -/
 
@@ -2251,22 +2069,12 @@ private lemma vertex_sharing_indepFun' {n d : ℕ} (p : ℝ)
   · grind +ring;
   · grobner;
   · grind +ring
+open Classical in
 private lemma fillingProb_nonneg' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) (d : ℕ) : 0 ≤ fillingProb p d := by
-  apply_rules [ MeasureTheory.setIntegral_nonneg measurableSet_Ioo ];
-  intro x hx; by_cases hd : 1 ≤ d <;> simp_all +decide [ volumeEmpty, volumeFill ] ;
-  refine' mul_nonneg ( mul_nonneg _ _ ) ( Nat.cast_nonneg _ );
-  · refine' mul_nonneg ( pow_nonneg _ _ ) _;
-    · exact mul_nonneg zero_le_two ( by unfold matchRadius; positivity );
-    · refine' mul_nonneg zero_le_two ( add_nonneg _ _ ) <;> refine' MeasureTheory.setIntegral_nonneg measurableSet_Ioo fun x hx => mul_nonneg _ _ <;> norm_num at *;
-      · exact Real.le_sqrt_of_sq_le ( by nlinarith [ Real.mul_self_sqrt ( show 0 ≤ 1 - ( ( _:ℝ ) / ( 2 * matchRadius p d ) ) ^ 2 by exact le_of_not_gt fun h => by rw [ Real.sqrt_eq_zero'.mpr h.le ] at hx; linarith ) ] );
-      · exact mul_nonneg ( div_nonneg ( mul_nonneg zero_le_two ( Real.rpow_nonneg ( by positivity ) _ ) ) ( Real.Gamma_nonneg_of_nonneg ( by linarith [ show ( d : ℝ ) ≥ 1 by norm_cast ] ) ) ) ( Real.rpow_nonneg hx.1.le _ );
-      · exact mul_nonneg ( div_nonneg ( mul_nonneg zero_le_two ( Real.rpow_nonneg ( by positivity ) _ ) ) ( Real.Gamma_nonneg_of_nonneg ( by linarith [ show ( d : ℝ ) ≥ 1 by norm_cast ] ) ) ) ( Real.rpow_nonneg ( by linarith [ show ( 0 : ℝ ) ≤ x by exact le_trans ( by exact mul_nonneg ( div_nonneg ( div_nonneg ( by linarith ) ( mul_nonneg zero_le_two ( by exact le_of_lt ( show 0 < matchRadius p d by exact ( show 0 < matchRadius p d from by
-                                                                                                                                                                                                                                                                                                                                                                                                                            unfold matchRadius;
-                                                                                                                                                                                                                                                                                                                                                                                                                            split_ifs <;> first | linarith | positivity; ) ) ) ) ) zero_le_two ) ( Real.sqrt_nonneg _ ) ) hx.1.le ] ) _ );
-  · refine' inv_nonneg.mpr _;
-    refine' div_nonneg ( mul_nonneg _ _ ) ( by positivity );
-    · grind +suggestions;
-    · exact MeasureTheory.setIntegral_nonneg measurableSet_Ioo fun t ht => mul_nonneg ( Real.rpow_nonneg ( by linarith [ ht.1 ] ) _ ) ( Real.rpow_nonneg ( by linarith [ ht.2, show ( x / ( 2 * ( 2 * matchRadius p d ) ) ) ^ 2 ≥ 0 by positivity ] ) _ )
+  unfold fillingProb
+  apply MeasureTheory.integral_nonneg
+  intro pts; simp only
+  split_ifs <;> norm_num
 -- Moved here from below to avoid forward reference in volumeFill_div_le_one'.
 open MeasureTheory in
 private lemma incBeta_nonneg' (d : ℕ) (x : ℝ) :
@@ -2358,27 +2166,25 @@ private lemma beta_density_integral_le_one' (d : ℕ) :
     ∫ s in Set.Ioo (0:ℝ) 1, (↑d * s ^ (d - 1 : ℕ)) ≤ 1 := by
   rcases d with ( _ | d ) <;> norm_num [ ← MeasureTheory.integral_Ioc_eq_integral_Ioo, ← intervalIntegral.integral_of_le zero_le_one ] at *;
   rw [ mul_inv_cancel₀ ( by linarith ) ]
+private lemma torus_pi_measure_real_univ' (d : ℕ) :
+    (MeasureTheory.Measure.pi fun _ : Fin 3 =>
+      (MeasureTheory.volume : MeasureTheory.Measure (Torus d))).real Set.univ = 1 := by
+  rw [MeasureTheory.Measure.real]
+  have h1 : (MeasureTheory.Measure.pi fun _ : Fin 3 =>
+    (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) Set.univ = 1 := by
+    erw [MeasureTheory.Measure.pi_univ]
+    simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+    erw [MeasureTheory.Measure.pi_univ]
+    simp [AddCircle.measure_univ]
+  rw [h1]; simp
+open Classical in
 private lemma fillingProb_le_one' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) (d : ℕ) : fillingProb p d ≤ 1 := by
-  by_contra h_contra;
-  unfold fillingProb at h_contra;
-  refine' h_contra ( le_trans ( MeasureTheory.setIntegral_mono_on _ _ measurableSet_Ioo fun x hx => mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_right ( volumeFill_div_le_one' _ _ _ _ _ _ ) ( Nat.cast_nonneg _ ) ) ( pow_nonneg hx.1.le _ ) ) _ );
-  all_goals norm_num [ ← MeasureTheory.integral_Ioc_eq_integral_Ioo, ← intervalIntegral.integral_of_le zero_le_one ] at *;
-  any_goals linarith;
-  · exact ( by rw [ intervalIntegral.integral_of_le zero_le_one ] at h_contra; exact ( by exact ( by exact ( by exact ( by exact ( by exact ( by exact by rw [ MeasureTheory.integral_Ioc_eq_integral_Ioo ] at h_contra; exact ( by exact ( by exact ( by exact ( by exact ( by exact by contrapose! h_contra; rw [ MeasureTheory.integral_undef h_contra ] ; norm_num ) ) ) ) ) ) ) ) ) ) ) );
-  · exact Continuous.integrableOn_Icc ( by continuity ) |> fun h => h.mono_set <| Set.Ioo_subset_Icc_self;
-  · exact le_of_lt ( by
-      refine' lt_of_le_of_ne _ _ <;> norm_num [ matchRadius ];
-      · positivity;
-      · exact ⟨ by rintro rfl; norm_num at h_contra, by
-          intro h
-          cases d with
-          | zero => simp [matchRadius] at h
-          | succ d =>
-            simp only [matchRadius, if_neg (Nat.succ_ne_zero d)] at h
-            have := Real.rpow_pos_of_pos hp0 (1 / ((d + 1 : ℕ) : ℝ))
-            linarith [div_pos this (by norm_num : (0:ℝ) < 2)] ⟩ );
-  · cases d <;> norm_num at *;
-    rw [ mul_inv_cancel₀ ( by positivity ) ]
+  unfold fillingProb
+  refine le_trans (MeasureTheory.integral_mono_of_nonneg ?_ (MeasureTheory.integrable_const 1) ?_) ?_
+  · exact Filter.Eventually.of_forall fun pts => by simp only; split_ifs <;> norm_num
+  · exact Filter.Eventually.of_forall fun pts => by simp only; split_ifs <;> norm_num
+  · simp only [MeasureTheory.integral_const, smul_eq_mul, mul_one]
+    exact le_of_eq (torus_pi_measure_real_univ' d)
 private lemma triangleIndicator'_bound' {n d : ℕ} (p q r : ℝ)
     (hp0 : 0 < p) (hp1 : p < 1) (hq0 : 0 ≤ q) (hq1 : q ≤ 1)
     (t : {σ : Finset (Fin n) // σ.card = 3})
@@ -3366,9 +3172,13 @@ Actually, this is hard to prove rigorously. Let me try MeasureTheory.setIntegral
     For the nonneg of volumeFill/volumeEmpty: unfold to see both are integrals with
     nonneg integrands (rpow_nonneg), and euclidBallVol d r ≥ 0 (rpow_nonneg of pi and r).
     With the new formula matchRadius p d = p^(1/d)/2 ≥ 0 for p > 0, so euclidBallVol d r ≥ 0. -/
-set_option maxHeartbeats 800000 in
+open Classical in
 lemma fillingProb_nonneg (p : ℝ) (d : ℕ) : 0 ≤ fillingProb p d := by
-  sorry
+  unfold fillingProb
+  apply MeasureTheory.integral_nonneg
+  intro pts; simp only
+  split_ifs <;> norm_num
+
 
 /- The fill volume is at most the empty volume for all valid parameters.
     Geometrically, the fill region (common intersection of three r-balls)
@@ -3573,17 +3383,14 @@ Actually the integrability may be hard. Use IntegrableOn for bounded measurable 
 Key: mul_le_mul_of_nonneg_right (volumeFill_div_volumeEmpty_le_one ...) (by positivity : d * s^(d-1) ≥ 0)
 -/
 open MeasureTheory in
+open Classical in
 lemma fillingProb_le_one (p : ℝ) (d : ℕ) : fillingProb p d ≤ 1 := by
   unfold fillingProb
-  have h1 := volumeFill_div_volumeEmpty_le_one d (matchRadius p d)
-  have h2 := beta_density_integral_le_one d
-  nontriviality;
-  contrapose! h2;
-  refine' lt_of_lt_of_le h2 _;
-  refine' MeasureTheory.setIntegral_mono_on _ _ _ _ <;> norm_num;
-  · exact ( by by_contra h; rw [ MeasureTheory.integral_undef h ] at h2; norm_num at h2 );
-  · exact Continuous.integrableOn_Icc ( by continuity ) |> fun h => h.mono_set ( Set.Ioo_subset_Icc_self );
-  · exact fun x hx₁ hx₂ => mul_le_mul_of_nonneg_right ( mul_le_of_le_one_left ( Nat.cast_nonneg _ ) ( h1 x hx₁ hx₂ ) ) ( pow_nonneg hx₁.le _ )
+  refine le_trans (MeasureTheory.integral_mono_of_nonneg ?_ (MeasureTheory.integrable_const 1) ?_) ?_
+  · exact Filter.Eventually.of_forall fun pts => by simp only; split_ifs <;> norm_num
+  · exact Filter.Eventually.of_forall fun pts => by simp only; split_ifs <;> norm_num
+  · simp only [MeasureTheory.integral_const, smul_eq_mul, mul_one]
+    exact le_of_eq (torus_pi_measure_real_univ' d)
 
 /-
 PROBLEM
