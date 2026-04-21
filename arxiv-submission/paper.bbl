@@ -1,0 +1,73 @@
+\begin{thebibliography}{11}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[{Anthropic}(2025)]{ClaudeCode2025}
+{Anthropic}.
+\newblock Claude code: {AI} programming assistant.
+\newblock \url{https://claude.ai/code}, 2025.
+
+\bibitem[Bangachev and Bresler(2024)]{Bangachev2024}
+Kiril Bangachev and Guy Bresler.
+\newblock Detection of dense subhypergraphs by low-degree polynomials.
+\newblock \emph{arXiv preprint arXiv:2304.01521}, 2024.
+
+\bibitem[Bobrowski and Kahle(2018)]{Bobrowski2018}
+Omer Bobrowski and Matthew Kahle.
+\newblock Topology of random geometric complexes: a survey.
+\newblock \emph{Journal of Applied and Computational Topology}, 1\penalty0
+  (3--4):\penalty0 331--364, 2018.
+\newblock arXiv:1409.4734.
+
+\bibitem[Bubeck et~al.(2016)Bubeck, Ding, Eldan, and R\'acz]{Bubeck2016}
+S\'ebastien Bubeck, Jian Ding, Ronen Eldan, and Mikl\'os~Z. R\'acz.
+\newblock Testing for high-dimensional geometry in random graphs.
+\newblock \emph{Random Structures \& Algorithms}, 49\penalty0 (3):\penalty0
+  503--532, 2016.
+
+\bibitem[{de Moura} and Ullrich(2021)]{deMoura2021}
+Leonardo {de Moura} and Sebastian Ullrich.
+\newblock The {Lean~4} theorem prover and programming language.
+\newblock In Andr{\'e} Platzer and Geoff Sutcliffe, editors, \emph{Automated
+  Deduction~-- {CADE~28}}, volume 12699 of \emph{Lecture Notes in Computer
+  Science}, pages 625--635. Springer, 2021.
+
+\bibitem[Goh and Cook(2023)]{Goh2023}
+David Goh and Nicholas~A. Cook.
+\newblock Testing for geometry in 2-parameter random simplicial complexes.
+\newblock PRUV research report, Duke University, 2023.
+
+\bibitem[{Harmonic.fun}(2025)]{Aristotle2025}
+{Harmonic.fun}.
+\newblock Aristotle: {AI}-assisted formal proof completion.
+\newblock \url{https://aristotle.harmonic.fun}, 2025.
+
+\bibitem[Jang and Ryu(2026)]{JangRyu2026}
+Ulieong Jang and Ernest~K. Ryu.
+\newblock Point convergence of {Nesterov}'s accelerated gradient method: An
+  {AI}-assisted proof.
+\newblock \emph{arXiv preprint arXiv:2510.23513}, 2026.
+
+\bibitem[Liu et~al.(2022)Liu, Mohanty, Schramm, and Yang]{Liu2022}
+Siqi Liu, Sidhanth Mohanty, Tselil Schramm, and Elizabeth Yang.
+\newblock Testing thresholds for high-dimensional sparse random geometric
+  graphs.
+\newblock In \emph{Proceedings of the 54th Annual ACM Symposium on Theory of
+  Computing (STOC)}, pages 672--677. ACM, 2022.
+
+\bibitem[Tem{\v{c}}inas et~al.(2025)Tem{\v{c}}inas, Nanda, and
+  Reinert]{Temcinas2025}
+Tadas Tem{\v{c}}inas, Vidit Nanda, and Gesine Reinert.
+\newblock Hypothesis testing in topology.
+\newblock \emph{arXiv preprint arXiv:2407.05006}, 2025.
+
+\bibitem[{The Mathlib Community}(2020)]{Mathlib2020}
+{The Mathlib Community}.
+\newblock The {Lean} mathematical library.
+\newblock In \emph{Proceedings of the 9th ACM SIGPLAN International Conference
+  on Certified Programs and Proofs (CPP)}, pages 367--381. ACM, 2020.
+
+\end{thebibliography}

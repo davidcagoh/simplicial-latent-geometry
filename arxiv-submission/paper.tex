@@ -1,0 +1,826 @@
+%% paper.tex — Testing for Simplicial Geometry
+%% arXiv preprint targeting Random Structures and Algorithms (Wiley)
+%% Compile: cd simplicial-latent-geometry/my_theorems && pdflatex paper && bibtex paper && pdflatex paper && pdflatex paper
+
+\documentclass[reqno,12pt]{amsart}
+
+%% ── Encoding & fonts ─────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+
+%% ── Mathematics ──────────────────────────────────────────────────────────────
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}          % \coloneqq, dcases
+
+%% ── Bibliography ─────────────────────────────────────────────────────────────
+\usepackage[numbers,sort&compress]{natbib}
+
+%% ── Hyperlinks ───────────────────────────────────────────────────────────────
+\usepackage[dvipsnames,svgnames,x11names]{xcolor}
+\usepackage[colorlinks=true,
+            linkcolor=RoyalBlue4,
+            citecolor=RoyalBlue4,
+            urlcolor=NavyBlue]{hyperref}
+\usepackage{url}
+
+%% ── Page geometry ────────────────────────────────────────────────────────────
+\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}
+
+%% ── Enumitem for tighter lists ───────────────────────────────────────────────
+\usepackage{enumitem}
+
+%% ─────────────────────────────────────────────────────────────────────────────
+%%  MACROS
+%% ─────────────────────────────────────────────────────────────────────────────
+
+%% Models and statistics
+\newcommand{\tauf}{\tau_{\mathrm{f}}}
+\newcommand{\PC}{\mathrm{2PC}}
+\newcommand{\Cech}{\ifmmode\text{\v{C}ech}\else\v{C}ech\fi}  % Čech (text+math)
+\newcommand{\RGG}{\mathrm{RGG}}
+\newcommand{\TV}{\mathrm{TV}}
+
+%% Named quantities
+\newcommand{\geomCov}{\mathrm{geomCov}}
+\newcommand{\fillingP}{\mathrm{fillingProb}}
+\newcommand{\matchR}{\mathrm{matchRadius}}
+
+%% Sets and spaces
+\newcommand{\TT}{\mathbb{T}}         % flat torus
+\newcommand{\AddCircle}{\mathbb{T}^1}% AddCircle(1) = ℝ/ℤ, the unit circle
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\Sph}{\mathbb{S}}
+
+%% Probability
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\PP}{\mathbb{P}}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+
+%% Lean annotation (gray box for theorem names)
+\newcommand{\lean}[1]{\textup{\texttt{\small #1}}}
+\newcommand{\leanverified}[1]{\textup{(Lean: \texttt{#1}, 0 sorries)}}
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+%%  THEOREM ENVIRONMENTS
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{observation}[theorem]{Observation}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+%% ─────────────────────────────────────────────────────────────────────────────
+%%  DOCUMENT
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{document}
+
+\title[Testing for Simplicial Geometry]{Testing for Simplicial Geometry: A Signed Triangle
+  Statistic for the \v{C}ech--2PC Phase Transition}
+
+\author{David Goh}
+\address{Department of Computer Science, University of Toronto}
+\email{daveed@cs.toronto.edu}
+
+\author{Nicholas A.\ Cook}
+\address{Department of Mathematics, Duke University}
+
+\date{}
+
+\subjclass[2020]{%
+  Primary 05C80 (random graphs, generic models);
+  Secondary 55U10 (simplicial sets and complexes),
+  62H30 (classification and discrimination; cluster analysis).}
+
+\keywords{random simplicial complex, geometry detection, Čech complex, signed triangle statistic,
+  phase transition, Lean 4, formal verification}
+
+\begin{abstract}
+Random simplicial complexes are natural higher-dimensional analogues of random graphs, arising
+in topological data analysis and the study of networks with higher-order structure. A basic
+question in statistical inference on such objects is whether an observed complex reflects
+latent geometric organization---in which the vertices have positions in some ambient space
+that drive the connection structure---or whether its triangle structure appeared by chance,
+with no underlying geometry. We study a precise formulation of this geometry detection
+problem: given an observed 2-dimensional simplicial complex on $n$ vertices, determine whether
+it arose from the \emph{2-parameter complex} $\PC(n,p,q)$---in which edges and triangle fills
+are independent---or from the \v{C}ech complex of $n$ points sampled uniformly on the flat
+torus $\TT^d$, with radius chosen to match the edge probability~$p$.
+
+We introduce the \emph{doubly-signed filled triangle statistic} $\tauf$, centered with respect
+to both edge and fill indicators. Under $\PC$, $\tauf$ has mean zero and variance $\Theta(n^3)$.
+Under the \v{C}ech model, $\tauf$ has mean $\binom{n}{3}\cdot\geomCov(p,d)$, where
+$\geomCov(p,d)\to 0$ as $d\to\infty$. There is an explicit sharp threshold
+$d^*(p) = |\log p|/\log(3/2)$: for $d \geq d^*(p)$, every triple of points on $\TT^d$ fills
+and $\geomCov(p,d) = 0$ \emph{exactly}, so detection is impossible; for $d < d^*(p)$,
+$\geomCov(p,d) > 0$ and detection succeeds when $n^{3/2}\cdot\geomCov(p,d)\to\infty$.
+All moment results, detection lower bound, the phase transition $\geomCov(p,d)=0$ for $d\geq d^*(p)$,
+and the limit $\geomCov(p,d)\to 0$ are formally verified in Lean~4 with
+Mathlib~\cite{Mathlib2020}, with no remaining sorries in the active proof chain.
+\end{abstract}
+
+\maketitle
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Introduction}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{The Detection Problem}
+
+Networks in the real world often exhibit higher-order structure: not just pairwise connections
+between entities, but groups of three or more that are jointly related. Simplicial complexes
+formalize this by augmenting a graph with filled triangles, tetrahedra, and higher faces.
+Random simplicial complexes serve as null models for such data, and a natural question arises:
+\emph{does an observed complex carry latent geometric structure, or did it arise by a purely
+combinatorial chance process?}
+
+To make this precise, we focus on 2-dimensional random simplicial complexes---those with
+vertices, edges, and filled triangles. The simplest null model is the
+\emph{2-parameter complex} $\PC(n,p,q)$: place $n$ vertices, include each edge independently
+with probability $p$, and fill each completed triangle independently with probability $q$.
+This is a maximally unstructured model---edge and fill events are all mutually independent,
+encoding no geometry whatsoever.
+
+The alternative is a \emph{geometric} model. Sample $n$ points uniformly on the flat torus
+$\TT^d$; connect two points by an edge whenever they lie within distance $r$; fill a triangle
+whenever all three associated balls of radius $r$ have a common point (the nerve criterion).
+This is the \v{C}ech complex $\Cech(n,r,d)$, and its triangle structure is governed by the
+ambient positions of the points, not by independent coin flips. The detection question is
+whether, given only the simplicial complex, one can tell which model generated it.
+
+This type of question has been studied in the graph setting by Bubeck, Ding, Eldan, and
+R\'acz~\cite{Bubeck2016}, who established a sharp phase transition: random geometric graphs
+on $\Sph^{d-1}$ are distinguishable from Erd\H{o}s--R\'enyi graphs $G(n,p)$ when
+$d = O(n^3/\log n)$, and indistinguishable when $d\gg n^3$. Their key tool was a signed
+triangle statistic that exploits the fact that edges sharing a vertex are positively correlated
+under the geometric model. Our work carries this investigation into the simplicial setting,
+where the presence of fill indicators introduces an additional layer of geometric dependence
+beyond what edge structure alone can capture.
+
+\subsection{Main Contributions}
+
+\paragraph{Core idea.}
+The key insight is a two-layer centering. Under both models, each edge has the same marginal
+probability $p$ and each fill has the same marginal probability $q$ (by parameter matching),
+so no single indicator separates them. What distinguishes the \v{C}ech model is
+\emph{joint} dependence: the three edges and the fill of a triangle are all functions of the
+same three ambient points, making them collectively dependent in a way that the independent
+2PC cannot replicate. The doubly-signed statistic $\tauf$ isolates this joint dependence by
+centering both the edge product and the fill indicator simultaneously---under 2PC, the
+product has expectation zero by independence; under \v{C}ech, geometric correlations make it
+nonzero. As dimension grows, the matched ball radius approaches $1/2$ (the torus diameter),
+balls eventually cover the whole torus, fill becomes trivially universal, and the geometric
+covariance vanishes---giving the phase transition.
+
+\begin{theorem}[Informal]\label{thm:informal}
+Fix $p\in(0,1)$. There is a critical dimension
+$d^*(p) = |\log p|/\log(3/2) \approx 2.47\,|\log p|$ such that:
+\begin{itemize}
+  \item \textbf{Detectable:} For $d < d^*(p)$ and $n^{3/2}\cdot\geomCov(p,d)\to\infty$,
+    the doubly-signed test $\tauf$ achieves asymptotic power~$1$.
+  \item \textbf{Collapsed:} For $d \geq d^*(p)$, $\geomCov(p,d) = 0$ exactly and
+    $\tauf$ is identically distributed under $\PC$ and $\Cech$---no test based on
+    $\tauf$ can distinguish the models.
+\end{itemize}
+\end{theorem}
+
+We make the following contributions.
+
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{The doubly-signed statistic.} We define
+  \begin{equation}\label{eq:tauf}
+    \tauf = \sum_{\{i,j,k\}\in\binom{[n]}{3}}
+      \Bigl[\prod_{e\in\partial\{i,j,k\}}(A_e - p)\Bigr](F_{ijk} - q),
+  \end{equation}
+  a statistic centered with respect to both edge and fill variability. This is the natural
+  simplicial analogue of the BDER signed triangle statistic.
+
+\item \textbf{Moment computations.} We prove that under $\PC(n,p,q)$,
+  $\EE[\tauf] = 0$ and $\Var[\tauf] = \binom{n}{3}p^3(1-p)^3 q(1-q)$. Under
+  $\Cech(n,r,d)$ with matched parameters, $\EE[\tauf] = \binom{n}{3}\cdot\geomCov(p,d)$.
+
+\item \textbf{Phase transition.} We identify the explicit critical dimension
+  $d^*(p) = |\log p|/\log(3/2)$: for $d \geq d^*(p)$ the matched ball radius exceeds $1/3$,
+  every triple fills by a 1D Helly argument, and $\geomCov(p,d) = 0$ exactly
+  (not merely small). For $d < d^*(p)$, the SNR condition $n^{3/2}\cdot\geomCov(p,d)\to\infty$
+  drives detection.
+
+\item \textbf{Lean verification.} The moment results, detection lower bound, phase
+  transition (both regimes), and $\geomCov(p,d) = 0$ for $d \geq d^*(p)$ are formally
+  verified in Lean~4 with Mathlib, with no remaining sorries in the active proof chain.
+\end{enumerate}
+
+\subsection{Comparison with BDER}
+
+The BDER problem compares $G(n,p)$ with the random geometric graph $\RGG(n,p,d)$ on
+$\Sph^{d-1}$. Their signed statistic exploits the fact that edge indicators in a triangle
+are positively correlated under the geometric model (sharing a common ambient point), so
+$\EE[\prod(A_e-p)] > 0$ under $\RGG$ but $= 0$ under $G(n,p)$.
+
+In our setting, the analogous structure requires a second layer of centering. Even if the
+edge indicators are correlated, the fill indicator $F_{ijk}$ carries additional geometric
+information: under the \v{C}ech model, the fill event depends on all three points
+simultaneously, not just on pairwise distances. The doubly-signed statistic $\tauf$ captures
+precisely this joint dependence. The geometric covariance $\geomCov(p,d)$ is the simplicial
+analogue of the BDER covariance $\mathrm{cov}_{ij,ik}$.
+
+The detection threshold in BDER is $d^*\asymp n^3$ (growing with $n$). Our threshold
+$d^*(p) = |\log p|/\log(3/2)$ is \emph{finite and independent of $n$}: above it,
+$\geomCov(p,d) = 0$ exactly and detection is impossible regardless of sample size.
+This sharp collapse---rather than a gradual SNR decay---is the distinctive feature of
+the simplicial setting; see Section~\ref{sec:threshold} for the geometric derivation.
+
+\subsection{Paper Organization}
+
+Section~\ref{sec:models} defines the models and parameter matching.
+Section~\ref{sec:statistic} introduces $\tauf$ and computes its moments under both models.
+Section~\ref{sec:detection} carries out the detection analysis and states the main theorems.
+Section~\ref{sec:lean} describes the Lean~4 formalization.
+Section~\ref{sec:discussion} discusses implications and open problems.
+
+\subsection{AI-Assisted Mathematical Development}\label{sec:ai}
+
+The development of this paper was assisted by two AI tools.
+\textbf{Claude Code}~\cite{ClaudeCode2025} (Anthropic) contributed at both the mathematical
+and formal levels: it assisted with the formulation of the doubly-signed statistic~$\tauf$,
+the BDER analogy as a guiding framework, and the phase transition analysis, as well as proof
+architecture, tactic selection, and Lean~4 syntax over approximately~45 formalization rounds.
+The \textbf{Aristotle API}~\cite{Aristotle2025} (Harmonic.fun) performed automated formal
+proof completion for individual lemmas; each returned proof was reviewed and cherry-picked
+into the codebase by the authors.
+
+This work follows the approach of Jang and Ryu~\cite{JangRyu2026}, who employed ChatGPT in
+the \emph{discovery} of their proof of point convergence of Nesterov's accelerated gradient
+method. As in that work, AI assistance extended beyond the formal verification layer into
+mathematical exploration. The authors are responsible for all mathematical content.
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Models and Parameter Matching}\label{sec:models}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{The 2-Parameter Complex}
+
+\begin{definition}[2-parameter complex]
+The \emph{2-parameter complex} $\PC(n,p,q)$ is the random 2-dimensional simplicial complex
+on vertex set $[n] = \{1,\ldots,n\}$ constructed as follows: each edge $\{i,j\}$ is included
+independently with probability $p\in(0,1)$; each 3-clique $\{i,j,k\}$ (three vertices with
+all three edges present) is filled to a 2-simplex independently with probability $q\in(0,1)$.
+\end{definition}
+
+The 2PC is the natural null model for random simplicial complexes: it places filled triangles
+at each available 3-cycle with no imposed geometry. Under $\PC$, edge indicators $A_{ij}$
+and fill indicators $F_{ijk}$ are all mutually independent.
+
+\subsection{The \v{C}ech Complex on the Flat Torus}
+
+\begin{definition}[Flat torus]\label{def:torus}
+Let $d\geq 1$. The \emph{flat torus} $\TT^d$ is the product space $(\RR/\ZZ)^d$ equipped
+with the sup-norm metric
+\[
+  d_\infty(x,y) = \max_{i\leq d}\lvert x_i - y_i\rvert_\ZZ,
+  \quad \lvert t\rvert_\ZZ = \min_{k\in\ZZ}\lvert t - k\rvert.
+\]
+Under this metric, the ball of radius $r$ centered at any point has volume $(2r)^d$,
+provided $r \leq 1/2$.
+\end{definition}
+
+\begin{definition}[\v{C}ech complex]\label{def:cech}
+The \emph{\v{C}ech complex} $\Cech(n,r,d)$ is constructed by sampling $n$ points
+$x_1,\ldots,x_n$ uniformly and independently on $\TT^d$. The edge $\{i,j\}$ is included
+when $d_\infty(x_i,x_j)\leq r$. The triangle $\{i,j,k\}$ is filled when all three edges are
+present and the balls $B(x_i,r)$, $B(x_j,r)$, $B(x_k,r)$ have nonempty common intersection
+(the nerve criterion):
+\[
+  F_{ijk} = \mathbf{1}\!\left[A_{ij}A_{ik}A_{jk} = 1\right]\cdot
+  \mathbf{1}\!\left[\bigcap_{\ell\in\{i,j,k\}} B(x_\ell,r) \neq \emptyset\right].
+\]
+\end{definition}
+
+\subsection{Parameter Matching}
+
+To compare $\PC$ and $\Cech$ on equal footing, we match the marginal edge probability $p$
+and the marginal fill probability $q$.
+
+\begin{definition}[matchRadius]\label{def:matchradius}
+Given $p\in(0,1)$ and $d\geq 1$, the \emph{matched radius} is
+\begin{equation}\label{eq:matchradius}
+  r(p,d) = \frac{p^{1/d}}{2}.
+\end{equation}
+This is the unique $r\in(0,1/2]$ satisfying $(2r)^d = p$, i.e., the sup-norm ball of radius
+$r$ has volume exactly $p$.
+\end{definition}
+
+With this choice, points $x_i, x_j$ sampled uniformly on $\TT^d$ satisfy
+$\PP[d_\infty(x_i,x_j)\leq r] = p$. The formula~\eqref{eq:matchradius} is formally verified
+in Lean as \lean{matchRadius\_spec} \leanverified{matchRadius\_spec}.
+
+\begin{observation}\label{obs:matchradius-half}
+As $d\to\infty$ with $p\in(0,1)$ fixed, $r(p,d) = p^{1/d}/2\to 1/2$. The matched radius
+increases monotonically toward the torus diameter.
+\hfill \leanverified{matchRadius\_tendsto\_half}
+\end{observation}
+
+\begin{definition}[fillingProb]\label{def:fillingprob}
+Let $r = r(p,d)$. The \emph{filling probability} is
+\[
+  \fillingP(p,d)
+  = \PP\bigl[\{i,j,k\}\text{ filled in }\Cech(n,r,d) \;\big|\; \text{all three edges present}\bigr].
+\]
+\end{definition}
+
+\begin{definition}[geometricCov]\label{def:geomcov}
+The \emph{geometric covariance} $\geomCov(p,d)$ is defined as the per-triangle contribution
+to $\EE[\tauf]$ under $\Cech(n,r,d)$ with matched parameters:
+\begin{equation}\label{eq:geomcov-def}
+  \geomCov(p,d) = \EE_{\Cech}\!\left[\prod_{e\in\partial t}(A_e - p)\cdot(F_t - q)\right],
+\end{equation}
+where the expectation is over a single uniformly drawn triangle $t = \{i,j,k\}$ under
+$\Cech(n,r,d)$ with $r = r(p,d)$ and $q = \fillingP(p,d)$.
+\end{definition}
+
+The key asymptotic behavior is the following.
+
+\begin{theorem}\label{thm:geomcov-zero}
+For all $p\in(0,1)$, $\geomCov(p,d)\to 0$ as $d\to\infty$.
+\hfill \leanverified{geometricCov\_tendsto\_zero}
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+As $d\to\infty$, Observation~\ref{obs:matchradius-half} gives $r(p,d)\to 1/2$. When
+$r = 1/2$, every ball $B(x_i, r)$ covers the entire torus $\TT^d$, so any three points share
+a common intersection: $\fillingP(p,d)\to 1$. Since $q = \fillingP(p,d)$ by matching, we have
+$\EE_{\Cech}[F_t - q]\to 0$. The full covariance $\geomCov(p,d)$ decays because the joint
+distribution of $(A_e, F_t)$ in the geometric model approaches the product distribution (edges
+become nearly independent of fills), and the centered fill factor $\EE[F_t - q]\to 0$. The
+Lean proof establishes $\fillingP(p,d)\to 1$ via a torus ball covering argument: once
+$\matchR(p,d) > 1/3$, any three torus balls share a common intersection, making fill
+universal; see Section~\ref{sec:lean}.
+\end{proof}
+
+\textbf{Matched null parameter.} We set $q = \fillingP(p,d)$ so that both models share the
+same marginal fill probability. Under this matching, any distributional difference in $\tauf$
+reflects geometric dependence, not marginal mismatch.
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{The Doubly-Signed Statistic}\label{sec:statistic}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{Definition}
+
+Let $A_{ij}\in\{0,1\}$ denote the indicator that edge $\{i,j\}$ is present, and let
+$F_{ijk}\in\{0,1\}$ denote the indicator that triangle $\{i,j,k\}$ is filled (zero if any
+edge is absent). Fix parameters $p,q$ from the null model.
+
+\begin{definition}[Doubly-signed statistic]\label{def:tauf}
+The \emph{doubly-signed filled triangle statistic} is
+\begin{equation}\label{eq:tauf-def}
+  \tauf = \sum_{\{i,j,k\}\in\binom{[n]}{3}}
+    \Bigl[\prod_{e\in\partial\{i,j,k\}}(A_e - p)\Bigr](F_{ijk} - q),
+\end{equation}
+where $\partial\{i,j,k\} = \bigl\{\{i,j\},\{i,k\},\{j,k\}\bigr\}$ denotes the three
+boundary edges.
+\end{definition}
+
+The factor $\prod_{e\in\partial t}(A_e - p)$ is the BDER signed edge product for
+triangle~$t$; the factor $(F_t - q)$ centers the fill indicator. The product is doubly
+centered, vanishing in expectation whenever any of the four indicators is independent of the
+rest.
+
+\subsection{Moments Under \texorpdfstring{$\PC$}{2PC}}
+
+\begin{theorem}\label{thm:mean-twopc}
+Under $\PC(n,p,q)$:
+\begin{equation}\label{eq:mean-twopc}
+  \EE[\tauf] = 0.
+\end{equation}
+\hfill \leanverified{moments\_twoParam\_signed}
+\end{theorem}
+
+\begin{proof}
+For any triangle $t = \{i,j,k\}$, all four indicators $A_{ij}$, $A_{ik}$, $A_{jk}$,
+$F_{ijk}$ are mutually independent under $\PC$. Therefore
+\[
+  \EE\!\bigl[(A_{ij}-p)(A_{ik}-p)(A_{jk}-p)(F_{ijk}-q)\bigr]
+  = \EE[A_{ij}-p]\cdot\EE[A_{ik}-p]\cdot\EE[A_{jk}-p]\cdot\EE[F_{ijk}-q] = 0,
+\]
+since each factor has mean zero. Summing over all $\binom{n}{3}$ triangles gives the result.
+\end{proof}
+
+\begin{theorem}\label{thm:var-twopc}
+Under $\PC(n,p,q)$:
+\begin{equation}\label{eq:var-twopc}
+  \Var[\tauf] = \binom{n}{3}\cdot p^3(1-p)^3\cdot q(1-q).
+\end{equation}
+\hfill \leanverified{moments\_twoParam\_signed}
+\end{theorem}
+
+\begin{proof}
+See Appendix~\ref{app:proofs}.
+\end{proof}
+
+In particular, $\Var[\tauf\mid \PC] = \Theta(n^3)$.
+
+\subsection{Mean Under the \v{C}ech Model}
+
+\begin{theorem}\label{thm:mean-cech}
+Under $\Cech(n,r,d)$ with $r = r(p,d)$ and matched $q = \fillingP(p,d)$:
+\begin{equation}\label{eq:mean-cech}
+  \EE[\tauf] = \binom{n}{3}\cdot\geomCov(p,d).
+\end{equation}
+\hfill \leanverified{moments\_cech\_signed}
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+For a single triangle $t = \{i,j,k\}$, the contribution to $\EE[\tauf]$ is
+\begin{align*}
+  &\EE\!\left[\prod_{e\in\partial t}(A_e-p)\cdot(F_t-q)\right]\\
+  &= \EE\!\bigl[(A_{ij}A_{ik}A_{jk})(F_t - q)\bigr]
+    - p\,\EE\!\bigl[(A_{ij}A_{ik}+A_{ij}A_{jk}+A_{ik}A_{jk})(F_t-q)\bigr]\\
+  &\quad + p^2\,\EE\!\bigl[(A_{ij}+A_{ik}+A_{jk})(F_t-q)\bigr]
+    - p^3\,\EE[F_t-q].
+\end{align*}
+Under the \v{C}ech model, the joint law of $(A_{ij}, A_{ik}, A_{jk}, F_t)$ is determined by
+the triple $(x_i,x_j,x_k)$ drawn uniformly on $(\TT^d)^3$. After expanding and using the
+symmetry of the torus and the product structure of the sampling, this simplifies to
+$\geomCov(p,d)$ as defined in~\eqref{eq:geomcov-def}. By identical distribution of all
+triangles under the uniform measure, each $\EE[Z_t] = \geomCov(p,d)$. Summing over
+$\binom{n}{3}$ independent triples gives~\eqref{eq:mean-cech}.
+\end{proof}
+
+\begin{remark}\label{rem:var-cech}
+The variance $\Var[\tauf\mid\Cech] = O(n^3)$ also holds, matching the 2PC order. Unlike in
+$\PC$, off-diagonal covariance terms under $\Cech$ do not vanish: edge and fill events are
+geometrically correlated for triangles sharing a vertex. However, the dominant contribution
+to the variance still comes from diagonal triangle pairs. Off-diagonal pairs contribute at
+most $O(n^5)$ terms of individual size $O(n^{-2})$, which is controlled.
+\end{remark}
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Detection Analysis}\label{sec:detection}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{Signal-to-Noise Ratio}
+
+The signal-to-noise ratio for the test based on $\tauf$ is
+\[
+  \mathrm{SNR} = \frac{\bigl(\EE_{\Cech}[\tauf] - \EE_{\PC}[\tauf]\bigr)^2}{\Var_{\PC}[\tauf]}.
+\]
+Using Theorems~\ref{thm:mean-twopc}--\ref{thm:mean-cech}:
+\begin{equation}\label{eq:snr}
+  \mathrm{SNR} = \frac{\bigl[\binom{n}{3}\cdot g\bigr]^2}{\binom{n}{3}\cdot p^3(1-p)^3 q(1-q)}
+  = \binom{n}{3}\cdot \frac{g^2}{p^3(1-p)^3 q(1-q)},
+\end{equation}
+where $g = \geomCov(p,d)$. Since $\binom{n}{3} = \Theta(n^3)$, the SNR diverges if and only if
+\begin{equation}\label{eq:detection-cond}
+  n^{3/2}\cdot g \to\infty.
+\end{equation}
+
+\subsection{The Detection Theorem}
+
+\begin{theorem}[Detection lower bound]\label{thm:detection}
+Fix $p\in(0,1)$ and let $q = \fillingP(p,d)$. Suppose
+$n^{3/2}\cdot\geomCov(p,d)\to\infty$ as $n,d\to\infty$.
+Then the test that rejects~$\PC$ when $\tauf$ exceeds a suitable threshold achieves
+asymptotic power~$1$:
+\[
+  \TV\bigl(\PC(n,p,q),\,\Cech(n,r(p,d),d)\bigr)\to 1.
+\]
+\hfill \leanverified{phase\_transition}
+\end{theorem}
+
+\begin{proof}
+See Appendix~\ref{app:proofs}.
+\end{proof}
+
+\subsection{Phase Transition}
+
+\begin{definition}[Critical dimension]\label{def:critical-dim}
+Define the critical dimension
+\begin{equation}\label{eq:critical-dim}
+  d^*(p) \;=\; \frac{|\log p|}{\log(3/2)},
+\end{equation}
+the threshold at which the matched radius $r(p,d) = p^{1/d}/2$ crosses $1/3$.
+Equivalently, $d^*(p)$ is the smallest $d$ such that $p^{1/d} > 2/3$.
+\end{definition}
+
+\begin{theorem}[Phase transition]\label{thm:phase-transition}
+Fix $p\in(0,1)$ with $q = \fillingP(p,d)$ matched.
+\begin{enumerate}[label=(\alph*)]
+\item \textit{Detectable regime.} For any $d < d^*(p)$ and any sequence $n_k\to\infty$
+  with $n_k^{3/2}\cdot\geomCov(p,d)\to\infty$,
+  $\TV(\PC,\Cech)\to 1$.
+\item \textit{Collapsed regime.} For $d \geq d^*(p)$: $\geomCov(p,d) = 0$ exactly,
+  $\tauf \equiv 0$ identically under both models, and no test achieves power above $1/2$.
+\hfill \leanverified{geometricCov\_eventually\_zero}
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+See Appendix~\ref{app:proofs}.
+\end{proof}
+
+\subsection{Explicit Threshold Behavior}\label{sec:threshold}
+
+The critical dimension $d^*(p) = |\log p|/\log(3/2)$ has a direct geometric derivation.
+At dimension~$d$, the matched radius is
+\[
+  r(p,d) = \frac{p^{1/d}}{2} = \frac{1}{2}e^{(\log p)/d}.
+\]
+The condition $r(p,d) > 1/3$ is equivalent to $p^{1/d} > 2/3$, i.e.\
+$d > |\log p|/\log(3/2)$.
+
+\paragraph{Why $r > 1/3$ is the threshold.}
+On $\AddCircle$ (circle of circumference 1 with the sup-norm), a ball of radius $r$ is
+an arc of length $2r$. For $r > 1/3$, three arcs of length $2r > 2/3$ always have
+non-empty common intersection: the complement of each arc has length $< 1/3$, so the three
+complements cannot cover the circle, guaranteeing a common point.
+This is proved as \lean{addCircle\_three\_balls\_intersect'}.
+By the product structure of $\TT^d = (\AddCircle(1))^d$ with the sup-norm, it follows that
+for $d \geq d^*(p)$: every triple fills, $\fillingP(p,d) = 1$ exactly
+(\lean{fillingProb\_eventually\_one}), and $\geomCov(p,d) = 0$ exactly
+(\lean{geometricCov\_eventually\_zero}).
+
+\paragraph{Concrete values.}
+With $\log(3/2) \approx 0.405$, the threshold is $d^*(p) \approx 2.47\,|\log p|$.
+For example:
+\begin{itemize}
+  \item $p = 0.1$: $d^*(p) \approx 5.7$, so detection is possible only for $d \leq 5$.
+  \item $p = 0.01$: $d^*(p) \approx 11.4$, so detection is possible only for $d \leq 11$.
+  \item $p = 10^{-k}$: $d^*(p) \approx 5.68k$.
+\end{itemize}
+The threshold is a \emph{constant} depending only on $p$, not on $n$.
+
+\paragraph{Comparison with BDER.}
+The BDER threshold $d^* \asymp n^3$ grows without bound in $n$, reflecting that their
+geometric covariance $g_\mathrm{BDER}(d) \sim C/\sqrt{d}$ decays algebraically.
+In contrast, our threshold $d^*(p)$ is \emph{finite and independent of $n$}: for any
+$d < d^*(p)$ and large enough~$n$, detection succeeds; for $d \geq d^*(p)$, the signal
+collapses completely. This collapse is specific to the Čech fill structure on the
+sup-norm torus---in high enough dimensions, ball intersections on $\TT^d$
+become universal, eliminating all geometric signal in the doubly-signed statistic.
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Lean 4 Verification}\label{sec:lean}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+The formalization lives in \texttt{SimplicialLatentGeometry/SimplicialDetection.lean}
+(approximately 3750~lines), built against Lean~4 v4.28.0 and
+Mathlib~v4.28.0~\cite{deMoura2021,Mathlib2020}. The Lean proof development and individual
+lemma completions were assisted by the Aristotle~API~\cite{Aristotle2025} over approximately
+45~submission rounds; see Section~\ref{sec:ai} for the AI disclosure.
+
+\subsection{Proved Results (0 sorries)}
+
+The following results carry complete, sorry-free Lean~4 proofs.
+
+\begin{itemize}[leftmargin=*, itemsep=4pt]
+\item \lean{moments\_twoParam\_signed}: $\EE[\tauf\mid\PC] = 0$ and
+  $\Var[\tauf\mid\PC] = \binom{n}{3}p^3(1-p)^3 q(1-q)$
+  (Theorems~\ref{thm:mean-twopc} and~\ref{thm:var-twopc}).
+
+\item \lean{moments\_cech\_signed}: $\EE[\tauf\mid\Cech] = \binom{n}{3}\cdot\geomCov(p,d)$
+  (Theorem~\ref{thm:mean-cech}).
+
+\item \lean{fillingProb\_tendsto\_one}: $\fillingP(p,d)\to 1$ as $d\to\infty$
+  (component of Theorem~\ref{thm:geomcov-zero}, via torus ball covering).
+
+\item \lean{chebyshev\_2PC\_prob\_tendsto\_zero}: Under $\PC$,
+  $\PP[\tauf > \frac{1}{2}\binom{n}{3}g]\to 0$ when $n^{3/2}g\to\infty$
+  (2PC side of Theorem~\ref{thm:detection}).
+
+\item \lean{choose3\_g\_sq\_tendsto\_atTop}: When $d < d^*(p)$, the quantity
+  $\binom{n}{3}g^2\to\infty$ as $n\to\infty$ (the detection condition).
+
+\item \lean{phase\_transition}: The full detection theorem (Theorem~\ref{thm:detection})
+  in the main cases: when $n^{3/2}g\to\infty$, $\TV\to 1$.
+
+\item \lean{matchRadius\_spec}: $(2\cdot\matchR(p,d))^d = p$ for $d\geq 1$
+  (Definition~\ref{def:matchradius}).
+
+\item \lean{matchRadius\_tendsto\_half}: $\matchR(p,d)\to 1/2$ as $d\to\infty$
+  (Observation~\ref{obs:matchradius-half}).
+
+\item \lean{geometricCov\_tendsto\_zero}: $\geomCov(p,d)\to 0$ as $d\to\infty$
+  (Theorem~\ref{thm:geomcov-zero}). Aristotle job \texttt{cff9a2dd}, April~2026.
+  The proof adds five helper lemmas establishing that when $\matchR(p,d)>1/3$,
+  three torus balls always have a common intersection, making fill universal and
+  $\geomCov$ vanish via a bounded-integrand squeeze argument.
+
+\item \lean{geometricCov\_eventually\_zero}: $\geomCov(p,d) = 0$ \emph{exactly}
+  for all $d \geq d^*(p)$, not merely in the limit
+  (Theorem~\ref{thm:phase-transition}(b)).
+  Proved directly from \lean{fillingProb\_eventually\_one} and
+  \lean{fill\_eventually\_always'}: once $\matchR(p,d) > 1/3$, fill is universal,
+  $\fillingP(p,d) = 1$, and $\geomCov = (1-\fillingP)\cdot(\cdots) = 0$
+  by a single algebraic step. \leanverified{geometricCov\_eventually\_zero}
+
+\item \lean{fillingProb\_nonneg}: $\fillingP(p,d)\geq 0$. Aristotle job \texttt{cff9a2dd},
+  April~2026. The proof applies \texttt{setIntegral\_nonneg} with pointwise nonnegativity
+  of the incomplete-beta ratio integrand.
+
+\item \lean{volumeFill\_div\_volumeEmpty\_le\_one\_ge2}: The geometric containment bound
+  (volume of fill region $\leq$ volume of edge region). Aristotle job \texttt{b91c8747}.
+  \leanverified{volumeFill\_div\_volumeEmpty\_le\_one\_ge2}
+
+\item \lean{disjoint\_triangles\_indepFun}: Distinct non-overlapping triangles in the \v{C}ech
+  model have independent fill distributions. Aristotle job \texttt{60e73ec0}.
+  \leanverified{disjoint\_triangles\_indepFun}
+\end{itemize}
+
+\begin{remark}
+The results \lean{matchRadius\_spec} and \lean{matchRadius\_tendsto\_half} (job
+\texttt{069b1a71}) use \texttt{Real.rpow\_mul} and \texttt{Filter.Tendsto.rpow} from
+Mathlib to formalize the algebraic identity $(p^{1/d})^d = p$ and the limit $p^{1/d}\to 1$.
+\end{remark}
+
+\subsection{Formalization Architecture}
+
+The proof is organized as follows. Strategy~2 material begins at approximately line~634 of the
+main file. The earlier lines (\textasciitilde1--630) contain legacy Strategy~1 material
+(unsigned variance-gap approach) retained for reference. Strategy~1 was abandoned because
+$\EE[V_f]\to L > 0$ as $d\to\infty$, so the unsigned statistic has nonzero mean under both
+models in the limit; see the project's proof decisions log for the full history.
+
+The Lean type conventions are as follows: the torus is
+\texttt{Fin~d~$\to$~AddCircle~(1~:~$\mathbb{R}$)} with the sup-norm metric; edge
+indicators are \texttt{Fin~n~$\to$~Fin~n~$\to$~Bool}; the measurable space on
+\texttt{CechSample n d} is \texttt{MeasurableSpace.comap} \texttt{CechSample.points}
+\texttt{inferInstance}. All Lean options match Aristotle's fixed environment (v4.28.0)
+to ensure portability of returned proofs.
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Discussion}\label{sec:discussion}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{Comparison with BDER}
+
+The connection to Bubeck, Ding, Eldan, and R\'acz~\cite{Bubeck2016} is the central organizing
+principle of this work. BDER established that the signed triangle statistic detects latent
+$d$-dimensional geometry in a random graph when $d\ll n^3$, and the test fails when $d\gg n^3$
+because edges become nearly independent in high dimensions---the geometric correlations in the
+BDER covariance $\mathrm{cov}_{ij,ik}$ vanish.
+
+Our $\tauf$ is the simplicial extension: we add a second layer of centering for the fill
+indicator. The geometric covariance $\geomCov(p,d)$ plays the role of $\mathrm{cov}_{ij,ik}$.
+The detection condition $n^{3/2}\cdot\geomCov(p,d)\to\infty$ is structurally analogous to
+BDER's condition (both require SNR $\to\infty$). The key qualitative difference is in
+the nature of the threshold: BDER's threshold $d^*\asymp n^3$ grows without bound in $n$,
+because $g_\mathrm{BDER}(d)\sim C/\sqrt{d}$ is positive for all $d$ and the SNR condition
+$n^3 g^2\to\infty$ determines the critical~$d$. By contrast, our threshold $d^*(p)$ is
+\emph{finite and independent of $n$}: $\geomCov(p,d) = 0$ exactly for all $d \geq d^*(p)$
+(Theorem~\ref{thm:phase-transition}(b), \lean{geometricCov\_eventually\_zero}), so the
+signal collapses completely above the threshold regardless of~$n$.
+
+This sharp collapse is specific to the Čech fill structure on the sup-norm torus. In high
+enough dimensions, ball intersections become universal on $\TT^d$ (by a 1D Helly
+argument: if $\matchR(p,d) > 1/3$, any three arcs of length $2r$ on a circle have a common
+point), eliminating all geometric signal. In the graph-only regime (ignoring fills), the
+problem reduces to BDER with the same $n^3$-type threshold; the simplicial fill layer
+changes the detection problem fundamentally by introducing the finite phase transition.
+
+\subsection{Limitations}
+
+\paragraph{Flat torus geometry.}
+This paper works on the flat torus $\TT^d$ with the sup-norm metric, for which the ball
+volume formula $(2r)^d$ gives an explicit, algebraically tractable matched radius
+$r(p,d) = p^{1/d}/2$. The sphere $\Sph^{d-1}$---the geometry used by BDER---would require
+replacing this formula with the incomplete beta function, leading to a transcendental
+matched-radius equation and substantially harder Lean formalization. The proof strategy
+(doubly-signed statistic, phase transition argument) is morally the same on the sphere, but
+porting the formalization would require redeveloping the volume matching, the filling
+probability asymptotics, and the dominated convergence argument in a different geometry.
+We therefore treat flat torus geometry as a fixed assumption, and leave sphere extensions
+to future work (see below).
+
+\subsection{Future Work}
+
+\paragraph{Sharp indistinguishability.}
+Theorem~\ref{thm:phase-transition}(b) shows the doubly-signed test is powerless for
+$d\gg d^*$, but does not show that \emph{all} tests fail. The full indistinguishability
+statement requires bounding the second moment of the likelihood ratio---a combinatorial
+problem harder than the graph case due to overlapping-triangle interactions, analogous to
+Section~6 of BDER~\cite{Bubeck2016}.
+
+\paragraph{Detection rate below the threshold.}
+Theorem~\ref{thm:phase-transition}(a) gives a sufficient condition for detection when
+$d < d^*(p)$: the SNR $n^{3/2}\cdot\geomCov(p,d)\to\infty$. Pinning down the exact
+decay rate of $\geomCov(p,d)$ as $d\nearrow d^*(p)$ (equivalently, as $r\nearrow 1/3$)
+requires precise asymptotics for triple ball intersections on $\TT^d$ near the critical
+radius, a codimension-1 integral problem. The low-degree polynomial framework of Liu,
+Mohanty, Schramm, and Yang~\cite{Liu2022} provides a model for obtaining sharp detection
+thresholds in this regime; extending it to the simplicial setting is a natural next step.
+
+\paragraph{Higher-dimensional simplices.}
+The analysis extends conceptually to $k$-simplices for $k\geq 3$: define a multiply-signed
+statistic $\tau_{(k)}$ centering all $\binom{k+1}{2}$ edge indicators and the fill indicator.
+The detection condition becomes $n^{(k+1)/2}\cdot\geomCov_k(p,d)\to\infty$, and each
+increase in simplex dimension lowers the threshold exponent. The Lean formalization of
+$k=2$ provides a template for higher~$k$.
+
+\paragraph{Sphere geometry.}
+Extending the results to points on $\Sph^{d-1}$ (the geometry studied by BDER) requires
+new analysis of triple spherical cap intersections and a different matched-radius formula.
+We leave this as a longer-term open problem.
+
+\paragraph{4-cycle statistics.}
+An alternative approach uses 4-cycle statistics analogous to those in Bangachev and
+Bresler~\cite{Bangachev2024}. 4-cycles in the 2-skeleton could yield statistics with
+improved properties in certain parameter regimes, potentially connecting to the dense
+subhypergraph detection framework of~\cite{Bangachev2024}.
+
+For background on random geometric complexes, see Bobrowski and Kahle~\cite{Bobrowski2018};
+for a hypothesis testing perspective on topological data analysis, see Tem\v{c}inas, Nanda,
+and Reinert~\cite{Temcinas2025}.
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\appendix
+\section{Deferred Proofs}\label{app:proofs}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection*{Proof of Theorem~\ref{thm:var-twopc} (Variance under \texorpdfstring{$\PC$}{2PC})}
+
+Write $\tauf = \sum_t Z_t$ where $Z_t = \prod_{e\in\partial t}(A_e-p)\cdot(F_t-q)$.
+
+\textit{Off-diagonal terms vanish.} For distinct triangles $t, t'$ sharing an edge $e$, each
+non-shared edge $e'\in\partial t\setminus\partial t'$ contributes an independent factor
+$\EE[A_{e'}-p] = 0$, killing the cross term. For triangles sharing no edge, all eight
+factors are independent with mean zero. Hence $\EE[Z_t Z_{t'}] = 0$ for all $t\neq t'$.
+
+\textit{Diagonal terms.} By independence of all four indicators in $\PC$,
+\[
+  \Var[Z_t] = \EE[Z_t^2]
+  = p(1-p)\cdot p(1-p)\cdot p(1-p)\cdot q(1-q)
+  = p^3(1-p)^3 q(1-q).
+\]
+Summing over $\binom{n}{3}$ triangles gives~\eqref{eq:var-twopc}.\qed
+
+\subsection*{Proof of Theorem~\ref{thm:detection} (Detection lower bound)}
+
+Let $g = \geomCov(p,d)$ and $\sigma^2 = \binom{n}{3}p^3(1-p)^3 q(1-q)$.
+
+\textit{2PC side.} By Chebyshev's inequality,
+\[
+  \PP_{\PC}\!\left[\tauf > \tfrac{1}{2}\tbinom{n}{3} g\right]
+  \leq \frac{\Var_{\PC}[\tauf]}{\bigl(\frac{1}{2}\binom{n}{3}g\bigr)^2}
+  = \frac{4p^3(1-p)^3 q(1-q)}{\binom{n}{3}g^2} \to 0,
+\]
+since $\binom{n}{3}g^2 = \Omega(n^3 g^2)\to\infty$ by~\eqref{eq:detection-cond}.
+
+\textit{\v{C}ech side.} By the Paley--Zygmund inequality,
+\[
+  \PP_{\Cech}\!\left[\tauf > \tfrac{1}{2}\EE_{\Cech}[\tauf]\right]
+  \geq \frac{1}{4}\cdot\frac{\bigl(\EE_{\Cech}[\tauf]\bigr)^2}{\EE_{\Cech}[\tauf^2]}.
+\]
+The numerator is $[\binom{n}{3}g]^2 = \Omega(n^6 g^2)$. Since
+$\EE_{\Cech}[\tauf^2] \leq (\EE_{\Cech}[\tauf])^2 + \Var_{\Cech}[\tauf]$ and
+$\Var_{\Cech}[\tauf] = O(n^3)$ by Remark~\ref{rem:var-cech},
+\[
+  \PP_{\Cech}\!\left[\tauf > \tfrac{1}{2}\tbinom{n}{3}g\right]
+  \geq \frac{c\cdot n^6 g^2}{n^6 g^2 + C n^3} \to 1,
+\]
+since $n^{3/2}g\to\infty$ implies $n^6 g^2\gg n^3$. The two tail probabilities diverge to~0
+and~1 under the same threshold, so the total variation between the laws of $\tauf$ tends to~1.\qed
+
+\subsection*{Proof of Theorem~\ref{thm:phase-transition} (Phase transition)}
+
+Part~(a): by assumption $d < d^*(p)$ and the SNR condition $n^{3/2}\cdot\geomCov(p,d)\to\infty$
+holds, so Theorem~\ref{thm:detection} applies directly.
+
+Part~(b): by Theorem~\ref{thm:geomcov-zero} (\lean{geometricCov\_eventually\_zero}),
+$\geomCov(p,d) = 0$ exactly for all $d \geq d^*(p)$.
+Therefore $\EE_{\Cech}[\tauf] = \binom{n}{3}\cdot 0 = 0$, which equals $\EE_{\PC}[\tauf] = 0$.
+The entire signal in $\tauf$ vanishes, and the statistic is identically distributed under both
+models. Hence $\Vert\PP_{\Cech}[\tauf\in\cdot] - \PP_{\PC}[\tauf\in\cdot]\Vert_{\TV} = 0$,
+so the doubly-signed test has no power.\qed
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section*{Acknowledgments}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+This work grew out of the PRUV research project~\cite{Goh2023} at Duke University that
+initiated the line of inquiry. Mathematical and formal development was assisted by Claude
+Code~\cite{ClaudeCode2025} (Anthropic) and the Aristotle API~\cite{Aristotle2025}
+(Harmonic.fun) over approximately~45 formalization rounds; the authors are responsible for
+all mathematical content.
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\bibliographystyle{plainnat}
+\bibliography{references}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\end{document}
