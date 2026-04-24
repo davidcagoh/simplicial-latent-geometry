@@ -140,15 +140,14 @@ Mathlib~\cite{Mathlib2020}, with no remaining sorries in the active proof chain.
 \section{Introduction}
 %% ─────────────────────────────────────────────────────────────────────────────
 
-\subsection{Motivation and Background}
+\subsection{Background and Motivation}
 
 Topological data analysis (TDA) infers the shape of data by building simplicial complexes on
 point clouds and measuring their homology. The foundational pipeline---sample $n$ points, form
 the \v{C}ech or Vietoris-Rips complex at radius $r$, read off Betti numbers or persistent
-homology---rests on the assumption that the observed topological structure reflects genuine
-geometry in the underlying data. But any finite point cloud will produce some triangles and
-higher faces by chance; the practical question is whether those topological features are
-signal or noise.
+homology---rests on the assumption that observed topological features reflect genuine geometry
+in the underlying data. But any finite point cloud will produce some triangles and higher faces
+by chance; the practical question is whether those topological features are signal or noise.
 
 Kahle~\cite{Kahle2011} systematically studied the expected topology of \v{C}ech and
 Vietoris-Rips complexes built on i.i.d.\ random points in $\RR^d$, establishing connectivity
@@ -160,154 +159,37 @@ of random geometric complexes ``is related to developing probabilistic null hypo
 topological statistics,'' and the random geometric complex on i.i.d.\ uniform points is the
 natural geometric model against which TDA test statistics should be calibrated.
 
-The simplest null model for 2-dimensional complexes is one with \emph{no} underlying geometry:
-insert each edge independently with probability $p$ and fill each available triangle
-independently with probability $q$. This is the \emph{2-parameter complex} $\PC(n,p,q)$
-(see also the multi-parameter model of Kahle~\cite{Kahle2016}).
-The fundamental inference question is then: given only the observed simplicial complex,
-can one distinguish the structured geometric model from the purely random null?
+The simplest null model for 2-dimensional complexes is the \emph{2-parameter complex}
+$\PC(n,p,q)$: place $n$ vertices, insert each edge independently with probability $p$, and
+fill each completed triangle independently with probability $q$ (see also the multi-parameter
+model of Kahle~\cite{Kahle2016}). This encodes no geometry---all events are mutually
+independent. The geometric alternative is the \emph{\v{C}ech complex} $\Cech(n,r,d)$: sample
+$n$ points uniformly on the flat torus $\TT^d$, connect two points whenever they lie within
+distance $r$, and fill a triangle whenever the three associated sup-norm balls of radius $r$
+share a common point (the nerve criterion). The fundamental detection question is: given only
+the observed simplicial complex, can one tell which model generated it?
 
-\subsection{The Detection Problem}
-
-Networks in the real world often exhibit higher-order structure: not just pairwise connections
-between entities, but groups of three or more that are jointly related. Simplicial complexes
-formalize this by augmenting a graph with filled triangles, tetrahedra, and higher faces.
-Random simplicial complexes serve as null models for such data, and a natural question arises:
-\emph{does an observed complex carry latent geometric structure, or did it arise by a purely
-combinatorial chance process?}
-
-To make this precise, we focus on 2-dimensional random simplicial complexes---those with
-vertices, edges, and filled triangles. The simplest null model is the
-\emph{2-parameter complex} $\PC(n,p,q)$: place $n$ vertices, include each edge independently
-with probability $p$, and fill each completed triangle independently with probability $q$.
-This is a maximally unstructured model---edge and fill events are all mutually independent,
-encoding no geometry whatsoever.
-
-The alternative is a \emph{geometric} model. Sample $n$ points uniformly on the flat torus
-$\TT^d$; connect two points by an edge whenever they lie within distance $r$; fill a triangle
-whenever all three associated balls of radius $r$ have a common point (the nerve criterion).
-This is the \v{C}ech complex $\Cech(n,r,d)$, and its triangle structure is governed by the
-ambient positions of the points, not by independent coin flips. The detection question is
-whether, given only the simplicial complex, one can tell which model generated it.
-
-This type of question has been studied in the graph setting by Bubeck, Ding, Eldan, and
-R\'acz~\cite{Bubeck2016}, who established a sharp phase transition: random geometric graphs
-on $\Sph^{d-1}$ are distinguishable from Erd\H{o}s--R\'enyi graphs $G(n,p)$ when
-$d = O(n^3/\log n)$, and indistinguishable when $d\gg n^3$. Their key tool was a signed
-triangle statistic that exploits the fact that edges sharing a vertex are positively correlated
-under the geometric model. Our work carries this investigation into the simplicial setting,
-where the presence of fill indicators introduces an additional layer of geometric dependence
-beyond what edge structure alone can capture.
-
-\subsection{Main Results}
-
-We state our results informally here; formal statements appear in
-Sections~\ref{sec:statistic} and~\ref{sec:detection}.
-
-\begin{theorem}[Informal]\label{thm:informal}
-Fix $p\in(0,1)$ and let $\tauf$ be the doubly-signed statistic with matched parameters.
-\begin{enumerate}[label=(\arabic*)]
-\item \textbf{Detection} (Theorem~\ref{thm:detection})\textbf{.}
-  If $n^{3/2}\cdot\geomCov(p,d)\to\infty$, the test that thresholds $\tauf$
-  achieves asymptotic power $1$: $\TV(\PC,\Cech)\to 1$.
-
-\item \textbf{Phase transition via critical dimension} (Theorem~\ref{thm:phase-transition})\textbf{.}
-  There is a critical dimension $d^*(p) = |\log p|/\log(3/2)\approx 2.47\,|\log p|$:
-  \begin{itemize}[nosep]
-    \item \textbf{Detectable:} For $d < d^*(p)$, $\geomCov(p,d)>0$ and
-      detection succeeds when $n^{3/2}\cdot\geomCov(p,d)\to\infty$.
-    \item \textbf{Collapsed:} For $d\geq d^*(p)$, $\geomCov(p,d)=0$ exactly
-      and no test can distinguish the models.
-  \end{itemize}
-\end{enumerate}
-\end{theorem}
-
-\subsection{Contributions}
-
-\begin{enumerate}[label=(\arabic*)]
-\item \textbf{The doubly-signed statistic.} We define
-  \begin{equation}\label{eq:tauf}
-    \tauf = \sum_{\{i,j,k\}\in\binom{[n]}{3}}
-      \Bigl[\prod_{e\in\partial\{i,j,k\}}(A_e - p)\Bigr](F_{ijk} - q),
-  \end{equation}
-  a statistic centered with respect to both edge and fill variability. This is the natural
-  simplicial analogue of the BDER signed triangle statistic.
-
-\item \textbf{Moment computations.} We prove (Propositions~\ref{prop:moments-twopc}
-  and~\ref{prop:moments-cech}) that under $\PC(n,p,q)$,
-  $\EE[\tauf] = 0$ and $\Var[\tauf] = \binom{n}{3}p^3(1-p)^3 q(1-q)$. Under
-  $\Cech(n,r,d)$ with matched parameters, $\EE[\tauf] = \binom{n}{3}\cdot\geomCov(p,d)$.
-
-\item \textbf{Phase transition.} We identify the explicit critical dimension
-  $d^*(p) = |\log p|/\log(3/2)$ (Definition~\ref{def:critical-dim}): for $d \geq d^*(p)$
-  the matched ball radius exceeds $1/3$, every triple fills by a 1D Helly argument, and
-  $\geomCov(p,d) = 0$ exactly. For $d < d^*(p)$, the SNR condition
-  $n^{3/2}\cdot\geomCov(p,d)\to\infty$ drives detection.
-
-\item \textbf{Lean verification.} The moment results, detection lower bound, phase
-  transition (both regimes), and $\geomCov(p,d) \to 0$ are formally verified in Lean~4
-  with Mathlib, with no remaining sorries in the active proof chain;
-  see Appendix~\ref{app:lean} for the full catalog of verified results.
-\end{enumerate}
-
-\subsection{Comparison with BDER}\label{sec:bder-comparison}
-
-The BDER problem compares $G(n,p)$ with the random geometric graph $\RGG(n,p,d)$ on
-$\Sph^{d-1}$. Their key tool is the \emph{signed triangle statistic}
-\[
-  T_{\mathrm{BDER}} = \sum_{\{i,j,k\}\in\tbinom{[n]}{3}}
-    (A_{ij}-p)(A_{ik}-p)(A_{jk}-p),
-\]
-which exploits the positive correlation of edges sharing a vertex under the geometric model.
-The quantity driving detection is the pairwise geometric covariance
-\[
-  \mathrm{cov}_{ij,ik}
-  = \mathrm{Cov}_{\RGG}(A_{ij}, A_{ik})
-  = \EE_{\RGG}\!\bigl[(A_{ij}-p)(A_{ik}-p)\bigr].
-\]
-Under $\RGG$, $\mathrm{cov}_{ij,ik} > 0$; under $G(n,p)$, $\mathrm{cov}_{ij,ik} = 0$ by
-independence.
-
-In our setting the analogous structure requires a second layer of centering. Even if the
-edge indicators are correlated, the fill indicator $F_{ijk}$ carries additional geometric
-information: under the \v{C}ech model, the fill event depends on all three points
-simultaneously. Our doubly-signed statistic (Definition~\ref{def:tauf}) augments
-$T_{\mathrm{BDER}}$ by a centered fill factor:
-\[
-  \tauf = \sum_{\{i,j,k\}}(A_{ij}-p)(A_{ik}-p)(A_{jk}-p)\cdot(F_{ijk}-q).
-\]
-The corresponding per-triangle contribution is
-\[
-  \geomCov(p,d)
-  = \EE_{\Cech}\!\bigl[(A_{ij}-p)(A_{ik}-p)(A_{jk}-p)(F_{ijk}-q)\bigr]
-\]
-(Definition~\ref{def:geomcov}), the simplicial analogue of $\mathrm{cov}_{ij,ik}$.
-
-The detection threshold in BDER is $d^*\asymp n^3$ (growing with $n$). Our threshold
-$d^*(p) = |\log p|/\log(3/2)$ is \emph{finite and independent of $n$}: above it,
-$\geomCov(p,d) = 0$ exactly and detection is impossible regardless of sample size.
-This sharp collapse---rather than a gradual SNR decay---is the distinctive feature of
-the simplicial setting.
-
-The fill layer introduces richer geometric dependence than edge structure alone. We conjecture
-that this additional topological information is conducive to test statistics with greater power
-than in the BDER setting: the doubly-signed statistic exploits two layers of centering, and we
-expect the detection condition $n^{3/2}\cdot\geomCov(p,d)\to\infty$ to be achievable at
-tighter sample bounds than the analogous BDER condition for comparable $(p,d)$, reflecting
-the stronger geometric signal encoded in simplicial fills.
-
-\subsection{Related Work}
+\subsection{Related Work}\label{sec:related}
 
 \paragraph{Geometry testing for random graphs.}
 Bubeck, Ding, Eldan, and R\'acz~\cite{Bubeck2016} introduced the signed triangle statistic
 for testing $G(n,p)$ vs.\ $\RGG(n,p,d)$ on $\Sph^{d-1}$, establishing the $d\asymp n^3$
-phase transition. Bangachev and Bresler~\cite{BangachevBresler2024} studied the low-degree
-Fourier coefficients of random geometric graphs on $\Sph^{d-1}$, showing that the signed
-triangle statistic is computationally optimal for this testing problem and characterizing the
-Fourier coefficient behavior across the full range of densities. Liu, Mohanty, Schramm, and
-Yang~\cite{Liu2022} obtained sharp detection thresholds for sparse random geometric graphs
-via the low-degree polynomial framework; their methods provide a model for sharpening the
-SNR condition below our threshold $d^*(p)$.
+phase transition: random geometric graphs are detectable when $d\ll n^3$ and
+indistinguishable from Erd\H{o}s--R\'enyi when $d\gg n^3$. Bangachev and
+Bresler~\cite{BangachevBresler2024} studied the low-degree Fourier coefficients of random
+geometric graphs on $\Sph^{d-1}$, showing that the signed triangle statistic is
+computationally optimal for this testing problem and characterizing the Fourier coefficient
+behavior across the full range of densities. Liu, Mohanty, Schramm, and Yang~\cite{Liu2022}
+obtained sharp detection thresholds for sparse random geometric graphs via the low-degree
+polynomial framework; their methods provide a model for sharpening the SNR condition below the
+detection threshold.
+Our work carries this framework into the simplicial setting, where the presence of fill
+indicators introduces an additional layer of geometric dependence beyond edge structure alone.
+The key qualitative difference from BDER is that their detection threshold $d^*\asymp n^3$
+grows with~$n$ (edge correlations remain positive for every finite~$d$), while our simplicial
+analogue has a \emph{finite, $n$-independent} critical dimension: the fill layer introduces a
+complete collapse of geometric signal at a computable threshold, making detection impossible
+above it regardless of sample size (Theorem~\ref{thm:phase-transition}).
 
 \paragraph{Hypergraph detection.}
 Dhawan, Mao, and Wein~\cite{DhawanMaoWein2023} study detection of planted dense
@@ -327,26 +209,66 @@ connecting the topology of such complexes to null hypotheses for topological sta
 Tem\v{c}inas, Nanda, and Reinert~\cite{Temcinas2025} develop goodness-of-fit tests for
 random simplicial complexes via CLTs for subcomplex counts.
 
-\subsection{Proof Dependency Structure}
+\subsection{Main Results and Contributions}\label{sec:mainresults}
 
-All results reduce to two main theorems. The logical dependencies are:
+The key tool is the \emph{doubly-signed filled triangle statistic}
+\begin{equation}\label{eq:tauf}
+  \tauf = \sum_{\{i,j,k\}\in\binom{[n]}{3}}
+    \Bigl[\prod_{e\in\partial\{i,j,k\}}(A_e - p)\Bigr](F_{ijk} - q),
+\end{equation}
+centered with respect to both edge and fill variability (Definition~\ref{def:tauf}).
+The quantity $\geomCov(p,d)$ (Definition~\ref{def:geomcov}) is the per-triangle \v{C}ech-model
+expectation of this doubly-centered product; it is positive when fills carry geometric
+information and collapses to zero when geometry becomes negligible.
+
+\begin{theorem}[Informal]\label{thm:informal}
+Fix $p\in(0,1)$ and let $\tauf$ be the doubly-signed statistic with matched parameters.
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{Detection bound} (Theorem~\ref{thm:detection})\textbf{.}
+  If $n^{3/2}\cdot\geomCov(p,d)\to\infty$, the test that thresholds $\tauf$
+  achieves asymptotic power $1$: $\TV(\PC,\Cech)\to 1$.
+
+\item \textbf{Phase transition} (Theorem~\ref{thm:phase-transition})\textbf{.}
+  There is a finite critical dimension $d^*(p) = |\log p|/\log(3/2)\approx 2.47\,|\log p|$,
+  independent of $n$:
+  \begin{itemize}[nosep]
+    \item \textbf{Detectable:} For $d < d^*(p)$, $\geomCov(p,d)>0$ and
+      detection succeeds when $n^{3/2}\cdot\geomCov(p,d)\to\infty$.
+    \item \textbf{Collapsed:} For $d\geq d^*(p)$, $\geomCov(p,d)=0$ exactly
+      and no test based on $\tauf$ can distinguish the models.
+  \end{itemize}
+\end{enumerate}
+\end{theorem}
+
+\noindent These two results show that $\tauf$ detects geometry precisely when geometric
+covariance is large enough, and that geometric covariance collapses sharply at a computable
+threshold determined solely by the edge density~$p$.
 
 \medskip
-\noindent
-\textbf{Main Theorem 1} (Detection, Theorem~\ref{thm:detection}):
-\[
-  \text{Proposition~\ref{prop:moments-twopc}} \;\longrightarrow\;
-  \text{Lemma~\ref{lem:snr}} \;\longleftarrow\;
-  \text{Proposition~\ref{prop:moments-cech}}
-  \;\longrightarrow\; \text{Theorem~\ref{thm:detection}}
-\]
-\textbf{Main Theorem 2} (Phase Transition, Theorem~\ref{thm:phase-transition}):
-\begin{align*}
-  &\text{Part~(a): Lemma~\ref{lem:snr}} + \text{Theorem~\ref{thm:detection}} \\
-  &\text{Part~(b): Lemma~\ref{lem:radius-asymptotics}} \;\longrightarrow\;
-    \text{three-arc intersection (Lemma~\ref{lem:helly})} \;\longrightarrow\;
-    \text{Theorem~\ref{thm:phase-transition}(b)}
-\end{align*}
+\noindent\textbf{Contributions.}
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{The doubly-signed statistic} (Definition~\ref{def:tauf},
+  equation~\eqref{eq:tauf}).
+  The natural simplicial analogue of the BDER signed triangle statistic, centering both edge
+  and fill variability.
+
+\item \textbf{Moment computations} (Propositions~\ref{prop:moments-twopc}
+  and~\ref{prop:moments-cech}).
+  Under $\PC(n,p,q)$, $\EE[\tauf] = 0$ and
+  $\Var[\tauf] = \binom{n}{3}p^3(1-p)^3 q(1-q)$.
+  Under $\Cech(n,r,d)$ with matched parameters,
+  $\EE[\tauf] = \binom{n}{3}\cdot\geomCov(p,d)$.
+
+\item \textbf{Phase transition and finite critical dimension}
+  (Definition~\ref{def:critical-dim}, Theorem~\ref{thm:phase-transition}).
+  For $d \geq d^*(p)$, the matched ball radius exceeds $1/3$, every triple fills by a
+  1D Helly argument (Lemma~\ref{lem:helly}), and $\geomCov(p,d) = 0$ exactly.
+
+\item \textbf{Lean~4 verification.}
+  The moment results, detection lower bound, phase transition (both regimes), and
+  $\geomCov(p,d) \to 0$ are formally verified in Lean~4 with Mathlib, with no remaining
+  sorries in the active proof chain; see Appendix~\ref{app:lean} for the full catalog.
+\end{enumerate}
 
 \subsection{Paper Organization}
 
@@ -354,8 +276,13 @@ Section~\ref{sec:models} defines the models and parameter matching, and establis
 asymptotic properties of the matched radius and geometric covariance
 (Lemmas~\ref{lem:radius-asymptotics} and~\ref{lem:helly}).
 Section~\ref{sec:statistic} introduces $\tauf$ and proves its moments under both models.
-Section~\ref{sec:detection} carries out the detection analysis and proves the two main
-theorems.
+Section~\ref{sec:detection} carries out the detection analysis and proves
+Theorems~\ref{thm:detection} and~\ref{thm:phase-transition}; the logical flow is
+Propositions~\ref{prop:moments-twopc} and~\ref{prop:moments-cech} feeding into
+Lemma~\ref{lem:snr}, which implies Theorem~\ref{thm:detection}; part~(a) of
+Theorem~\ref{thm:phase-transition} then follows from Theorem~\ref{thm:detection} and
+Lemma~\ref{lem:snr}, while part~(b) follows from
+Lemmas~\ref{lem:radius-asymptotics} and~\ref{lem:helly}.
 Section~\ref{sec:discussion} discusses implications and open problems.
 Appendix~\ref{app:lean} is a catalog of all formally verified Lean~4 results;
 in-text annotations of the form \lean{lemma\_name} throughout the paper link to the
@@ -869,6 +796,15 @@ $k=2$ provides a template for higher~$k$.
 Extending the results to points on $\Sph^{d-1}$ (the geometry studied by BDER) requires
 new analysis of triple spherical cap intersections and a different matched-radius formula.
 We leave this as a longer-term open problem.
+
+\paragraph{Power comparison with BDER.}
+The fill layer introduces richer geometric dependence than edge structure alone. We conjecture
+that the doubly-signed statistic, which exploits two layers of centering, yields detection at
+strictly smaller sample sizes than the BDER signed triangle statistic for comparable $(p,d)$,
+reflecting the stronger geometric signal encoded in simplicial fills. Making this precise
+requires comparing the detection conditions $n^{3/2}\cdot\geomCov(p,d)\to\infty$ and the
+analogous BDER condition for the same $(p,d)$ parameters; this reduces to a question about
+the relative magnitudes of $\geomCov(p,d)$ and the BDER pairwise covariance.
 
 \paragraph{Fourier and spectral methods.}
 Bangachev and Bresler~\cite{BangachevBresler2024} showed that the signed triangle statistic
