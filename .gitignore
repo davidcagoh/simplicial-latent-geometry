@@ -28,4 +28,5 @@ update_*.py
 submit_lemma*.py
 test_submission.sh
 CLAUDE.md
-README.md__pycache__/
+README.md
+__pycache__/
