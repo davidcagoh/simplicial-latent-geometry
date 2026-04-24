@@ -589,7 +589,7 @@ power~$1$ as $n\to\infty$:
 \[
   \TV\bigl(\PC(n,p,q),\,\Cech(n,r(p,d),d)\bigr)\to 1.
 \]
-\hfill \leanverified{phase\_transition}
+\hfill \leanverified{detection\_lower\_bound\_fixed\_d}
 \end{theorem}
 
 \begin{proof}
@@ -840,8 +840,15 @@ The following results carry complete, sorry-free Lean~4 proofs.
 \item \lean{choose3\_g\_sq\_tendsto\_atTop}: When $d < d^*(p)$, the quantity
   $\binom{n}{3}g^2\to\infty$ as $n\to\infty$ (the detection condition).
 
-\item \lean{phase\_transition}: The full detection theorem (Theorem~\ref{thm:detection})
-  in the main cases: when $n^{3/2}g\to\infty$, $\TV\to 1$.
+\item \lean{detection\_lower\_bound\_fixed\_d}: The paper's Theorem~\ref{thm:detection}
+  verbatim: for fixed $d$ with $\geomCov(p,d)>0$ and $n\to\infty$, $\TV\to 1$.
+  This is a direct specialisation of the more general
+  \lean{detection\_lower\_bound} (joint $(n,d)$ sequences with
+  $n^{3/2}g\to\infty$ and $n g\to\infty$), which is itself a proof-level
+  strengthening of the paper's claim. The joint-limit corollary
+  \lean{phase\_transition} proves $\TV\to 1$ whenever
+  $d/(nG)^{1/\alpha}\to 0$ under an asymptotic-equivalence hypothesis on
+  $\geomCov$.
 
 \item \lean{matchRadius\_spec}: $(2\cdot\matchR(p,d))^d = p$ for $d\geq 1$
   (Definition~\ref{def:matchradius}).
