@@ -1369,6 +1369,33 @@ private lemma fill_eventually_always' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
 
 open MeasureTheory in
 open Classical in
+private lemma fillingProb_eventually_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    ∀ᶠ d : ℕ in Filter.atTop, fillingProb p d = 1 := by
+  filter_upwards [fill_eventually_always' p hp0 hp1] with d hfill
+  show fillingProb p d = 1
+  unfold fillingProb; simp only
+  have h_indicator_eq_one : (fun pts : Fin 3 → Torus d =>
+      if ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
+                          dist (pts 1) z ≤ matchRadius p d ∧
+                          dist (pts 2) z ≤ matchRadius p d
+      then (1 : ℝ) else 0) = fun _ => 1 := by
+    ext pts
+    simp only [ite_eq_left_iff, one_ne_zero]
+    intro hno
+    exact absurd (hfill pts) hno
+  rw [h_indicator_eq_one]
+  simp only [MeasureTheory.integral_const, smul_eq_mul, mul_one]
+  rw [MeasureTheory.Measure.real]
+  have h1 : (MeasureTheory.Measure.pi fun _ : Fin 3 =>
+    (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) Set.univ = 1 := by
+    erw [MeasureTheory.Measure.pi_univ]
+    simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+    erw [MeasureTheory.Measure.pi_univ]
+    simp [AddCircle.measure_univ]
+  rw [h1]; simp
+
+open MeasureTheory in
+open Classical in
 lemma fillingProb_tendsto_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => fillingProb p d) Filter.atTop (nhds 1) := by
   apply tendsto_nhds_of_eventually_eq
@@ -1466,6 +1493,17 @@ lemma geometricCov_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     rw [ norm_mul ];
     exact mul_le_of_le_one_right ( abs_nonneg _ ) ( edgeProduct_integral_bounded' p hp0 hp1 d );
   · simpa using Filter.Tendsto.abs ( fillingProb_tendsto_one p hp0 hp1 |> Filter.Tendsto.const_sub 1 )
+
+open MeasureTheory in
+/-- **Corollary.** For all sufficiently large d, geometricCov p d = 0 exactly.
+    Once matchRadius > 1/3, every triple fills, so F_t - q = 1 - 1 = 0 everywhere
+    and the integral collapses. This is stronger than geometricCov_tendsto_zero. -/
+lemma geometricCov_eventually_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    ∀ᶠ d : ℕ in Filter.atTop, geometricCov p d = 0 := by
+  filter_upwards [fillingProb_eventually_one p hp0 hp1,
+                  fill_eventually_always' p hp0 hp1] with d hq hfill
+  rw [geometricCov_eq_when_fill_always' p d hfill, hq]
+  ring
 
 /-! ### TV distance helper lemmas -/
 
