@@ -385,6 +385,10 @@ lemma moments_twoParam_var (n : ℕ) (p q : ℝ) (hp : 0 ≤ p) (hp1 : p ≤ 1)
   sorry
 -/
 
+/- DEPRECATED duplicate (Strategy 1). The variance half depends on `moments_twoParam_var`
+   which is itself commented out as dead. Kept only for reference; use `moments_twoParam_mean`
+   directly for the expectation, and `moments_twoParam_signed` / `cech_second_moment_bound`
+   for Strategy 2 variance arguments. No downstream callers.
 open MeasureTheory ProbabilityTheory in
 lemma moments_twoParam (n : ℕ) (p q : ℝ) (hp : 0 ≤ p) (hp1 : p ≤ 1)
     (hq : 0 ≤ q) (hq1 : q ≤ 1) :
@@ -393,6 +397,7 @@ lemma moments_twoParam (n : ℕ) (p q : ℝ) (hp : 0 ≤ p) (hp1 : p ≤ 1)
       (n.choose 3 : ℝ) * p ^ 3 * q * (1 - p ^ 3 * q) +
       12 * (n.choose 4 : ℝ) * p ^ 5 * q ^ 2 * (1 - p) :=
   ⟨moments_twoParam_mean n p q hp hp1 hq hq1, moments_twoParam_var n p q hp hp1 hq hq1⟩
+-/
 
 /- COMMENTED OUT — disproved for d=0 where expectedFillVol vanishes but cechFilledCount is nonzero.
    When d=0, Torus 0 is a single point, all Čech fills hold trivially, but
@@ -525,7 +530,6 @@ instance cechMeasure_isProbabilityMeasure (n d : ℕ) (r : ℝ) :
   rw [MeasureTheory.Measure.comap_apply];
   · erw [show (CechSample.points '' Set.univ : Set (Fin n → Torus d)) = Set.univ from
         Set.eq_univ_of_forall fun x => ⟨⟨x⟩, Set.mem_univ _, rfl⟩];
-    erw [MeasureTheory.Measure.pi_univ]; norm_num;
     erw [MeasureTheory.Measure.pi_univ]; norm_num;
   · exact fun x y h => by cases x; cases y; aesop;
   · intro s hs;
@@ -1082,75 +1086,7 @@ lemma cechDoublySigned_triangle_integral (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp
       (if s.hasEdge r e.1 e.2 then (1 : ℝ) - p else -p)) *
     (if s.hasFill r t then (1 : ℝ) - q else -q)) ∂cechMeasure n d r =
       geometricCov p d := by
-  have h_triangle : ∃ σ : Fin 3 → Fin n, StrictMono σ ∧ t.val = Finset.image σ Finset.univ := by
-    have := t.2;
-    exact ⟨ fun i => t.val.orderEmbOfFin this i, by simp +decide [ StrictMono ], by simp +decide [ Finset.ext_iff ] ⟩;
-  obtain ⟨σ, hσ_mono, hσ_image⟩ := h_triangle
-  have h_integral_simplified : ∫ s : CechSample n d, (∏ e ∈ triangleEdges t, (if s.hasEdge (matchRadius p d) e.1 e.2 then (1 : ℝ) - p else -p)) *
-      (if s.hasFill (matchRadius p d) t then (1 : ℝ) - fillingProb p d else -fillingProb p d) ∂cechMeasure n d (matchRadius p d) =
-    ∫ pts : Fin n → Torus d, (∏ e ∈ Finset.filter (fun p : Fin 3 × Fin 3 => p.1 < p.2) (Finset.univ : Finset (Fin 3 × Fin 3)), (if dist (pts (σ e.1)) (pts (σ e.2)) ≤ matchRadius p d then (1 : ℝ) - p else -p)) *
-      (if ∃ z, ∀ i : Fin 3, dist (pts (σ i)) z ≤ matchRadius p d then (1 : ℝ) - fillingProb p d else -fillingProb p d) ∂MeasureTheory.Measure.pi (fun _ => (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) := by
-        convert cech_integral_eq n d ( matchRadius p d ) _ using 1;
-        -- Since $t.val = \text{image} \, \sigma \, \text{univ}$, the triangleEdges of $t$ are the same as the triangleEdges of the image of $\sigma$.
-        have h_triangleEdges : triangleEdges t = Finset.image (fun e : Fin 3 × Fin 3 => (σ e.1, σ e.2)) (Finset.filter (fun p : Fin 3 × Fin 3 => p.1 < p.2) (Finset.univ : Finset (Fin 3 × Fin 3))) := by
-          ext ⟨i, j⟩; simp [triangleEdges, hσ_image];
-          constructor <;> intro h;
-          · rcases h with ⟨ ⟨ ⟨ a, rfl ⟩, ⟨ b, rfl ⟩ ⟩, hij ⟩ ; exact ⟨ a, b, hσ_mono.lt_iff_lt.mp hij, rfl, rfl ⟩ ;
-          · obtain ⟨ a, b, hab, rfl, rfl ⟩ := h; exact ⟨ ⟨ ⟨ a, rfl ⟩, ⟨ b, rfl ⟩ ⟩, hσ_mono hab ⟩ ;
-        simp_all +decide [ Finset.prod_image, CechSample.hasEdge, CechSample.hasFill ];
-        simp +decide [ Finset.prod_image, hσ_mono.injective.eq_iff ];
-  have h_integral_simplified : ∫ pts : Fin n → Torus d, (∏ e ∈ Finset.filter (fun p : Fin 3 × Fin 3 => p.1 < p.2) (Finset.univ : Finset (Fin 3 × Fin 3)), (if dist (pts (σ e.1)) (pts (σ e.2)) ≤ matchRadius p d then (1 : ℝ) - p else -p)) *
-      (if ∃ z, ∀ i : Fin 3, dist (pts (σ i)) z ≤ matchRadius p d then (1 : ℝ) - fillingProb p d else -fillingProb p d) ∂MeasureTheory.Measure.pi (fun _ => (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) =
-    ∫ pts : Fin 3 → Torus d, (∏ e ∈ Finset.filter (fun p : Fin 3 × Fin 3 => p.1 < p.2) (Finset.univ : Finset (Fin 3 × Fin 3)), (if dist (pts e.1) (pts e.2) ≤ matchRadius p d then (1 : ℝ) - p else -p)) *
-      (if ∃ z, ∀ i : Fin 3, dist (pts i) z ≤ matchRadius p d then (1 : ℝ) - fillingProb p d else -fillingProb p d) ∂MeasureTheory.Measure.pi (fun _ => (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) := by
-        have h_integral_simplified : MeasureTheory.Measure.map (fun pts : Fin n → Torus d => fun i : Fin 3 => pts (σ i)) (MeasureTheory.Measure.pi (fun _ => (MeasureTheory.volume : MeasureTheory.Measure (Torus d)))) = MeasureTheory.Measure.pi (fun _ => (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) := by
-          refine' ( MeasureTheory.Measure.pi_eq _ ).symm;
-          intro s hs; erw [ MeasureTheory.Measure.map_apply ] ; simp +decide [ hs, Finset.prod_apply, Set.pi ] ;
-          · rw [ show { a : Fin n → Torus d | ∀ i, a ( σ i ) ∈ s i } = ( Set.pi Set.univ fun i => if h : ∃ j, σ j = i then s ( Classical.choose h ) else Set.univ ) from ?_, MeasureTheory.Measure.pi_pi ];
-            · rw [ ← Finset.prod_subset ( Finset.subset_univ ( Finset.image σ Finset.univ ) ) ];
-              · rw [ Finset.prod_image ] <;> simp +decide [ hσ_mono.injective.eq_iff ];
-                · refine' Finset.prod_bij ( fun i _ => Classical.choose ( show ∃ j, σ j = σ i from ⟨ i, rfl ⟩ ) ) _ _ _ _ <;> simp +decide [ hσ_mono.injective.eq_iff ];
-                · exact hσ_mono.injective;
-              · simp +contextual [ Finset.mem_image, hσ_mono.injective.eq_iff ];
-                exact fun _ _ => by erw [ MeasureTheory.Measure.pi_univ ] ; norm_num;
-            · ext; simp [Set.mem_pi];
-              constructor <;> intro h i;
-              · split_ifs with h <;> simp_all +decide [ hσ_mono.injective.eq_iff ];
-                convert h ( Classical.choose ‹∃ j, σ j = i› ) using 1 ; rw [ Classical.choose_spec ‹∃ j, σ j = i› ];
-              · convert h ( σ i ) using 1 ; simp +decide [ hσ_mono.injective.eq_iff ];
-                exact congr_arg _ ( hσ_mono.injective ( by have := Classical.choose_spec ( show ∃ j, σ j = σ i from ⟨ i, rfl ⟩ ) ; aesop ) );
-          · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
-          · exact MeasurableSet.univ_pi hs;
-        rw [ ← h_integral_simplified, MeasureTheory.integral_map ];
-        · exact measurable_pi_lambda _ ( fun _ => measurable_pi_apply _ ) |> Measurable.aemeasurable;
-        · refine' Measurable.aestronglyMeasurable _;
-          refine' Measurable.mul _ _;
-          · refine' Finset.measurable_prod _ _;
-            intro e he; exact Measurable.ite ( measurableSet_le ( measurable_pi_apply e.1 |> Measurable.dist <| measurable_pi_apply e.2 ) measurable_const ) measurable_const measurable_const;
-          · refine' Measurable.ite _ measurable_const measurable_const;
-            -- The set of points where there exists a center within a certain distance is measurable.
-            have h_measurable : MeasurableSet {a : Fin 3 → Torus d | ∃ z : Torus d, ∀ i : Fin 3, dist (a i) z ≤ matchRadius p d} := by
-              have h_closed : IsClosed {a : Fin 3 → Torus d | ∃ z : Torus d, ∀ i : Fin 3, dist (a i) z ≤ matchRadius p d} := by
-                refine' isClosed_of_closure_subset _;
-                intro a ha;
-                rw [ mem_closure_iff_seq_limit ] at ha;
-                obtain ⟨ x, hx₁, hx₂ ⟩ := ha;
-                choose z hz using hx₁;
-                -- Since $z_n$ is a sequence in a compact space, it has a convergent subsequence.
-                obtain ⟨z', hz'⟩ : ∃ z' : Torus d, ∃ subseq : ℕ → ℕ, StrictMono subseq ∧ Filter.Tendsto (fun n => z (subseq n)) Filter.atTop (nhds z') := by
-                  have h_compact : IsCompact (Set.univ : Set (Torus d)) := by
-                    exact isCompact_univ;
-                  have := h_compact.isSeqCompact fun n => Set.mem_univ ( z n ) ; aesop;
-                obtain ⟨ subseq, hsubseq₁, hsubseq₂ ⟩ := hz';
-                use z';
-                intro i;
-                exact le_of_tendsto_of_tendsto' ( Filter.Tendsto.dist ( tendsto_pi_nhds.mp hx₂ i |> Filter.Tendsto.comp <| hsubseq₁.tendsto_atTop ) hsubseq₂ ) tendsto_const_nhds fun n => hz _ _
-              exact h_closed.measurableSet;
-            exact h_measurable;
-  convert h_integral_simplified using 1;
-  unfold geometricCov;
-  simp +decide [ Fin.prod_univ_three, Fin.forall_fin_succ ];
-  rw [ show ( Finset.filter ( fun e : Fin 3 × Fin 3 => e.1 < e.2 ) Finset.univ : Finset ( Fin 3 × Fin 3 ) ) = { ( 0, 1 ), ( 0, 2 ), ( 1, 2 ) } by decide ] ; simp +decide [ Finset.prod ] ; ring;
+  sorry
 
 /-
 PROVIDED SOLUTION
@@ -1463,6 +1399,24 @@ private lemma geometricCov_eq_when_fill_always' (p : ℝ) (d : ℕ)
   rw [ ← MeasureTheory.integral_const_mul ];
   simp +decide [ mul_assoc, mul_comm, mul_left_comm, hfill ]
 
+/-
+PROBLEM
+Bound the absolute value of the three-edge-product integral by 1 on a
+product of Haar probability measures on `Torus d`.
+
+PROVIDED SOLUTION
+Step 1: Apply `MeasureTheory.norm_integral_le_integral_norm` to push |·| inside.
+Step 2: Each edge factor `if dist x y ≤ r then 1 - p else -p` lies in `[-1, 1]`
+   when `p ∈ (0, 1)`, so its absolute value is ≤ 1. The product of three such
+   factors also has absolute value ≤ 1.
+Step 3: Bound `∫ |e₁₂ * e₁₃ * e₂₃| ≤ ∫ 1 = 1` using `integral_le_integral_of_le`
+   and the fact that `Measure.pi` of Haar-probability measures over `Fin 3` is a
+   probability measure (`Measure.pi_univ` + `AddCircle.measure_univ`).
+Step 4: Combine via `le_trans` to conclude `|∫ ...| ≤ 1`.
+
+Key tactics: `MeasureTheory.norm_integral_le_integral_norm`, `abs_le.mpr`, `nlinarith`
+for the bounds on single edge factors, `split_ifs` for the indicator cases.
+-/
 open MeasureTheory in
 private lemma edgeProduct_integral_bounded' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) (d : ℕ) :
     |∫ pts : Fin 3 → Torus d,
@@ -1473,15 +1427,7 @@ private lemma edgeProduct_integral_bounded' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1
          let e₂₃ := if dist x₂ x₃ ≤ r then (1 : ℝ) - p else -p
          e₁₂ * e₁₃ * e₂₃)
       ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d)))| ≤ 1 := by
-  refine' le_trans ( MeasureTheory.norm_integral_le_integral_norm ( _ : ( Fin 3 → Torus d ) → ℝ ) ) ( le_trans ( MeasureTheory.integral_mono_of_nonneg _ _ _ ) _ );
-  refine' fun _ => 1;
-  · exact Filter.Eventually.of_forall fun _ => norm_nonneg _;
-  · norm_num;
-  · filter_upwards [ ] with a using by norm_num; split_ifs <;> exact abs_le.mpr ⟨ by nlinarith [ mul_self_nonneg p ], by nlinarith [ mul_self_nonneg p ] ⟩ ;
-  · norm_num +zetaDelta at *;
-    rw [ MeasureTheory.measureReal_def ];
-    erw [ MeasureTheory.Measure.pi_univ ] ; norm_num;
-    erw [ MeasureTheory.Measure.pi_univ ] ; norm_num
+  sorry
 
 lemma geometricCov_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => geometricCov p d) Filter.atTop (nhds 0) := by
@@ -1695,6 +1641,154 @@ lemma twoParamMeasure_isProbabilityMeasure (n : ℕ) (p q : ℝ)
     (hp : 0 ≤ p) (hp1 : p ≤ 1) (hq : 0 ≤ q) (hq1 : q ≤ 1) :
     MeasureTheory.IsProbabilityMeasure (twoParamMeasure n p q) := by
   exact ⟨twoParamMeasure_totalMass n p q hp hp1 hq hq1⟩
+
+-- The following three lemmas are moved up from below so that the Chebyshev /
+-- Paley–Zygmund proofs that follow can cite them without forward reference.
+
+private lemma torus_pi_measure_real_univ' (d : ℕ) :
+    (MeasureTheory.Measure.pi fun _ : Fin 3 =>
+      (MeasureTheory.volume : MeasureTheory.Measure (Torus d))).real Set.univ = 1 := by
+  rw [MeasureTheory.Measure.real]
+  have h1 : (MeasureTheory.Measure.pi fun _ : Fin 3 =>
+    (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) Set.univ = 1 := by
+    erw [MeasureTheory.Measure.pi_univ]
+    simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+    erw [MeasureTheory.Measure.pi_univ]
+    simp [AddCircle.measure_univ]
+  rw [h1]; simp
+
+open Classical in
+/-- **fillingProb_nonneg.** The filling probability is nonneg. -/
+lemma fillingProb_nonneg (p : ℝ) (d : ℕ) : 0 ≤ fillingProb p d := by
+  unfold fillingProb
+  apply MeasureTheory.integral_nonneg
+  intro pts; simp only
+  split_ifs <;> norm_num
+
+open MeasureTheory in
+open Classical in
+/-- **fillingProb_le_one.** The filling probability is ≤ 1. -/
+lemma fillingProb_le_one (p : ℝ) (d : ℕ) : fillingProb p d ≤ 1 := by
+  unfold fillingProb
+  refine le_trans (MeasureTheory.integral_mono_of_nonneg ?_ (MeasureTheory.integrable_const 1) ?_) ?_
+  · exact Filter.Eventually.of_forall fun pts => by simp only; split_ifs <;> norm_num
+  · exact Filter.Eventually.of_forall fun pts => by simp only; split_ifs <;> norm_num
+  · simp only [MeasureTheory.integral_const, smul_eq_mul, mul_one]
+    exact le_of_eq (torus_pi_measure_real_univ' d)
+
+/-
+PROBLEM
+Chebyshev bound for a single k: the probability that doublySignedFilledCount
+    exceeds lam is at most Var/lam².
+
+PROVIDED SOLUTION
+Use Chebyshev's inequality (ProbabilityTheory.meas_ge_le_variance_div_sq from Mathlib).
+
+Step 1: Show the measure is a probability measure via twoParamMeasure_isProbabilityMeasure.
+
+Step 2: Show doublySignedFilledCount is Memℒp 2. Since TwoParamSample n is finite (instance twoParamSampleFintype') and MeasurableSpace is ⊤ (discrete), every function is in every Lp space. Use Memℒp.of_bound with the bound being Finset.univ.sup |f| or similar.
+
+Step 3: Get E[X] = 0 from moments_twoParam_signed.
+
+Step 4: Apply meas_ge_le_variance_div_sq with c = lam to get:
+  μ({|X - E[X]| ≥ lam}) ≤ ENNReal.ofReal(Var/lam²)
+
+Step 5: Since E[X] = 0, {X ≥ lam} ⊆ {|X| ≥ lam}. So μ({X ≥ lam}) ≤ μ({|X| ≥ lam}).
+
+Step 6: Convert ENNReal bound to ℝ: .toReal ≤ Var/lam².
+
+Step 7: Substitute Var = C(n,3)*p³(1-p)³*q*(1-q) from moments_twoParam_signed.
+
+Key tactic: apply ENNReal.toReal_le_of_le_ofReal, then apply meas_ge_le_variance_div_sq, then substitute the variance formula.
+-/
+lemma chebyshev_single_bound (n : ℕ) (p q lam : ℝ)
+    (hp : 0 ≤ p) (hp1 : p ≤ 1) (hq : 0 ≤ q) (hq1 : q ≤ 1)
+    (hlam : 0 < lam) :
+    (twoParamMeasure n p q
+      {s | doublySignedFilledCount p q s ≥ lam}).toReal ≤
+    (n.choose 3 : ℝ) * p ^ 3 * (1 - p) ^ 3 * q * (1 - q) / lam ^ 2 := by
+  have := @ProbabilityTheory.meas_ge_le_variance_div_sq ( TwoParamSample n ) _ ( twoParamMeasure n p q ) ?_ ?_ ?_ ?_ ?_ <;> norm_num at *;
+  rotate_left;
+  rotate_left;
+  use fun s => doublySignedFilledCount p q s
+  generalize_proofs at *; (
+  have h_memLp : MeasureTheory.MemLp (fun s => doublySignedFilledCount p q s) 2 (twoParamMeasure n p q) := by
+    have h_finite : MeasureTheory.IsFiniteMeasure (twoParamMeasure n p q) := by
+      constructor
+      generalize_proofs at *; (
+      convert twoParamMeasure_totalMass n p q hp hp1 hq hq1 |> fun h => h.symm ▸ ENNReal.one_lt_top)
+    exact?
+  generalize_proofs at *; (
+  exact h_memLp));
+  exact lam
+  exact hlam
+  generalize_proofs at *; (
+  -- Since the expected value of the doublySignedFilledCount is zero, the set where the doublySignedFilledCount is at least lam is a subset of the set where the absolute value of the doublySignedFilledCount is at least lam.
+  have h_subset : {s : TwoParamSample n | lam ≤ doublySignedFilledCount p q s} ⊆ {s : TwoParamSample n | lam ≤ |doublySignedFilledCount p q s|} := by
+    exact fun x hx => le_trans hx.out ( le_abs_self _ )
+  generalize_proofs at *; (
+  refine' le_trans ( ENNReal.toReal_mono _ <| MeasureTheory.measure_mono h_subset ) _ <;> norm_num [ moments_twoParam_signed n p q hp hp1 hq hq1 ] at *;
+  · exact ne_of_lt ( lt_of_le_of_lt this ( ENNReal.ofReal_lt_top ) );
+  · exact le_trans ( ENNReal.toReal_mono ( by aesop ) this ) ( by rw [ ENNReal.toReal_ofReal ( div_nonneg ( mul_nonneg ( mul_nonneg ( mul_nonneg ( mul_nonneg ( Nat.cast_nonneg _ ) ( pow_nonneg hp _ ) ) ( pow_nonneg ( sub_nonneg.mpr hp1 ) _ ) ) hq ) ( sub_nonneg.mpr hq1 ) ) ( sq_nonneg _ ) ) ] ) ;));
+  constructor;
+  rw [ twoParamMeasure_totalMass ] <;> aesop
+
+/-
+PROBLEM
+(n^{3/2} * g)² = n³ * g², and C(n,3) ≥ n³/6 - O(n²), so
+    if n^{3/2}*g → ∞, then C(n,3)*g² → ∞.
+
+PROVIDED SOLUTION
+Key identity: (n^{3/2} * g)² = n³ * g². So n³ * g² → ∞ (squaring a sequence tending to ∞ gives ∞).
+
+Then C(n,3) = n*(n-1)*(n-2)/6 ≥ n³/27 for n ≥ 3 (since (n-1)/n ≥ 2/3 and (n-2)/n ≥ 1/3 for n ≥ 3). Actually more carefully: C(n,3) ≥ (n-2)³/6.
+
+So C(n,3)*g² ≥ (n³/27)*g² = (n^{3/2}*g)²/27 → ∞.
+
+More precisely:
+- From hSNR: n^{3/2}*g → ∞, so (n^{3/2}*g)² → ∞ (use Filter.Tendsto.atTop_mul_atTop or tendsto_pow_atTop)
+- C(n,3) ≥ n*(n-1)*(n-2)/6 (this is equality, from Nat.choose_three)
+- For n ≥ 3: n*(n-1)*(n-2) ≥ n³/27... actually n*(n-1)*(n-2) ≥ (n/3)³ = n³/27
+- So C(n,3) ≥ n³/162
+- C(n,3)*g² ≥ (n³*g²)/162 = (n^{3/2}*g)²/162
+- Since (n^{3/2}*g)² → ∞, (n^{3/2}*g)²/162 → ∞.
+
+Use Filter.Tendsto.atTop_div_const to divide by 162.
+
+Alternative cleaner approach:
+C(n,3)*g² ≥ (n choose 3)*g² and for n ≥ 3:
+(n choose 3) = n!/(3!(n-3)!) = n(n-1)(n-2)/6
+
+We want to show n(n-1)(n-2)/6 * g² → ∞.
+n(n-1)(n-2) = n³ - 3n² + 2n ≥ n³ - 3n² ≥ n³(1 - 3/n).
+For n ≥ 6: 1 - 3/n ≥ 1/2, so n(n-1)(n-2) ≥ n³/2 and C(n,3) ≥ n³/12.
+Hence C(n,3)*g² ≥ n³*g²/12 = (n^{3/2}*g)²/12 → ∞.
+
+Use eventually filter and Filter.Tendsto.atTop_mono'.
+-/
+lemma choose3_g_sq_tendsto_atTop (p : ℝ)
+    (nSeq dSeq : ℕ → ℕ)
+    (hn : Filter.Tendsto nSeq Filter.atTop Filter.atTop)
+    (hSNR : Filter.Tendsto
+      (fun k => (nSeq k : ℝ) ^ (3/2 : ℝ) * geometricCov p (dSeq k))
+      Filter.atTop Filter.atTop) :
+    Filter.Tendsto
+      (fun k => (Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2)
+      Filter.atTop Filter.atTop := by
+  -- From Lemma 25, we know that $C(n, 3) \geq n^3 / 162$ for $n \geq 6$.
+  have h_choose_bound : ∀ k, nSeq k ≥ 6 → (Nat.choose (nSeq k) 3 : ℝ) ≥ (nSeq k ^ 3 : ℝ) / 162 := by
+    intro k hk; rw [ Nat.cast_choose ] <;> try linarith;
+    rcases n : nSeq k with ( _ | _ | _ | n ) <;> simp_all +decide [ Nat.factorial ] ; ring_nf ; norm_num at *;
+    norm_num [ Nat.factorial_ne_zero ] ; nlinarith [ ( by norm_cast : ( 3 : ℝ ) ≤ ↑‹ℕ› ) ] ;
+  -- Using the bound from Lemma 25, we can show that $(Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2$ is bounded below by $(nSeq k ^ 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2 / 162$.
+  have h_bound_below : ∀ᶠ k in Filter.atTop, (Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2 ≥ (nSeq k ^ 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2 / 162 := by
+    filter_upwards [ hn.eventually_ge_atTop 6 ] with k hk using by nlinarith [ h_choose_bound k hk ] ;
+  -- Since $(nSeq k ^ 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2$ tends to infinity, dividing by 162 still results in infinity.
+  have h_div_inf : Filter.Tendsto (fun k => (nSeq k ^ 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2 / 162) Filter.atTop Filter.atTop := by
+    have h_div_inf : Filter.Tendsto (fun k => ((nSeq k ^ (3 / 2 : ℝ) * geometricCov p (dSeq k)) ^ 2) / 162) Filter.atTop Filter.atTop := by
+      exact Filter.Tendsto.atTop_div_const ( by norm_num ) ( Filter.tendsto_pow_atTop ( by norm_num ) |> Filter.Tendsto.comp <| hSNR );
+    convert h_div_inf using 2 ; ring ; norm_num only [ ← Real.rpow_natCast, ← Real.rpow_mul ( Nat.cast_nonneg _ ) ] ; ring;
+  exact Filter.tendsto_atTop_mono' Filter.atTop h_bound_below h_div_inf
 
 /-- Under 2PC, the probability that the doubly-signed statistic exceeds threshold λ
     is bounded by Var/λ² (Chebyshev). As n^{3/2}·g → ∞, this bound → 0. -/
@@ -2017,6 +2111,35 @@ private lemma indepFun_coord_diffs_vertex {n d : ℕ}
     (Measurable.prod (measurable_pi_apply j) (measurable_pi_apply k))
     (Measurable.prod (measurable_pi_apply l) (measurable_pi_apply m))
     (indepFun_proj_pairs_vertex j k l m hjl hjm hkl hkm)
+/-
+PROBLEM
+When two triangles t, t' share exactly one vertex i, their triangle indicators
+under the torus Haar measure μ are independent.
+
+PROVIDED SOLUTION
+Step 1: Factor the indicator: `triangleIndicator' p q r t pts` depends only on the
+  coordinate differences `pts j - pts i` and `pts k - pts i` (where t = {i, j, k}),
+  via `triangleIndicator'_translate` and `triangleIndicator'_congr`. Similarly for
+  t' = {i, l, m}.
+Step 2: Therefore there exist measurable functions F, G such that
+  `fun pts => triangleIndicator' p q r t pts = F (pts j - pts i, pts k - pts i)` and
+  `fun pts => triangleIndicator' p q r t' pts = G (pts l - pts i, pts m - pts i)`.
+Step 3: Measurability of F, G: each is `Measurable.mul` of a product of distance-
+  indicator edge factors and a closed-set fill indicator. The fill region
+  `{a | ∃ z, dist a.1 z ≤ r ∧ dist a.2 z ≤ r ∧ dist 0 z ≤ r}` is the image of a
+  closed set under a continuous projection on a compact `Torus d`, hence measurable.
+  Use `IsClosed.measurableSet` after establishing closedness via `IsClosed.inter`
+  of three `isClosed_le` terms and `IsCompact.image` via `isCompact_univ`.
+Step 4: The pairs `(pts j - pts i, pts k - pts i)` and `(pts l - pts i, pts m - pts i)`
+  are independent because j, k are distinct from l, m (since t ∩ t' = {i}). Apply
+  `indepFun_coord_diffs_vertex` after reducing to `ProbabilityTheory.IndepFun.comp`
+  with measurable F, G.
+
+Tactic hints: use `refine'` to build the factorization ⟨F, measurability, equality⟩;
+use `MeasurableSet.image` or `IsClosed.isCompact.image.measurableSet` for the
+measurable-set side; avoid bare `exact?` — write the term explicitly as
+`h_closed.measurableSet` where `h_closed` is the closed-set hypothesis.
+-/
 set_option maxHeartbeats 800000 in
 private lemma vertex_sharing_indepFun' {n d : ℕ} (p : ℝ)
     (hp0 : 0 < p) (hp1 : p < 1)
@@ -2029,84 +2152,7 @@ private lemma vertex_sharing_indepFun' {n d : ℕ} (p : ℝ)
     ProbabilityTheory.IndepFun
       (fun pts => triangleIndicator' p q r t pts)
       (fun pts => triangleIndicator' p q r t' pts) μ := by
-  intro r q μ
-  obtain ⟨i, hi⟩ : ∃ i, t.val ∩ t'.val = {i} := Finset.card_eq_one.mp hshare
-  generalize_proofs at *
-  obtain ⟨j, k, hjk, hj, hk⟩ : ∃ j k : Fin n, j ≠ k ∧ j ∈ t.val ∧ k ∈ t.val ∧ j ≠ i ∧ k ≠ i ∧ t.val = {i, j, k} := by
-    have h_card_t_diff : (t.val \ {i}).card = 2 := by grind
-    obtain ⟨j, k, hjk, hj, hk⟩ : ∃ j k : Fin n, j ≠ k ∧ j ∈ t.val \ {i} ∧ k ∈ t.val \ {i} ∧ t.val \ {i} = {j, k} := by
-      rw [Finset.card_eq_two] at h_card_t_diff; obtain ⟨j, k, hjk⟩ := h_card_t_diff; use j, k; aesop
-    generalize_proofs at *; grind
-  obtain ⟨l, m, hlm, hl, hm⟩ : ∃ l m : Fin n, l ≠ m ∧ l ∈ t'.val ∧ m ∈ t'.val ∧ l ≠ i ∧ m ≠ i ∧ t'.val = {i, l, m} := by
-    have := Finset.card_eq_three.mp t'.2
-    generalize_proofs at *
-    obtain ⟨x, y, z, hxy, hxz, hyz, ht'⟩ := this; simp_all +decide [Finset.Subset.antisymm_iff, Finset.subset_iff]
-    grind +ring
-  generalize_proofs at *
-  have hTt_factor : ∃ F : (Torus d × Torus d) → ℝ, Measurable F ∧ (fun pts => triangleIndicator' p q r t pts) = F ∘ (fun pts => (pts j - pts i, pts k - pts i)) := by
-    refine' ⟨fun x => triangleIndicator' p q r t (fun v => if v = j then x.1 + (0 : Torus d) else if v = k then x.2 + (0 : Torus d) else if v = i then (0 : Torus d) else (0 : Torus d)), _, _⟩ <;> norm_num [funext_iff]; (
-    refine' Measurable.mul _ _;
-    · refine' Finset.measurable_prod _ fun e he => _; simp +decide [cechObservation, CechSample.hasEdge]; (
-      refine' Measurable.ite _ measurable_const measurable_const; simp +decide [CechSample.hasEdge]; (
-      exact measurableSet_Iic.mem.comp (Measurable.dist (by split_ifs <;> [exact measurable_fst; exact measurable_snd; exact measurable_const]) (by split_ifs <;> [exact measurable_fst; exact measurable_snd; exact measurable_const]))));
-    · refine' Measurable.ite _ _ _ <;> norm_num [cechObservation];
-      refine' MeasurableSet.mem _;
-      refine' MeasurableSet.congr _ _;
-      exact {a : Torus d × Torus d | ∃ z : Torus d, dist a.1 z ≤ r ∧ dist a.2 z ≤ r ∧ dist 0 z ≤ r};
-      · have h_closed : IsClosed {a : Torus d × Torus d | ∃ z : Torus d, dist a.1 z ≤ r ∧ dist a.2 z ≤ r ∧ dist 0 z ≤ r} := by
-          have h_closed : IsClosed {a : Torus d × Torus d × Torus d | dist a.1 a.2.1 ≤ r ∧ dist a.2.2 a.2.1 ≤ r ∧ dist 0 a.2.1 ≤ r} :=
-            IsClosed.inter (isClosed_le (continuous_fst.dist continuous_snd.fst) continuous_const) (IsClosed.inter (isClosed_le (continuous_snd.snd.dist continuous_snd.fst) continuous_const) (isClosed_le (continuous_const.dist continuous_snd.fst) continuous_const))
-          generalize_proofs at *
-          have h_closed : IsClosed (Set.image (fun a : Torus d × Torus d × Torus d => (a.1, a.2.2)) {a : Torus d × Torus d × Torus d | dist a.1 a.2.1 ≤ r ∧ dist a.2.2 a.2.1 ≤ r ∧ dist 0 a.2.1 ≤ r}) := by
-            apply_rules [IsCompact.isClosed, IsCompact.image]; · exact?; · fun_prop (disch := solve_by_elim)
-          generalize_proofs at *
-          convert h_closed using 1; ext ⟨a, b⟩; simp [Set.mem_image]
-        generalize_proofs at *; exact h_closed.measurableSet;
-      · ext; simp [hk, hm];
-        split_ifs <;> simp_all +decide [dist_comm];
-        exact ⟨fun ⟨z, hz₁, hz₂, hz₃⟩ => ⟨z, hz₃, hz₁, hz₂⟩, fun ⟨z, hz₁, hz₂, hz₃⟩ => ⟨z, hz₂, hz₃, hz₁⟩⟩);
-    intro x; exact (by
-    have h_shift : triangleIndicator' p q r t x = triangleIndicator' p q r t (fun v => x v - x i) := by
-      convert triangleIndicator'_translate p q r t x (-x i) using 1
-      · exact?;
-      · convert triangleIndicator'_translate p q r t x (-x i) using 1; norm_num [sub_eq_add_neg]
-    generalize_proofs at *
-    rw [h_shift, triangleIndicator'_congr]; aesop)
-  generalize_proofs at *
-  have hTt'_factor : ∃ G : (Torus d × Torus d) → ℝ, Measurable G ∧ (fun pts => triangleIndicator' p q r t' pts) = G ∘ (fun pts => (pts l - pts i, pts m - pts i)) := by
-    refine' ⟨fun x => triangleIndicator' p q r t' (fun v => if v = l then x.1 + (0 : Torus d) else if v = m then x.2 + (0 : Torus d) else if v = i then 0 else 0), _, _⟩ <;> simp +decide [funext_iff];
-    · refine' Measurable.mul _ _;
-      · refine' Finset.measurable_prod _ _; intros; simp +decide [cechObservation, CechSample.hasEdge]; (
-        refine' Measurable.ite _ measurable_const measurable_const; simp +decide [CechSample.hasEdge]; (
-        exact measurableSet_Iic.mem.comp (Measurable.dist (by split_ifs <;> [exact measurable_fst; exact measurable_snd; exact measurable_const]) (by split_ifs <;> [exact measurable_fst; exact measurable_snd; exact measurable_const]))));
-      · refine' Measurable.ite _ _ _ <;> norm_num [cechObservation];
-        refine' MeasurableSet.mem _;
-        refine' MeasurableSet.congr _ _;
-        exact {a : Torus d × Torus d | ∃ z : Torus d, dist a.1 z ≤ r ∧ dist a.2 z ≤ r ∧ dist 0 z ≤ r};
-        · have h_closed : IsClosed {a : Torus d × Torus d | ∃ z : Torus d, dist a.1 z ≤ r ∧ dist a.2 z ≤ r ∧ dist 0 z ≤ r} := by
-            have h_closed : IsClosed {a : Torus d × Torus d × Torus d | dist a.1 a.2.1 ≤ r ∧ dist a.2.2 a.2.1 ≤ r ∧ dist 0 a.2.1 ≤ r} :=
-              IsClosed.inter (isClosed_le (continuous_fst.dist continuous_snd.fst) continuous_const) (IsClosed.inter (isClosed_le (continuous_snd.snd.dist continuous_snd.fst) continuous_const) (isClosed_le (continuous_const.dist continuous_snd.fst) continuous_const))
-            generalize_proofs at *
-            have h_closed : IsClosed (Set.image (fun a : Torus d × Torus d × Torus d => (a.1, a.2.2)) {a : Torus d × Torus d × Torus d | dist a.1 a.2.1 ≤ r ∧ dist a.2.2 a.2.1 ≤ r ∧ dist 0 a.2.1 ≤ r}) := by
-              apply_rules [IsCompact.isClosed, IsCompact.image]; · exact?; · fun_prop (disch := solve_by_elim)
-            generalize_proofs at *
-            convert h_closed using 1; generalize_proofs at *; ext ⟨x, y⟩; simp [Set.mem_image]
-          generalize_proofs at *; exact h_closed.measurableSet;
-        · ext; simp [hm];
-          split_ifs <;> simp_all +decide [dist_comm];
-          exact ⟨fun ⟨z, hz₁, hz₂, hz₃⟩ => ⟨z, hz₃, hz₁, hz₂⟩, fun ⟨z, hz₃, hz₁, hz₂⟩ => ⟨z, hz₁, hz₂, hz₃⟩⟩;
-    · intro x; exact (by
-      convert triangleIndicator'_translate p q r t' (fun v => if v = l then x l - x i else if v = m then x m - x i else 0) (x i) using 1
-      generalize_proofs at *
-      refine' triangleIndicator'_congr p q r t' x _ _; aesop)
-  generalize_proofs at *
-  obtain ⟨F, hF_meas, hF⟩ := hTt_factor; obtain ⟨G, hG_meas, hG⟩ := hTt'_factor; simp_all +decide [ProbabilityTheory.IndepFun]
-  apply_rules [ProbabilityTheory.IndepFun.comp, indepFun_coord_diffs_vertex];
-  all_goals simp_all +decide [Finset.ext_iff, Set.ext_iff];
-  · tauto;
-  · grind +ring;
-  · grobner;
-  · grind +ring
+  sorry
 open Classical in
 private lemma fillingProb_nonneg' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) (d : ℕ) : 0 ≤ fillingProb p d := by
   unfold fillingProb
@@ -2204,17 +2250,8 @@ private lemma beta_density_integral_le_one' (d : ℕ) :
     ∫ s in Set.Ioo (0:ℝ) 1, (↑d * s ^ (d - 1 : ℕ)) ≤ 1 := by
   rcases d with ( _ | d ) <;> norm_num [ ← MeasureTheory.integral_Ioc_eq_integral_Ioo, ← intervalIntegral.integral_of_le zero_le_one ] at *;
   rw [ mul_inv_cancel₀ ( by linarith ) ]
-private lemma torus_pi_measure_real_univ' (d : ℕ) :
-    (MeasureTheory.Measure.pi fun _ : Fin 3 =>
-      (MeasureTheory.volume : MeasureTheory.Measure (Torus d))).real Set.univ = 1 := by
-  rw [MeasureTheory.Measure.real]
-  have h1 : (MeasureTheory.Measure.pi fun _ : Fin 3 =>
-    (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) Set.univ = 1 := by
-    erw [MeasureTheory.Measure.pi_univ]
-    simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
-    erw [MeasureTheory.Measure.pi_univ]
-    simp [AddCircle.measure_univ]
-  rw [h1]; simp
+-- `torus_pi_measure_real_univ'`, `fillingProb_nonneg`, `fillingProb_le_one` moved earlier.
+
 open Classical in
 private lemma fillingProb_le_one' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) (d : ℕ) : fillingProb p d ≤ 1 := by
   unfold fillingProb
@@ -2223,6 +2260,7 @@ private lemma fillingProb_le_one' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) (d : ℕ
   · exact Filter.Eventually.of_forall fun pts => by simp only; split_ifs <;> norm_num
   · simp only [MeasureTheory.integral_const, smul_eq_mul, mul_one]
     exact le_of_eq (torus_pi_measure_real_univ' d)
+
 private lemma triangleIndicator'_bound' {n d : ℕ} (p q r : ℝ)
     (hp0 : 0 < p) (hp1 : p < 1) (hq0 : 0 ≤ q) (hq1 : q ≤ 1)
     (t : {σ : Finset (Fin n) // σ.card = 3})
@@ -2951,6 +2989,25 @@ lemma cech_complement_set_inclusion (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p
   generalize_proofs at *; (
   exact Set.mem_setOf_eq.mpr ( by cases abs_cases ( doublySignedFilledCount p ( fillingProb p d ) s - ∫ s', doublySignedFilledCount p ( fillingProb p d ) s' ∂MeasureTheory.Measure.map ( cechObservation ( matchRadius p d ) ) ( cechMeasure n d ( matchRadius p d ) ) ) <;> linarith [ Set.mem_setOf.mp hs ] ) ;)))
 
+/-
+PROBLEM
+Chebyshev complement bound under the pushforward Čech measure: the probability
+that doublySignedFilledCount is less than λ := C(n,3)·g/2 is ≤ 4·(C(n,3)+12·C(n,4)) / (C(n,3)·g)².
+
+PROVIDED SOLUTION
+Step 1: The doubly-signed statistic under Čech has mean C(n,3)·g (by
+  `moments_cech_signed`) and variance ≤ C(n,3) + 12·C(n,4) (by
+  `cech_second_moment_bound`).
+Step 2: λ = C(n,3)·g/2 = (mean)/2, so {doublySigned < λ} ⊆ {|doublySigned - mean| ≥ mean/2}.
+Step 3: Apply Chebyshev (`ProbabilityTheory.meas_ge_le_variance_div_sq`) to get
+  P(|X - E[X]| ≥ mean/2) ≤ Var / (mean/2)² = 4·Var / mean² ≤ 4·(C(n,3)+12·C(n,4)) / (C(n,3)·g)².
+Step 4: Convert ENNReal to ℝ via `ENNReal.toReal_mono` + the bound is already a real
+  number, and handle the `.toReal` of a finite ENNReal-bounded measure.
+
+Case split on hg : 0 < g (given) and use `positivity` to discharge the square bound.
+Avoid `exact?`; use explicit `meas_ge_le_variance_div_sq` with MemLp proof from
+`doublySignedFilledCount_memLp`.
+-/
 lemma cech_complement_prob_bound (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
     (hg : 0 < geometricCov p d) :
     let r := matchRadius p d
@@ -2961,47 +3018,75 @@ lemma cech_complement_prob_bound (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p < 
     (ν {s | doublySignedFilledCount p q s < lam}).toReal ≤
       4 * ((Nat.choose n 3 : ℝ) + 12 * (Nat.choose n 4 : ℝ)) /
         ((Nat.choose n 3 : ℝ) * g) ^ 2 := by
-  simp only
-  set r := matchRadius p d
-  set q := fillingProb p d
-  set g := geometricCov p d
-  set ν := (cechMeasure n d r).map (cechObservation r)
-  set f := fun s : TwoParamSample n => doublySignedFilledCount p q s
-  set c := (Nat.choose n 3 : ℝ) * g / 2 with hc_def
-  -- Case split on whether c > 0
-  by_cases hc : c > 0
-  case pos =>
-    -- Step 1: Set inclusion + Chebyshev
-    have h_memLp : MeasureTheory.MemLp f 2 ν := doublySignedFilledCount_memLp n d p hp0 hp1
-    have h_cheb := ProbabilityTheory.meas_ge_le_variance_div_sq h_memLp hc
-    -- Step 2: ν({f < c}) ≤ ν({|f - E[f]| ≥ c}) by set inclusion
-    have h_incl : ν {s | f s < c} ≤ ν {s | c ≤ |f s - ∫ s', f s' ∂ν|} :=
-      cech_complement_set_inclusion n d p hp0 hp1 hc
-    -- Step 3: Combine
-    have h_le_ofReal : ν {s | f s < c} ≤
-        ENNReal.ofReal (ProbabilityTheory.variance f ν / c ^ 2) :=
-      le_trans h_incl h_cheb
-    -- Step 4: Convert to reals
-    have h_toReal : (ν {s | f s < c}).toReal ≤
-        ProbabilityTheory.variance f ν / c ^ 2 := by
-      exact ENNReal.toReal_le_of_le_ofReal
-        (div_nonneg (ProbabilityTheory.variance_nonneg f ν) (sq_nonneg c)) h_le_ofReal
-    -- Step 5: Use variance bound and simplify
-    have h_var := cech_second_moment_bound n d p hp0 hp1
-    calc (ν {s | f s < c}).toReal
-        ≤ ProbabilityTheory.variance f ν / c ^ 2 := h_toReal
-      _ ≤ ((Nat.choose n 3 : ℝ) + 12 * (Nat.choose n 4 : ℝ)) / c ^ 2 :=
-          div_le_div_of_nonneg_right h_var (sq_nonneg c)
-      _ = 4 * ((Nat.choose n 3 : ℝ) + 12 * (Nat.choose n 4 : ℝ)) /
-            ((Nat.choose n 3 : ℝ) * g) ^ 2 := by
-          rw [hc_def]; ring
-  case neg =>
-    -- c = C(n,3)*g/2 <= 0. Since hg : 0 < g, we have C(n,3)*g > 0, so c > 0. Contradiction.
-    exact absurd hc (not_lt.mpr (le_of_lt (by
-      have : (0 : ℝ) < (Nat.choose n 3 : ℝ) * g / 2 :=
-        div_pos (mul_pos (by positivity) hg) two_pos
-      linarith)))
--- Updated from f13b4074; formula corrected 2026-04-03 (edge covariance ≤ 1 not ≤ g²).
+  sorry
+
+/-
+PROBLEM
+Show 4·(C(n,3) + 12·C(n,4)) / (C(n,3)·g)² → 0 as k → ∞, given n_k → ∞ and
+n_k^{3/2}·g_k → ∞.
+
+PROVIDED SOLUTION
+Rewrite as a sum of two terms:
+  4·C(n,3) / (C(n,3)·g)² = 4 / (C(n,3)·g²)                             [term 1]
+  48·C(n,4) / (C(n,3)·g)² ≤ 12·n / (C(n,3)·g²)   (using C(n,4) ≤ n·C(n,3)/4)  [term 2]
+
+Both terms → 0:
+- term 1: C(n,3)·g² → ∞ by `choose3_g_sq_tendsto_atTop`, so 4 / (C(n,3)·g²) → 0
+  via `tendsto_const_nhds.div_atTop`.
+- term 2: 12·n / (C(n,3)·g²) ≤ 12·n · 27/n³·g² = 324/(n²·g²). Show n²·g² → ∞
+  via an eventual lower bound like `n²·g² ≥ n^(3/2)·g · n^(1/2)·g`? Actually the
+  cleaner path: `(n^(3/2)·g)² = n³·g² → ∞` and C(n,3)·g² ≥ n³·g²/27 eventually,
+  giving `12·n / (C(n,3)·g²) ≤ 12·n·27 / (n³·g²) = 324/(n²·g²)` — but we need
+  `n²·g² → ∞`, which does NOT follow from `n^(3/2)·g → ∞` alone in the general
+  case (e.g. if g ~ n^{-3/2}·log n, then n^(3/2)·g ~ log n → ∞ but n²·g² ~ (log n)² / n → 0).
+
+  Correct approach: use `(n^(3/2)·g)² = n³·g² → ∞` (the SQUARE of hSNR) and the
+  bound `C(n,3)·g² ≥ n³·g²/162` (eventually, for n ≥ 6). Then
+  term 1 = 4 / (C(n,3)·g²) ≤ 4·162 / (n³·g²) → 0;
+  term 2 ≤ 12·n·162 / (n³·g²) = 1944 / (n²·g²) = 1944·n / (n³·g²) → 0
+  (since n·(n³·g²)⁻¹ = 1/(n²·g²); but actually 12·n/(C(n,3)·g²) ≤ 12·n·162/(n³·g²) = 1944/(n²·g²),
+  and n²·g² ≥ n³·g² / n, and n³·g² → ∞ and n → ∞, so n²·g² → ∞ only if n³·g² grows
+  faster than n).
+
+  SAFER BOUND: `12·n / (C(n,3)·g²) ≤ 12·n · 162 / (n³·g²) = 1944 / (n²·g²)`. Use
+  `n²·g² = (n³·g²) / n = (n^(3/2)·g)² / n`. If hSNR = n^(3/2)·g → ∞ AND n → ∞,
+  this is an indeterminate ∞/∞.
+
+  Workaround: Note 12·n·C(n,4) / (C(n,3)·g)² = 12·n·C(n,4) / (C(n,3)² · g²). Since
+  C(n,4) / C(n,3) = (n-3)/4, we have 12·n·(n-3)/(4·C(n,3)·g²) = 3·n·(n-3)/(C(n,3)·g²).
+  Eventually n-3 ≥ n/2 and C(n,3) ≥ n³/162, so 3·n·(n-3)/(C(n,3)·g²) ≤ 3·n²/2 · 162/(n³·g²) = 243/(n·g²).
+  Now `n·g² → ?`: we have (n^(3/2)·g)² = n³·g² → ∞, so `n·g² = (n³·g²)/n² → ?` — still indeterminate.
+
+  FINAL SOLUTION: Bound via Cauchy-Schwarz / AM-GM. Alternatively, rewrite the
+  overall ratio:
+    4·(C(n,3) + 12·C(n,4)) / (C(n,3)·g)² ≤ 4·(1 + 12·(n-3)/4) / (C(n,3)·g²)
+                                        = 4·(1 + 3(n-3)) / (C(n,3)·g²)
+                                        ≤ 12·n / (C(n,3)·g²)   (for n large)
+                                        ≤ 12·n · 162 / (n³·g²) = 1944 / (n²·g²).
+  But we need `n²·g² → ∞`. From hSNR: `n^(3/2)·g ≥ M` eventually, squaring:
+  `n³·g² ≥ M²`. Multiply both sides by `1/n`: `n²·g² ≥ M²/n`, which → 0, not ∞.
+
+  CONCLUSION: The current hypothesis `n^(3/2)·g → ∞` is strictly stronger than
+  needed for the intended bound `n²·g² → ∞`. These are NOT equivalent. If the
+  proof requires `n²·g² → ∞`, the caller must supply `n^2·g → ∞` or similar.
+  Aristotle should either:
+  (a) find a tighter bound that works with just n^(3/2)·g → ∞, or
+  (b) prove the lemma under this hypothesis by a different route entirely
+      (perhaps using that n^3·g² → ∞ and C(n,3) ≥ n³/162 together suffice
+       when the sum is split differently — e.g., 4/(C·g²) and 48·C(n,4)/(C·g)²
+       separately, where the second simplifies via C(n,4)/C(n,3)² = O(1/n²)).
+
+Key identities:
+  - C(n,4)/C(n,3) = (n-3)/4
+  - C(n,3) ≥ n³/162 eventually (for n ≥ 6)
+  - (n^(3/2)·g)² = n³·g²
+
+Consider splitting: 4/(C(n,3)·g²) + 48·C(n,4)/(C(n,3)·g)² and show each → 0.
+For the second, note 48·C(n,4)/(C(n,3)·g)² = 48·(n-3)/(4·C(n,3)·g²) = 12·(n-3)/(C(n,3)·g²)
+≤ 12·n/(C(n,3)·g²). Bound C(n,3) ≥ n³/162 → 12·n / (n³/162·g²) = 1944/(n²·g²).
+If n²·g² can be shown → ∞ via (n^(3/2)·g) → ∞ in combination with n → ∞, good.
+Otherwise, reconsider the lemma's hypotheses.
+-/
 lemma chebyshev_ratio_tendsto_zero (p : ℝ)
     (nSeq dSeq : ℕ → ℕ)
     (hn : Filter.Tendsto nSeq Filter.atTop Filter.atTop)
@@ -3012,97 +3097,7 @@ lemma chebyshev_ratio_tendsto_zero (p : ℝ)
       (fun k => 4 * ((Nat.choose (nSeq k) 3 : ℝ) + 12 * (Nat.choose (nSeq k) 4 : ℝ)) /
         ((Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k)) ^ 2)
       Filter.atTop (nhds 0) := by
-  -- The ratio ≈ 72/(n²*g²) → 0 since n^(3/2)*g → ∞ implies n²*g² → ∞.
-  -- Split: 4*C(n,3)/(C(n,3)*g)² = 4/(C(n,3)*g²) → 0  [term1]
-  --        4*12*C(n,4)/(C(n,3)*g)² ≤ 48*n/(C(n,3)*g²)*1/4 → 0  [term2: C(n,4)≤n*C(n,3)/4]
-  have h_term1 : Filter.Tendsto (fun k => 4 / ((Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2)) Filter.atTop (nhds 0) := by
-    refine' tendsto_const_nhds.div_atTop _;
-    have h_term1 : Filter.Tendsto (fun k => (nSeq k : ℝ) ^ 3 * (geometricCov p (dSeq k)) ^ 2) Filter.atTop Filter.atTop := by
-      convert hSNR.atTop_mul_atTop₀ hSNR using 2 ; ring;
-      norm_num only [ ← Real.rpow_natCast, ← Real.rpow_mul ( Nat.cast_nonneg _ ) ] ; ring;
-    generalize_proofs at *; (
-    have h_term1 : ∀ᶠ k in Filter.atTop, (Nat.choose (nSeq k) 3 : ℝ) ≥ (nSeq k : ℝ) ^ 3 / 64 := by
-      filter_upwards [ hn.eventually_gt_atTop 64 ] with k hk
-      generalize_proofs at *; (
-      rw [ Nat.cast_choose ] <;> try linarith
-      generalize_proofs at *; (
-      rcases n : nSeq k with ( _ | _ | _ | n ) <;> simp_all +decide [ Nat.factorial ] ; ring_nf ; norm_num at *; (
-      norm_num [ Nat.factorial_ne_zero ] ; nlinarith [ ( by norm_cast : ( 62 : ℝ ) ≤ ↑‹ℕ› ) ] ;)))
-    generalize_proofs at *; (
-    rw [ Filter.tendsto_atTop_atTop ] at *;
-    intro b; obtain ⟨ i, hi ⟩ := ‹∀ b : ℝ, ∃ i, ∀ a : ℕ, i ≤ a → b ≤ ( nSeq a : ℝ ) ^ 3 * geometricCov p ( dSeq a ) ^ 2› ( b * 64 ) ; obtain ⟨ j, hj ⟩ := Filter.eventually_atTop.mp h_term1; use Max.max i j; intros a ha; nlinarith [ hi a ( le_trans ( le_max_left _ _ ) ha ), hj a ( le_trans ( le_max_right _ _ ) ha ) ] ;))
-  -- term2: 48*C(n,4)/(C(n,3)*g)² ≤ 12*n/(C(n,3)*g²) → 0
-  have h_term2 : Filter.Tendsto (fun k => 48 * (Nat.choose (nSeq k) 4 : ℝ) /
-        ((Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k))) ^ 2) Filter.atTop (nhds 0) := by
-    have h_binom_bound : ∀ᶠ k in Filter.atTop, (Nat.choose (nSeq k) 4 : ℝ) ≤
-        (nSeq k : ℝ) * (Nat.choose (nSeq k) 3 : ℝ) / 4 := by
-      filter_upwards [ hn.eventually_gt_atTop 4 ] with k hk
-      rw [ le_div_iff₀ ] <;> norm_cast
-      linarith [ Nat.add_one_mul_choose_eq (nSeq k) 3, Nat.choose_succ_succ (nSeq k) 3 ]
-    have h_term2_bound : ∀ᶠ k in Filter.atTop, 48 * (Nat.choose (nSeq k) 4 : ℝ) /
-        ((Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k))) ^ 2 ≤
-        12 * (nSeq k : ℝ) / ((Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2) := by
-      filter_upwards [ h_binom_bound ] with k hk
-      by_cases h : geometricCov p (dSeq k) = 0 <;> by_cases h' : Nat.choose (nSeq k) 3 = 0 <;>
-        simp_all +decide [ division_def, mul_assoc, mul_comm, mul_left_comm ]
-      · positivity
-      · field_simp [h, h']
-        rw [ div_le_div_iff_of_pos_right (by positivity) ]
-        nlinarith [ show (0 : ℝ) ≤ geometricCov p (dSeq k) ^ 2 by positivity ]
-    have h_12n : Filter.Tendsto (fun k => 12 * (nSeq k : ℝ) /
-        ((Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2)) Filter.atTop (nhds 0) := by
-      have h_binom_approx : ∀ᶠ k in Filter.atTop, (Nat.choose (nSeq k) 3 : ℝ) ≥ (nSeq k : ℝ) ^ 3 / 27 := by
-        have h_binom_approx : ∀ᶠ k in Filter.atTop, (Nat.choose (nSeq k) 3 : ℝ) ≥ (nSeq k : ℝ) * (nSeq k - 1) * (nSeq k - 2) / 6 := by
-          filter_upwards [ hn.eventually_gt_atTop 3 ] with k hk ; rw [ Nat.cast_choose ] <;> try linarith
-          generalize_proofs at *; (
-          rcases n : nSeq k with ( _ | _ | _ | n ) <;> simp_all +decide [ Nat.factorial ] ; ring_nf ; norm_num;
-          norm_num [ Nat.factorial_ne_zero ] ; ring_nf ; norm_num;)
-        generalize_proofs at *; (
-        filter_upwards [ h_binom_approx, hn.eventually_gt_atTop 27 ] with k hk₁ hk₂ using by nlinarith [ show ( nSeq k : ℝ ) ≥ 28 by exact_mod_cast hk₂, sq ( nSeq k : ℝ ) ] ;)
-      -- 12*n / (C(n,3)*g²) ≤ 12*27/n² → 0
-      have h_n2g2 : Filter.Tendsto (fun k => (nSeq k : ℝ) ^ 2 * (geometricCov p (dSeq k)) ^ 2)
-          Filter.atTop Filter.atTop := by
-        have := hSNR.atTop_mul_atTop₀ hSNR
-        refine Filter.Tendsto.atTop_nonneg_mul_left (by positivity) ?_
-        convert this using 1; ring_nf
-        norm_num only [ ← Real.rpow_natCast, ← Real.rpow_mul ( Nat.cast_nonneg _ ) ] ; ring
-      refine' squeeze_zero_norm' _ (tendsto_const_nhds.div_atTop h_n2g2)
-      filter_upwards [ h_binom_approx ] with k hk
-      rw [ Real.norm_of_nonneg (by positivity) ]
-      by_cases h : geometricCov p (dSeq k) = 0 <;> by_cases h' : Nat.choose (nSeq k) 3 = 0 <;>
-        simp_all +decide
-      · positivity
-      · field_simp [h, h']
-        rw [ div_le_div_iff_of_pos_right (by positivity) ]
-        nlinarith [ show (0 : ℝ) ≤ geometricCov p (dSeq k) ^ 2 by positivity,
-                    show (0 : ℝ) < (nSeq k : ℝ) by exact_mod_cast Nat.pos_of_ne_zero (by rintro rfl; simp_all) ]
-    exact squeeze_zero_norm'
-      (by filter_upwards [ h_term2_bound ] with k hk;
-          rw [ Real.norm_of_nonneg (by positivity) ]; exact hk)
-      h_12n
-  have h_sum : Filter.Tendsto (fun k =>
-      4 / ((Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2) +
-      48 * (Nat.choose (nSeq k) 4 : ℝ) /
-        ((Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k))) ^ 2)
-      Filter.atTop (nhds 0) := by
-    simpa only [ add_zero ] using h_term1.add h_term2
-  have h_ratio : ∀ᶠ k in Filter.atTop,
-      4 * ((Nat.choose (nSeq k) 3 : ℝ) + 12 * (Nat.choose (nSeq k) 4 : ℝ)) /
-        ((Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k))) ^ 2 ≤
-      4 / ((Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2) +
-      48 * (Nat.choose (nSeq k) 4 : ℝ) /
-        ((Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k))) ^ 2 := by
-    filter_upwards with k
-    by_cases h : geometricCov p (dSeq k) = 0 <;> by_cases h' : Nat.choose (nSeq k) 3 = 0 <;>
-      simp_all +decide [ division_def, mul_assoc, mul_comm, mul_left_comm ]
-    · positivity
-    · field_simp [h, h']
-      ring_nf
-      rw [ div_le_div_iff_of_pos_right (by positivity) ]
-      nlinarith [ show (0 : ℝ) ≤ geometricCov p (dSeq k) ^ 2 by positivity ]
-  generalize_proofs at *; (
-  refine' squeeze_zero_norm' _ h_sum;
-  filter_upwards [ h_ratio ] with k hk using by rw [ Real.norm_of_nonneg (by positivity) ]; exact hk;)
+  sorry
 
 /-
 PROBLEM
@@ -3142,35 +3137,7 @@ lemma paleyZygmund_cech_prob_tendsto_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
         {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s ≥
           (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2}).toReal)
       Filter.atTop (nhds 1) := by
-  -- P(τ ≥ λ) = 1 - P(τ < λ), so it suffices to show P(τ < λ) → 0
-  -- P(τ < λ) ≤ Chebyshev ratio → 0 by chebyshev_ratio_tendsto_zero
-  -- Apply the fact that if the bound tends to zero, the probability tends to 1.
-  have h_tendsto : Filter.Tendsto
-    (fun k => (1 : ℝ) -
-      (4 * ((Nat.choose (nSeq k) 3 : ℝ) + 12 * (Nat.choose (nSeq k) 4 : ℝ)) /
-        ((Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k)) ^ 2))
-    Filter.atTop (nhds 1) := by
-      exact le_trans ( tendsto_const_nhds.sub <| chebyshev_ratio_tendsto_zero p nSeq dSeq hn hSNR ) <| by norm_num;
-  generalize_proofs at *; (
-  refine' tendsto_of_tendsto_of_tendsto_of_le_of_le' h_tendsto tendsto_const_nhds _ _ <;> norm_num
-  generalize_proofs at *; (
-  have h_complement : ∀ᶠ k in Filter.atTop, (MeasureTheory.Measure.map (cechObservation (matchRadius p (dSeq k))) (cechMeasure (nSeq k) (dSeq k) (matchRadius p (dSeq k))) {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s < (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2}).toReal ≤ 4 * ((Nat.choose (nSeq k) 3 : ℝ) + 12 * (Nat.choose (nSeq k) 4 : ℝ)) / ((Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k)) ^ 2 := by
-    have hg_pos : ∀ᶠ k in Filter.atTop, 0 < geometricCov p (dSeq k) := by
-      filter_upwards [hSNR.eventually_gt_      filter_upwards [hSNR.eventuallith k hk hn_k
-      have h_rpow_pos : (0 : ℝ) < (nSeq k : ℝ) ^ (3/2 : ℝ) := by positivity
-      exact pos_of_mul_pos_left hk h_rpow_pos.le
-    filter_upwards [hg_pos] with k hg_k
-    exact cech_complement_prob_bound (nSeq k) (dSeq k) p hp0 hp1 hg_k
-  generalize_proofs at *; (
-  use 0; intro k hk; specialize h_complement k; rw [ show { s : TwoParamSample ( nSeq k ) | ( nSeq k |> Nat.choose ) 3 * geometricCov p ( dSeq k ) / 2 ≤ doublySignedFilledCount p ( fillingProb p ( dSeq k ) ) s } = ( Set.univ \ { s : TwoParamSample ( nSeq k ) | doublySignedFilledCount p ( fillingProb p ( dSeq k ) ) s < ( nSeq k |> Nat.choose ) 3 * geometricCov p ( dSeq k ) / 2 } ) by ext; simp +decide [ not_lt ] ] ; rw [ MeasureTheory.measure_diff ] <;> norm_num;
-  rw [ ENNReal.toReal_sub_of_le ] <;> norm_num [ h_complement ];
-  · linarith [ show ( 0 : ℝ ) ≤ ( MeasureTheory.Measure.map ( cechObservation ( matchRadius p ( dSeq k ) ) ) ( cechMeasure ( nSeq k ) ( dSeq k ) ( matchRadius p ( dSeq k ) ) ) { s : TwoParamSample ( nSeq k ) | doublySignedFilledCount p ( fillingProb p ( dSeq k ) ) s < ↑ ( ( nSeq k |> Nat.choose ) 3 ) * geometricCov p ( dSeq k ) / 2 } |> ENNReal.toReal ) by positivity ];
-  · exact?));
-  use 0; intros k hk; exact (by
-  refine' le_trans ( ENNReal.toReal_mono _ _ ) _ <;> norm_num [ MeasureTheory.Measure.map_apply ];
-  exact 1
-  all_goals generalize_proofs at *; (norm_num);
-  exact?);)
+  sorry
 
 /-
 PROBLEM
@@ -3197,25 +3164,7 @@ If d = 0, this is ∫ 0 * 0 * ... = 0 ≥ 0. For d ≥ 1, the integrand involves
 
 Actually, this is hard to prove rigorously. Let me try MeasureTheory.setIntegral_nonneg with the condition that the integrand is nonneg.
 -/
-/-- **fillingProb_nonneg.** The filling probability is nonneg.
-
-    PROVIDED SOLUTION (updated for corrected matchRadius = p^(1/d)/2):
-    Step 1: fillingProb p d = ∫ s in Ioo 0 1, (vF/vE)(d, r, s) * d * s^(d-1) where r = matchRadius p d.
-    Step 2: The integrand is nonneg:
-      - volumeFill d r s ≥ 0 and volumeEmpty d r s ≥ 0 (both are integrals of nonneg functions).
-      - So volumeFill/volumeEmpty ≥ 0 (nonneg / nonneg).
-      - d * s^(d-1) ≥ 0 for s ≥ 0.
-    Step 3: Integral of a nonneg function is nonneg.
-    Use MeasureTheory.setIntegral_nonneg measurableSet_Ioo with the pointwise bound.
-    For the nonneg of volumeFill/volumeEmpty: unfold to see both are integrals with
-    nonneg integrands (rpow_nonneg), and euclidBallVol d r ≥ 0 (rpow_nonneg of pi and r).
-    With the new formula matchRadius p d = p^(1/d)/2 ≥ 0 for p > 0, so euclidBallVol d r ≥ 0. -/
-open Classical in
-lemma fillingProb_nonneg (p : ℝ) (d : ℕ) : 0 ≤ fillingProb p d := by
-  unfold fillingProb
-  apply MeasureTheory.integral_nonneg
-  intro pts; simp only
-  split_ifs <;> norm_num
+-- `fillingProb_nonneg` moved earlier (before `chebyshev_2PC_prob_tendsto_zero`, which depends on it).
 
 
 /- The fill volume is at most the empty volume for all valid parameters.
@@ -3420,129 +3369,7 @@ Actually the integrability may be hard. Use IntegrableOn for bounded measurable 
 
 Key: mul_le_mul_of_nonneg_right (volumeFill_div_volumeEmpty_le_one ...) (by positivity : d * s^(d-1) ≥ 0)
 -/
-open MeasureTheory in
-open Classical in
-lemma fillingProb_le_one (p : ℝ) (d : ℕ) : fillingProb p d ≤ 1 := by
-  unfold fillingProb
-  refine le_trans (MeasureTheory.integral_mono_of_nonneg ?_ (MeasureTheory.integrable_const 1) ?_) ?_
-  · exact Filter.Eventually.of_forall fun pts => by simp only; split_ifs <;> norm_num
-  · exact Filter.Eventually.of_forall fun pts => by simp only; split_ifs <;> norm_num
-  · simp only [MeasureTheory.integral_const, smul_eq_mul, mul_one]
-    exact le_of_eq (torus_pi_measure_real_univ' d)
-
-/-
-PROBLEM
-Chebyshev bound for a single k: the probability that doublySignedFilledCount
-    exceeds lam is at most Var/lam².
-
-PROVIDED SOLUTION
-Use Chebyshev's inequality (ProbabilityTheory.meas_ge_le_variance_div_sq from Mathlib).
-
-Step 1: Show the measure is a probability measure via twoParamMeasure_isProbabilityMeasure.
-
-Step 2: Show doublySignedFilledCount is Memℒp 2. Since TwoParamSample n is finite (instance twoParamSampleFintype') and MeasurableSpace is ⊤ (discrete), every function is in every Lp space. Use Memℒp.of_bound with the bound being Finset.univ.sup |f| or similar.
-
-Step 3: Get E[X] = 0 from moments_twoParam_signed.
-
-Step 4: Apply meas_ge_le_variance_div_sq with c = lam to get:
-  μ({|X - E[X]| ≥ lam}) ≤ ENNReal.ofReal(Var/lam²)
-
-Step 5: Since E[X] = 0, {X ≥ lam} ⊆ {|X| ≥ lam}. So μ({X ≥ lam}) ≤ μ({|X| ≥ lam}).
-
-Step 6: Convert ENNReal bound to ℝ: .toReal ≤ Var/lam².
-
-Step 7: Substitute Var = C(n,3)*p³(1-p)³*q*(1-q) from moments_twoParam_signed.
-
-Key tactic: apply ENNReal.toReal_le_of_le_ofReal, then apply meas_ge_le_variance_div_sq, then substitute the variance formula.
--/
-lemma chebyshev_single_bound (n : ℕ) (p q lam : ℝ)
-    (hp : 0 ≤ p) (hp1 : p ≤ 1) (hq : 0 ≤ q) (hq1 : q ≤ 1)
-    (hlam : 0 < lam) :
-    (twoParamMeasure n p q
-      {s | doublySignedFilledCount p q s ≥ lam}).toReal ≤
-    (n.choose 3 : ℝ) * p ^ 3 * (1 - p) ^ 3 * q * (1 - q) / lam ^ 2 := by
-  have := @ProbabilityTheory.meas_ge_le_variance_div_sq ( TwoParamSample n ) _ ( twoParamMeasure n p q ) ?_ ?_ ?_ ?_ ?_ <;> norm_num at *;
-  rotate_left;
-  rotate_left;
-  use fun s => doublySignedFilledCount p q s
-  generalize_proofs at *; (
-  have h_memLp : MeasureTheory.MemLp (fun s => doublySignedFilledCount p q s) 2 (twoParamMeasure n p q) := by
-    have h_finite : MeasureTheory.IsFiniteMeasure (twoParamMeasure n p q) := by
-      constructor
-      generalize_proofs at *; (
-      convert twoParamMeasure_totalMass n p q hp hp1 hq hq1 |> fun h => h.symm ▸ ENNReal.one_lt_top)
-    exact?
-  generalize_proofs at *; (
-  exact h_memLp));
-  exact lam
-  exact hlam
-  generalize_proofs at *; (
-  -- Since the expected value of the doublySignedFilledCount is zero, the set where the doublySignedFilledCount is at least lam is a subset of the set where the absolute value of the doublySignedFilledCount is at least lam.
-  have h_subset : {s : TwoParamSample n | lam ≤ doublySignedFilledCount p q s} ⊆ {s : TwoParamSample n | lam ≤ |doublySignedFilledCount p q s|} := by
-    exact fun x hx => le_trans hx.out ( le_abs_self _ )
-  generalize_proofs at *; (
-  refine' le_trans ( ENNReal.toReal_mono _ <| MeasureTheory.measure_mono h_subset ) _ <;> norm_num [ moments_twoParam_signed n p q hp hp1 hq hq1 ] at *;
-  · exact ne_of_lt ( lt_of_le_of_lt this ( ENNReal.ofReal_lt_top ) );
-  · exact le_trans ( ENNReal.toReal_mono ( by aesop ) this ) ( by rw [ ENNReal.toReal_ofReal ( div_nonneg ( mul_nonneg ( mul_nonneg ( mul_nonneg ( mul_nonneg ( Nat.cast_nonneg _ ) ( pow_nonneg hp _ ) ) ( pow_nonneg ( sub_nonneg.mpr hp1 ) _ ) ) hq ) ( sub_nonneg.mpr hq1 ) ) ( sq_nonneg _ ) ) ] ) ;));
-  constructor;
-  rw [ twoParamMeasure_totalMass ] <;> aesop
-
-/-
-PROBLEM
-(n^{3/2} * g)² = n³ * g², and C(n,3) ≥ n³/6 - O(n²), so
-    if n^{3/2}*g → ∞, then C(n,3)*g² → ∞.
-
-PROVIDED SOLUTION
-Key identity: (n^{3/2} * g)² = n³ * g². So n³ * g² → ∞ (squaring a sequence tending to ∞ gives ∞).
-
-Then C(n,3) = n*(n-1)*(n-2)/6 ≥ n³/27 for n ≥ 3 (since (n-1)/n ≥ 2/3 and (n-2)/n ≥ 1/3 for n ≥ 3). Actually more carefully: C(n,3) ≥ (n-2)³/6.
-
-So C(n,3)*g² ≥ (n³/27)*g² = (n^{3/2}*g)²/27 → ∞.
-
-More precisely:
-- From hSNR: n^{3/2}*g → ∞, so (n^{3/2}*g)² → ∞ (use Filter.Tendsto.atTop_mul_atTop or tendsto_pow_atTop)
-- C(n,3) ≥ n*(n-1)*(n-2)/6 (this is equality, from Nat.choose_three)
-- For n ≥ 3: n*(n-1)*(n-2) ≥ n³/27... actually n*(n-1)*(n-2) ≥ (n/3)³ = n³/27
-- So C(n,3) ≥ n³/162
-- C(n,3)*g² ≥ (n³*g²)/162 = (n^{3/2}*g)²/162
-- Since (n^{3/2}*g)² → ∞, (n^{3/2}*g)²/162 → ∞.
-
-Use Filter.Tendsto.atTop_div_const to divide by 162.
-
-Alternative cleaner approach:
-C(n,3)*g² ≥ (n choose 3)*g² and for n ≥ 3:
-(n choose 3) = n!/(3!(n-3)!) = n(n-1)(n-2)/6
-
-We want to show n(n-1)(n-2)/6 * g² → ∞.
-n(n-1)(n-2) = n³ - 3n² + 2n ≥ n³ - 3n² ≥ n³(1 - 3/n).
-For n ≥ 6: 1 - 3/n ≥ 1/2, so n(n-1)(n-2) ≥ n³/2 and C(n,3) ≥ n³/12.
-Hence C(n,3)*g² ≥ n³*g²/12 = (n^{3/2}*g)²/12 → ∞.
-
-Use eventually filter and Filter.Tendsto.atTop_mono'.
--/
-lemma choose3_g_sq_tendsto_atTop (p : ℝ)
-    (nSeq dSeq : ℕ → ℕ)
-    (hn : Filter.Tendsto nSeq Filter.atTop Filter.atTop)
-    (hSNR : Filter.Tendsto
-      (fun k => (nSeq k : ℝ) ^ (3/2 : ℝ) * geometricCov p (dSeq k))
-      Filter.atTop Filter.atTop) :
-    Filter.Tendsto
-      (fun k => (Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2)
-      Filter.atTop Filter.atTop := by
-  -- From Lemma 25, we know that $C(n, 3) \geq n^3 / 162$ for $n \geq 6$.
-  have h_choose_bound : ∀ k, nSeq k ≥ 6 → (Nat.choose (nSeq k) 3 : ℝ) ≥ (nSeq k ^ 3 : ℝ) / 162 := by
-    intro k hk; rw [ Nat.cast_choose ] <;> try linarith;
-    rcases n : nSeq k with ( _ | _ | _ | n ) <;> simp_all +decide [ Nat.factorial ] ; ring_nf ; norm_num at *;
-    norm_num [ Nat.factorial_ne_zero ] ; nlinarith [ ( by norm_cast : ( 3 : ℝ ) ≤ ↑‹ℕ› ) ] ;
-  -- Using the bound from Lemma 25, we can show that $(Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2$ is bounded below by $(nSeq k ^ 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2 / 162$.
-  have h_bound_below : ∀ᶠ k in Filter.atTop, (Nat.choose (nSeq k) 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2 ≥ (nSeq k ^ 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2 / 162 := by
-    filter_upwards [ hn.eventually_ge_atTop 6 ] with k hk using by nlinarith [ h_choose_bound k hk ] ;
-  -- Since $(nSeq k ^ 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2$ tends to infinity, dividing by 162 still results in infinity.
-  have h_div_inf : Filter.Tendsto (fun k => (nSeq k ^ 3 : ℝ) * (geometricCov p (dSeq k)) ^ 2 / 162) Filter.atTop Filter.atTop := by
-    have h_div_inf : Filter.Tendsto (fun k => ((nSeq k ^ (3 / 2 : ℝ) * geometricCov p (dSeq k)) ^ 2) / 162) Filter.atTop Filter.atTop := by
-      exact Filter.Tendsto.atTop_div_const ( by norm_num ) ( Filter.tendsto_pow_atTop ( by norm_num ) |> Filter.Tendsto.comp <| hSNR );
-    convert h_div_inf using 2 ; ring ; norm_num only [ ← Real.rpow_natCast, ← Real.rpow_mul ( Nat.cast_nonneg _ ) ] ; ring;
-  exact Filter.tendsto_atTop_mono' Filter.atTop h_bound_below h_div_inf
+-- `fillingProb_le_one` moved earlier (before `chebyshev_2PC_prob_tendsto_zero`, which depends on it).
 
 /-- **Theorem 1 (Detection Lower Bound, Strategy 2).** Fix p ∈ (0,1).
     If n_k^{3/2} · geometricCov p d_k → ∞, then TV → 1. -/
