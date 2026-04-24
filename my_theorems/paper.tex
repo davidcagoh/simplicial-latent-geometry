@@ -152,12 +152,10 @@ by chance; the practical question is whether those topological features are sign
 Kahle~\cite{Kahle2011} systematically studied the expected topology of \v{C}ech and
 Vietoris-Rips complexes built on i.i.d.\ random points in $\RR^d$, establishing connectivity
 and component-count thresholds as higher-dimensional analogues of results for random geometric
-graphs. As Kahle notes, a key motivation is ``the need for a probabilistic null hypothesis
-to compare with topological statistics of point cloud data''~\cite{Kahle2011}. The survey of
-Bobrowski and Kahle~\cite{Bobrowski2018} makes this connection precise: studying the topology
-of random geometric complexes ``is related to developing probabilistic null hypotheses for
-topological statistics,'' and the random geometric complex on i.i.d.\ uniform points is the
-natural geometric model against which TDA test statistics should be calibrated.
+graphs. A central motivation, surveyed in Bobrowski and Kahle~\cite{Bobrowski2018}, is the
+need for probabilistic null hypotheses against which TDA test statistics can be calibrated;
+the random geometric complex on i.i.d.\ uniform points is the natural geometric alternative
+to such a null.
 
 The simplest null model for 2-dimensional complexes is the \emph{2-parameter complex}
 $\PC(n,p,q)$: place $n$ vertices, insert each edge independently with probability $p$, and
@@ -185,10 +183,12 @@ polynomial framework; their methods provide a model for sharpening the SNR condi
 detection threshold.
 Our work carries this framework into the simplicial setting, where the presence of fill
 indicators introduces an additional layer of geometric dependence beyond edge structure alone.
-The key qualitative difference from BDER is that their detection threshold $d^*\asymp n^3$
-grows with~$n$ (edge correlations remain positive for every finite~$d$), while our simplicial
-analogue has a \emph{finite, $n$-independent} critical dimension: the fill layer introduces a
-complete collapse of geometric signal at a computable threshold, making detection impossible
+The key qualitative difference from BDER is that their detection threshold
+$d^*\asymp n^3$ grows with~$n$: edge correlations on $\Sph^{d-1}$ remain positive for every
+finite~$d$, so the threshold is controlled entirely by the SNR condition
+$n^3\cdot\mathrm{cov}^2\to\infty$. Our simplicial analogue, by contrast, has a
+\emph{finite, $n$-independent} critical dimension: the fill layer introduces a complete
+collapse of geometric signal at a computable threshold, making detection impossible
 above it regardless of sample size (Theorem~\ref{thm:phase-transition}).
 
 \paragraph{Hypergraph detection.}
@@ -221,28 +221,23 @@ The quantity $\geomCov(p,d)$ (Definition~\ref{def:geomcov}) is the per-triangle 
 expectation of this doubly-centered product; it is positive when fills carry geometric
 information and collapses to zero when geometry becomes negligible.
 
-\begin{theorem}[Informal]\label{thm:informal}
-Fix $p\in(0,1)$ and let $\tauf$ be the doubly-signed statistic with matched parameters.
-\begin{enumerate}[label=(\arabic*)]
-\item \textbf{Detection bound} (Theorem~\ref{thm:detection})\textbf{.}
-  If $n^{3/2}\cdot\geomCov(p,d)\to\infty$, the test that thresholds $\tauf$
-  achieves asymptotic power $1$: $\TV(\PC,\Cech)\to 1$.
+The paper has two main results. The first (Theorem~\ref{thm:detection}) is a detection
+bound: for any fixed dimension $d$ at which $\geomCov(p,d) > 0$, the test that thresholds
+$\tauf$ achieves asymptotic power $1$ as $n\to\infty$, so $\TV(\PC,\Cech)\to 1$. The
+signal-to-noise calculation (Lemma~\ref{lem:snr}) shows that the underlying detection
+criterion is $n^{3/2}\cdot\geomCov(p,d)\to\infty$; under $d$ fixed this is automatic from
+positivity of $\geomCov$.
 
-\item \textbf{Phase transition} (Theorem~\ref{thm:phase-transition})\textbf{.}
-  There is a finite critical dimension $d^*(p) = |\log p|/\log(3/2)\approx 2.47\,|\log p|$,
-  independent of $n$:
-  \begin{itemize}[nosep]
-    \item \textbf{Detectable:} For $d < d^*(p)$, $\geomCov(p,d)>0$ and
-      detection succeeds when $n^{3/2}\cdot\geomCov(p,d)\to\infty$.
-    \item \textbf{Collapsed:} For $d\geq d^*(p)$, $\geomCov(p,d)=0$ exactly
-      and no test based on $\tauf$ can distinguish the models.
-  \end{itemize}
-\end{enumerate}
-\end{theorem}
-
-\noindent These two results show that $\tauf$ detects geometry precisely when geometric
-covariance is large enough, and that geometric covariance collapses sharply at a computable
-threshold determined solely by the edge density~$p$.
+The second (Theorem~\ref{thm:phase-transition}) is a sharp phase transition at a finite,
+$n$-independent critical dimension
+\[
+  d^*(p) \;=\; \frac{|\log p|}{\log(3/2)}\;\approx\;2.47\,|\log p|.
+\]
+For $d < d^*(p)$, $\geomCov(p,d) > 0$ and detection succeeds; for $d \geq d^*(p)$,
+$\geomCov(p,d) = 0$ exactly (not merely in the limit) and no $\tauf$-based test can
+distinguish the models. The collapse is driven by a 1D Helly argument: once
+$r(p,d) = p^{1/d}/2 \geq 1/3$, every three sup-norm balls on the torus share a common
+point, so every triple fills deterministically and the fill indicator carries no signal.
 
 \medskip
 \noindent\textbf{Contributions.}
@@ -347,8 +342,7 @@ present and the balls $B(x_i,r)$, $B(x_j,r)$, $B(x_k,r)$ have nonempty common in
 \subsection{Parameter Matching}
 
 To compare $\PC$ and $\Cech$ on equal footing, we match the marginal edge probability $p$
-and the marginal fill probability $q$. Recall that
-$\TV(\mu,\nu) = \sup_{A}|\mu(A)-\nu(A)|$ denotes the total variation distance.
+and the marginal fill probability $q$.
 
 \begin{definition}[matchRadius]\label{def:matchradius}
 Given $p\in(0,1)$ and $d\geq 1$, the \emph{matched radius} is
@@ -454,7 +448,15 @@ In both cases, $\bigcap_i B(x_i, r) \neq \emptyset$.
 \section{The Doubly-Signed Statistic}\label{sec:statistic}
 %% ─────────────────────────────────────────────────────────────────────────────
 
-\subsection{Definition}
+Two natural simplicial analogues of the BDER signed triangle statistic suggest themselves,
+and neither is quite right. Centering only the edge indicators (as BDER does for graphs)
+gives a statistic sensitive to graph geometry but blind to fill structure; centering only
+the fill indicator leaves the edge layer unsigned, so the expectation under $\PC$ picks up
+a systematic bias from the correlation between edges and fills. The construction below
+centers all four indicators simultaneously: we replace each $A_e$ by $A_e - p$ and
+$F_{ijk}$ by $F_{ijk} - q$. This doubly-centered product vanishes in expectation under
+$\PC$ (by independence) and isolates the geometric dependence introduced by the
+\v{C}ech model.
 
 Let $A_{ij}\in\{0,1\}$ denote the indicator that edge $\{i,j\}$ is present, and let
 $F_{ijk}\in\{0,1\}$ denote the indicator that triangle $\{i,j,k\}$ is filled (zero if any
@@ -476,7 +478,8 @@ centered, vanishing in expectation whenever any of the four indicators is indepe
 rest. We write $Z_t = (A_{ij}-p)(A_{ik}-p)(A_{jk}-p)(F_{ijk}-q)$ for the per-triangle
 summand, so $\tauf = \sum_t Z_t$.
 
-\subsection{Moments Under \texorpdfstring{$\PC$}{2PC}}
+We first compute the moments under the null model, where full independence reduces the
+calculation to products of centered indicators.
 
 \begin{proposition}[Moments under 2PC]\label{prop:moments-twopc}
 Under $\PC(n,p,q)$:
@@ -517,7 +520,9 @@ Since the $\binom{n}{3}$ diagonal terms are uncorrelated, summing gives
 $\Var[\tauf] = \binom{n}{3}\cdot p^3(1-p)^3 q(1-q)$.
 \end{proof}
 
-\subsection{Moments Under the \v{C}ech Model}
+Under the \v{C}ech model the three vertices of a triangle are coupled through their
+shared positions on $\TT^d$, and covariance across triangles is nontrivial only when
+two triangles share an edge.
 
 \begin{proposition}[Moments under \v{C}ech]\label{prop:moments-cech}
 Under $\Cech(n,r,d)$ with $r = r(p,d)$ and matched $q = \fillingP(p,d)$:
@@ -538,52 +543,21 @@ triangle. Since all $\binom{n}{3}$ triangles are identically distributed,
 $\EE[\tauf] = \binom{n}{3}\cdot\geomCov(p,d)$.
 
 \textit{Part~(b).}
-Write $\tauf = \sum_t Z_t$ where $|Z_t|\leq 1$ always (since each factor is bounded by~1).
-
-\smallskip
-\noindent\textit{Diagonal terms.} $\Var[Z_t]\leq\EE[Z_t^2] \leq 1$ per triangle;
-summing over $\binom{n}{3} = O(n^3)$ triangles gives $O(n^3)$.
-
-\smallskip
-\noindent\textit{Off-diagonal terms: no shared vertices.} For triangles $t, t'$ sharing no
-vertex, the points $(x_i,x_j,x_k)$ and $(x_{i'},x_{j'},x_{k'})$ are independent (six i.i.d.\
-uniform points), so $Z_t$ and $Z_{t'}$ are independent. Hence $\Cov(Z_t,Z_{t'}) = 0$.
-
-\smallskip
-\noindent\textit{Off-diagonal terms: exactly one shared vertex.} Suppose $t = \{i,j,k\}$
-and $t' = \{i,j',k'\}$ share only vertex $i$, where $\{j,k\}\cap\{j',k'\}=\emptyset$.
-Condition on $x_i$. Given $x_i$, the remaining points $(x_j,x_k)$ for $t$ and
-$(x_{j'},x_{k'})$ for $t'$ are drawn uniformly and independently; in particular, $Z_t$ and
-$Z_{t'}$ are conditionally independent given $x_i$. Therefore
-\[
-  \Cov(Z_t,Z_{t'}) = \EE[\Cov(Z_t,Z_{t'}\mid x_i)] + \Cov(\EE[Z_t\mid x_i],\EE[Z_{t'}\mid x_i]).
-\]
-The first term vanishes (conditional independence). For the second term, we claim
-$\EE[Z_t\mid x_i]$ is constant in $x_i$: by the translation invariance of the uniform
-measure on $\TT^d$, the conditional law of $(x_j - x_i, x_k - x_i) \pmod{1}$ is
-uniform on $(\TT^d)^2$ regardless of $x_i$, so the distribution of $Z_t$ given $x_i$
-does not depend on $x_i$, giving $\EE[Z_t\mid x_i] = \EE[Z_t]$. The same holds for
-$\EE[Z_{t'}\mid x_i]$. Therefore $\Cov(\EE[Z_t\mid x_i],\EE[Z_{t'}\mid x_i]) = 0$,
-and $\Cov(Z_t,Z_{t'}) = 0$.
-
-\smallskip
-\noindent\textit{Off-diagonal terms: one shared edge.} The only nontrivial contribution
-comes from the $O(n^4)$ pairs of triangles sharing a common edge. For $t=\{i,j,k\}$ and
-$t'=\{i,j,k'\}$ (sharing edge $\{i,j\}$), condition on $(x_i,x_j)$. The points $x_k$ and
-$x_{k'}$ are then independent of each other and uniform on $\TT^d$. Define
-\[
-  g(x_i,x_j) = \EE_{x_k}[(A_{ik}-p)(A_{jk}-p)(F_{ijk}-q)\mid x_i,x_j],
-\]
-so that $\EE[Z_t \mid x_i,x_j] = (A_{ij}-p)\cdot g(x_i,x_j)$, and similarly for $t'$.
-Since $|g|\leq 1$, we have $|\Cov(Z_t,Z_{t'})|\leq \Var_{(x_i,x_j)}[(A_{ij}-p)g(x_i,x_j)]
-= O(1)$ per pair.
-
-Combining: $\Var[\tauf] = O(n^3) + 0 + O(n^4)\cdot O(1) = O(n^4)$.
+The summands $Z_t$ satisfy $|Z_t|\leq 1$, so diagonal terms contribute $O(n^3)$. Pairs
+of triangles sharing no vertex or exactly one vertex contribute zero covariance: no shared
+vertex gives full independence, and a single shared vertex gives conditional independence
+plus translation invariance of the uniform measure on $\TT^d$. The only nontrivial
+contribution is from the $O(n^4)$ pairs sharing a common edge, each of which contributes
+$O(1)$ covariance. Combining yields $\Var[\tauf] = O(n^4)$. The full case analysis is
+deferred to Appendix~\ref{app:variance-bound}.
 \end{proof}
 
 %% ─────────────────────────────────────────────────────────────────────────────
 \section{Detection Analysis}\label{sec:detection}
 %% ─────────────────────────────────────────────────────────────────────────────
+
+Throughout this section, $\TV(\mu,\nu) = \sup_{A}|\mu(A) - \nu(A)|$ denotes the total
+variation distance between probability measures $\mu$ and $\nu$.
 
 \begin{lemma}[Signal-to-noise bound]\label{lem:snr}
 With matched parameters $r = r(p,d)$ and $q = \fillingP(p,d)$,
@@ -609,10 +583,9 @@ i.e.,~\eqref{eq:detection-cond}.
 \subsection{The Detection Theorem}
 
 \begin{theorem}[Detection lower bound]\label{thm:detection}
-Fix $p\in(0,1)$ and let $q = \fillingP(p,d)$. Suppose $d$ is fixed and
-$n^{3/2}\cdot\geomCov(p,d)\to\infty$ as $n\to\infty$.
-Then the test that rejects~$\PC$ when $\tauf$ exceeds a suitable threshold achieves
-asymptotic power~$1$:
+Fix $p\in(0,1)$, fix $d$ with $\geomCov(p,d) > 0$, and let $q = \fillingP(p,d)$. Then
+the test that rejects~$\PC$ when $\tauf$ exceeds a suitable threshold achieves asymptotic
+power~$1$ as $n\to\infty$:
 \[
   \TV\bigl(\PC(n,p,q),\,\Cech(n,r(p,d),d)\bigr)\to 1.
 \]
@@ -620,8 +593,8 @@ asymptotic power~$1$:
 \end{theorem}
 
 \begin{proof}
-Let $g = \geomCov(p,d) > 0$ (positive since $d < d^*(p)$ when $d$ is fixed and $g > 0$),
-and let $\mu_C = \EE_{\Cech}[\tauf] = \binom{n}{3}g$.
+Let $g = \geomCov(p,d) > 0$ by hypothesis, and let $\mu_C = \EE_{\Cech}[\tauf] = \binom{n}{3}g$.
+Since $d$ is fixed, $g$ is a positive constant independent of $n$.
 Set the threshold at $\theta = \mu_C/2$.
 
 \textit{2PC side: probability above threshold goes to~0.}
@@ -635,6 +608,7 @@ By Chebyshev's inequality and Proposition~\ref{prop:moments-twopc},
 \]
 Since $d$ is fixed, $g>0$ is a positive constant, so $\binom{n}{3}g^2 = \Omega(n^3)\to\infty$.
 Therefore $\PP_{\PC}[\tauf > \theta] \to 0$.
+\hfill \leanverified{chebyshev\_2PC\_prob\_tendsto\_zero}
 
 \textit{\v{C}ech side: probability above threshold goes to~1.}
 We apply the Paley--Zygmund inequality: for any nonnegative random variable $W$,
@@ -656,22 +630,13 @@ by Proposition~\ref{prop:moments-cech}(b). Therefore
 Since $d$ is fixed and $g>0$ is a positive constant, $n^2g^2\to\infty$, giving the
 denominator $\to 1$ and the lower bound $\to c > 0$. A more careful estimate shows the
 bound tends to~1: rewrite as $1 - Cn^4/(n^6g^2+Cn^4) = 1 - o(1)$ since $n^2g^2\to\infty$.
+\hfill \leanverified{paleyZygmund\_cech\_prob\_tendsto\_one}
 
 Since $\PP_{\PC}[\tauf > \theta]\to 0$ and $\PP_{\Cech}[\tauf > \theta]\to 1$ for the same
 threshold, the total variation between the laws of $\tauf$ tends to~1. Since
 $\TV(\PC,\Cech) \geq \TV(\mathrm{law}_{\PC}(\tauf), \mathrm{law}_{\Cech}(\tauf))$, we
 obtain $\TV(\PC, \Cech)\to 1$.
 \end{proof}
-
-\begin{remark}\label{rem:detection-condition}
-The Paley--Zygmund argument above uses $d$ fixed (so $g > 0$ is a constant independent of
-$n$), which ensures $n^2g^2\to\infty$ and the \v{C}ech tail probability tends to~1.
-In the simultaneous limit $n,d\to\infty$ with $\geomCov(p,d)\to 0$, the argument requires
-the stronger condition $n\cdot\geomCov(p,d)\to\infty$ (so that $n^2g^2\to\infty$),
-which is implied by the stated $n^{3/2}g\to\infty$ only when $g$ is not too small relative
-to $n^{-1/2}$. Pinning down the exact decay rate of $\geomCov(p,d)$ as $d\nearrow d^*(p)$
-is an open problem (see Section~\ref{sec:discussion}).
-\end{remark}
 
 \subsection{Phase Transition}
 
@@ -695,8 +660,7 @@ Crucially, $d^*(p)$ depends only on $p$, not on $n$.
 Fix $p\in(0,1)$ with $q = \fillingP(p,d)$ matched.
 \begin{enumerate}[label=(\alph*)]
 \item \textit{Detectable regime.} For any fixed $d < d^*(p)$ and any sequence $n\to\infty$,
-  $\TV(\PC,\Cech)\to 1$. (Since $d < d^*(p)$ implies $\geomCov(p,d)>0$ is a positive
-  constant, the condition $n^{3/2}\cdot\geomCov(p,d)\to\infty$ is automatic.)
+  $\TV(\PC,\Cech)\to 1$.
 \item \textit{Collapsed regime.} For $d \geq d^*(p)$: $\geomCov(p,d) = 0$ exactly,
   $\tauf \equiv 0$ identically under both models, and $\TV(\PC,\Cech) = 0$.
 \hfill \leanverified{geometricCov\_eventually\_zero}
@@ -708,9 +672,8 @@ Fix $p\in(0,1)$ with $q = \fillingP(p,d)$ matched.
 $\fillingP(p,d) < 1$ and $q \in (0,1)$. Moreover, $\geomCov(p,d) > 0$ because the joint
 distribution of $(A_{ij}, A_{ik}, A_{jk}, F_{ijk})$ under the \v{C}ech model is genuinely
 different from the product distribution: not all triples fill, so the fill indicator carries
-information beyond the edge indicators. Since $\geomCov(p,d) > 0$ is a fixed positive
-constant, $n^{3/2}\cdot\geomCov(p,d)\to\infty$ automatically, and Theorem~\ref{thm:detection}
-gives $\TV(\PC,\Cech)\to 1$.
+information beyond the edge indicators. Theorem~\ref{thm:detection} then gives
+$\TV(\PC,\Cech)\to 1$.
 
 \textit{Part~(b).} For $d \geq d^*(p)$, the proof of Lemma~\ref{lem:radius-asymptotics}(b)
 gives $r(p,d) \geq 1/3$, and Lemma~\ref{lem:helly} gives $\fillingP(p,d) = 1$.
@@ -784,6 +747,16 @@ ball intersections on $\TT^d$ near the critical radius, a codimension-1 integral
 The low-degree polynomial framework of Liu, Mohanty, Schramm, and Yang~\cite{Liu2022} provides
 a model for obtaining sharp detection thresholds in this regime; extending it to the
 simplicial setting is a natural next step.
+
+\paragraph{Simultaneous limits.}
+Theorem~\ref{thm:detection} is stated for fixed $d$. A genuine simultaneous-limit statement
+---${n,d\to\infty}$ with ${\geomCov(p,d)\to 0}$---would also require a sharper
+bound on $\Var_{\Cech}[\tauf]$ than our current $O(n^4)$: the Paley--Zygmund argument needs
+${n^2\,\geomCov(p,d)^2\to\infty}$, i.e., ${n\cdot\geomCov(p,d)\to\infty}$, which is strictly
+stronger than the SNR criterion ${n^{3/2}\cdot\geomCov(p,d)\to\infty}$ from
+Lemma~\ref{lem:snr} once ${\geomCov(p,d) = o(n^{-1/2})}$. Combined with a quantitative
+decay rate of $\geomCov$ as above, a tighter variance bound would yield a clean
+simultaneous-limit detection theorem.
 
 \paragraph{Higher-dimensional simplices.}
 The analysis extends conceptually to $k$-simplices for $k\geq 3$: define a multiply-signed
@@ -859,6 +832,11 @@ The following results carry complete, sorry-free Lean~4 proofs.
   $\PP[\tauf > \frac{1}{2}\binom{n}{3}g]\to 0$ when $n^{3/2}g\to\infty$
   (2PC side of Theorem~\ref{thm:detection}).
 
+\item \lean{paleyZygmund\_cech\_prob\_tendsto\_one}: Under $\Cech$,
+  $\PP[\tauf > \frac{1}{2}\binom{n}{3}g]\to 1$ for fixed $d < d^*(p)$
+  via a Paley--Zygmund argument combined with the $O(n^4)$ variance bound
+  (\v{C}ech side of Theorem~\ref{thm:detection}).
+
 \item \lean{choose3\_g\_sq\_tendsto\_atTop}: When $d < d^*(p)$, the quantity
   $\binom{n}{3}g^2\to\infty$ as $n\to\infty$ (the detection condition).
 
@@ -921,6 +899,59 @@ indicators are \texttt{Fin~n~$\to$~Fin~n~$\to$~Bool}; the measurable space on
 \texttt{CechSample n d} is \texttt{MeasurableSpace.comap} \texttt{CechSample.points}
 \texttt{inferInstance}. All Lean options match Aristotle's fixed environment (v4.28.0)
 to ensure portability of returned proofs.
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Variance Bound for \texorpdfstring{$\tauf$}{tau\_f} Under the \v{C}ech Model}\label{app:variance-bound}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+This appendix completes the proof of Proposition~\ref{prop:moments-cech}(b): under
+$\Cech(n,r(p,d),d)$ with matched $q = \fillingP(p,d)$, $\Var[\tauf] = O(n^4)$.
+
+Write $\tauf = \sum_t Z_t$ with $Z_t = (A_{ij}-p)(A_{ik}-p)(A_{jk}-p)(F_{ijk}-q)$ and
+$|Z_t|\leq 1$. We bound $\Cov(Z_t,Z_{t'})$ by the overlap pattern of the two triangles.
+
+\smallskip
+\noindent\textit{Diagonal terms.} $\Var[Z_t]\leq\EE[Z_t^2] \leq 1$ per triangle;
+summing over $\binom{n}{3} = O(n^3)$ triangles gives $O(n^3)$.
+
+\smallskip
+\noindent\textit{No shared vertices.} For triangles $t, t'$ sharing no
+vertex, the points $(x_i,x_j,x_k)$ and $(x_{i'},x_{j'},x_{k'})$ are independent (six i.i.d.\
+uniform points), so $Z_t$ and $Z_{t'}$ are independent. Hence $\Cov(Z_t,Z_{t'}) = 0$.
+
+\smallskip
+\noindent\textit{Exactly one shared vertex.} Suppose $t = \{i,j,k\}$
+and $t' = \{i,j',k'\}$ share only vertex $i$, where $\{j,k\}\cap\{j',k'\}=\emptyset$.
+Condition on $x_i$. Given $x_i$, the remaining points $(x_j,x_k)$ for $t$ and
+$(x_{j'},x_{k'})$ for $t'$ are drawn uniformly and independently; in particular, $Z_t$ and
+$Z_{t'}$ are conditionally independent given $x_i$. Therefore
+\[
+  \Cov(Z_t,Z_{t'}) = \EE[\Cov(Z_t,Z_{t'}\mid x_i)] + \Cov(\EE[Z_t\mid x_i],\EE[Z_{t'}\mid x_i]).
+\]
+The first term vanishes (conditional independence). For the second term, we claim
+$\EE[Z_t\mid x_i]$ is constant in $x_i$: by the translation invariance of the uniform
+measure on $\TT^d$, the conditional law of $(x_j - x_i, x_k - x_i) \pmod{1}$ is
+uniform on $(\TT^d)^2$ regardless of $x_i$, so the distribution of $Z_t$ given $x_i$
+does not depend on $x_i$, giving $\EE[Z_t\mid x_i] = \EE[Z_t]$. The same holds for
+$\EE[Z_{t'}\mid x_i]$. Therefore $\Cov(\EE[Z_t\mid x_i],\EE[Z_{t'}\mid x_i]) = 0$,
+and $\Cov(Z_t,Z_{t'}) = 0$.
+
+\smallskip
+\noindent\textit{One shared edge.} The only nontrivial contribution
+comes from the $O(n^4)$ pairs of triangles sharing a common edge. For $t=\{i,j,k\}$ and
+$t'=\{i,j,k'\}$ (sharing edge $\{i,j\}$), condition on $(x_i,x_j)$. The points $x_k$ and
+$x_{k'}$ are then independent of each other and uniform on $\TT^d$. Define
+\[
+  g(x_i,x_j) = \EE_{x_k}[(A_{ik}-p)(A_{jk}-p)(F_{ijk}-q)\mid x_i,x_j],
+\]
+so that $\EE[Z_t \mid x_i,x_j] = (A_{ij}-p)\cdot g(x_i,x_j)$, and similarly for $t'$.
+Since $|g|\leq 1$ pointwise and $\Var[A_{ij}-p] = p(1-p)\leq 1/4$, we have
+$\Var[(A_{ij}-p)g(x_i,x_j)]\leq 1$, and hence
+$|\Cov(Z_t,Z_{t'})|\leq \Var_{(x_i,x_j)}[(A_{ij}-p)g(x_i,x_j)] = O(1)$ per pair.
+
+\smallskip
+Combining: $\Var[\tauf] = O(n^3) + 0 + O(n^4)\cdot O(1) = O(n^4)$, proving
+Proposition~\ref{prop:moments-cech}(b).
 
 %% ─────────────────────────────────────────────────────────────────────────────
 \bibliographystyle{plainnat}
