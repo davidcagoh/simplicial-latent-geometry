@@ -20,7 +20,7 @@ Strategy 1 (unsigned variance-gap) was abandoned — `E[V_f](p,d) → L > 0` as 
 ## Repository
 
 - `SimplicialLatentGeometry/SimplicialDetection.lean` — main proof (~3750 lines); Strategy 1 material at lines ~1–620 is reference-only; Strategy 2 starts at ~line 634
-- `help_from_aristotle/proof_decisions_log.md` — chronological record; **update after every decision or submission**
+- `requests/proof_decisions_log.md` — chronological record; **update after every decision or submission**
 - `my_theorems/paper.tex` — LaTeX paper (11pp, compiles clean); §4.4 is heuristic pending OQ-9
 - `my_theorems/strategy2.md` — full strategy document
 
@@ -30,10 +30,11 @@ Strategy 1 (unsigned variance-gap) was abandoned — `E[V_f](p,d) → L > 0` as 
 lake build                                               # build whole project
 lake build SimplicialLatentGeometry.SimplicialDetection  # elaborate main file
 
-python ../scripts/status.py                              # sorry count + job status
-python ../scripts/submit.py my_theorems/strategy2.md "Prove <lemma>" --dry-run
-python ../scripts/submit.py my_theorems/strategy2.md "Prove <lemma>"
-python ../scripts/retrieve.py
+python ../stochastic-proofs-handbook/scripts/status.py                              # sorry count + job status
+python ../stochastic-proofs-handbook/scripts/submit.py my_theorems/strategy2.md "Prove <lemma>" --dry-run
+python ../stochastic-proofs-handbook/scripts/submit.py my_theorems/strategy2.md "Prove <lemma>"
+python ../stochastic-proofs-handbook/scripts/retrieve.py
+python ../stochastic-proofs-handbook/scripts/retrieve.py <project-id>
 ```
 
 ## Type Decisions (do not change)

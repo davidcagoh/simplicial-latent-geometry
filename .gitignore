@@ -9,7 +9,7 @@ proofs-from-literature/
 results/
 my_theorems/
 reports/
-help_from_aristotle/
+requests/
 AutomatedProofs/JEPA.lean
 AutomatedProofs/Lemmas.lean
 AutomatedProofs/OffDiagHelpers.lean
