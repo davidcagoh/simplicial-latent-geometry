@@ -31,8 +31,8 @@ lake build                                               # build whole project
 lake build SimplicialLatentGeometry.SimplicialDetection  # elaborate main file
 
 python ../stochastic-proofs-handbook/scripts/status.py                              # sorry count + job status
-python ../stochastic-proofs-handbook/scripts/submit.py my_theorems/strategy2.md "Prove <lemma>" --dry-run
-python ../stochastic-proofs-handbook/scripts/submit.py my_theorems/strategy2.md "Prove <lemma>"
+python ../stochastic-proofs-handbook/scripts/submit.py my_theorems/proof_strategy.md "Prove <lemma>" --dry-run
+python ../stochastic-proofs-handbook/scripts/submit.py my_theorems/proof_strategy.md "Prove <lemma>"
 python ../stochastic-proofs-handbook/scripts/retrieve.py
 python ../stochastic-proofs-handbook/scripts/retrieve.py <project-id>
 ```

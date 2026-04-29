@@ -1,59 +1,35 @@
 # simplicial-latent-geometry
 
-**simplicial-latent-geometry** is a Lean 4 formalization of a **simplicial latent geometry detection problem**, developed using an Aristotle-assisted proof workflow.
+Lean 4 formalization of a phase transition for the doubly-signed filled triangle statistic — detecting a Čech complex on the flat torus against a null simplicial complex model. Part of the [Stochastic Proofs](../stochastic-proofs-handbook) workspace.
 
-Unlike `automated-proofs`, which provides reusable infrastructure, this repository is a **mathematical case study**. Its purpose is to formalize a specific statistical and geometric argument inside Lean, clarify what has already been proved, and expose the hardest remaining gaps.
+## Repository structure
 
-## Mathematical focus
-
-The project studies a phase transition for a **doubly-signed filled triangle statistic**, used to distinguish a null simplicial complex model from a geometric ech complex on the torus.
-
-At a high level, the proof strategy is to compare the null variance and the geometric expectation, and then derive a detection criterion of the form:
-
-```text
- 
-```
-
-## Repository role in the broader ecosystem
-
-| Repository | Role |
+| Path | Role |
 |---|---|
-| `automated-proofs` | Reusable proof workflow and infrastructure |
-| `theorem-agents` | Agentic theorem orchestration and decomposition |
-| `simplicial-latent-geometry` | Concrete mathematical formalization and research application |
+| `SimplicialLatentGeometry/SimplicialDetection.lean` | Main proof (~3750 lines) |
+| `my_theorems/paper.tex` | LaTeX paper (16pp) |
+| `my_theorems/proof_strategy.md` | Active proof strategy / Aristotle spec |
+| `literature/` | Reference PDFs |
+| `requests/` | Aristotle submission prompts |
+| `results/` | Aristotle result tarballs |
 
-## What this repository shows
-
-| Area | Purpose |
-|---|---|
-| Real mathematical formalization | A substantive theorem-development project rather than a generic template |
-| Proof-state transparency | Documents proved lemmas, open sorries, and blocked steps |
-| Workflow realism | Shows where Aristotle helps, where it struggles, and where manual mathematics is still needed |
-
-## Key files
-
-| Path | Purpose |
-|---|---|
-| `SimplicialLatentGeometry/SimplicialDetection.lean` | Main theorem development |
-| `my_theorems/strategy2.md` | Strategy note for the active proof plan |
-| `help_from_aristotle/` | Submission history and decision logs |
-| `scripts/` | Build, status, submission, and retrieval support |
-
-## Workflow
+## Commands
 
 ```bash
 lake build
 lake build SimplicialLatentGeometry.SimplicialDetection
-python scripts/status.py
-python scripts/submit.py my_theorems/strategy2.md "Prove <lemma>" --dry-run
-python scripts/submit.py my_theorems/strategy2.md "Prove <lemma>"
-python scripts/retrieve.py
+
+python ../stochastic-proofs-handbook/scripts/status.py
+python ../stochastic-proofs-handbook/scripts/submit.py my_theorems/proof_strategy.md "Prove <lemma>"
+python ../stochastic-proofs-handbook/scripts/retrieve.py [project-id]
 ```
 
-## Relationship to the Stochastic Proofs Handbook
+## Setup
 
-This repository follows the broader conventions in the **Stochastic Proofs Handbook**, but the local repository files remain authoritative for project-specific mathematical details, type decisions, and proof-state tracking.
+```bash
+pip install aristotlelib pathspec python-dotenv
+# API key in lean-workspace/.env — no per-project .env needed
+lake build
+```
 
-## Why keep this separate
-
-This repository should remain separate because its value is not only the workflow. It is also the **mathematical object itself**: a concrete formalization effort with its own theorem structure, blocked lemmas, and research significance.
+Lean toolchain: `leanprover/lean4:v4.28.0` · Mathlib: `v4.28.0` · Shared cache: `../.lean-packages/`
