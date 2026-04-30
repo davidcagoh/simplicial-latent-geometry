@@ -688,6 +688,145 @@ noncomputable def geometricCov (p : ℝ) (d : ℕ) : ℝ :=
     e₁₂ * e₁₃ * e₂₃ * fill
   ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d)))
 
+-- ────────────────────────────────────────────────────────────────────────────
+-- OQ-16 / Track A: quantitative `geomCov` decay rate (sim-A5 packet, session 31).
+-- See `analytic_decay_rate.md` and `requests/sim_A5_packet.md` for derivations.
+-- ────────────────────────────────────────────────────────────────────────────
+
+/-- **Helper: 1D-Helly trivialisation.** If two arcs share a common centre vertex,
+    the triple intersection is automatically nonempty: pick `z = x₁`. -/
+lemma wedge_implies_fill {d : ℕ} (r : ℝ) (hr0 : 0 ≤ r) (x₁ x₂ x₃ : Torus d)
+    (h12 : dist x₁ x₂ ≤ r) (h13 : dist x₁ x₃ ≤ r) :
+    ∃ z : Torus d, dist x₁ z ≤ r ∧ dist x₂ z ≤ r ∧ dist x₃ z ≤ r := by
+  refine ⟨x₁, ?_, ?_, ?_⟩
+  · simp [dist_self]; exact hr0
+  · rw [dist_comm]; exact h12
+  · rw [dist_comm]; exact h13
+
+open Classical MeasureTheory in
+/-- **Sim-A5 / Job 1, Lemma 1.** Triangle (3-pairwise-edge) probability under Čech,
+    deep regime `r ≤ 1/4`. Equals `(3 r²)^d` by sup-norm coordinate factorisation
+    and the 1D area calculation: in each coordinate, the event "all 3 pairwise
+    distances ≤ r" has probability `3 r²` (square `[-r,r]²` of area `4r²` minus
+    two corner triangles of total area `r²`).
+
+    PROVIDED SOLUTION
+    Step 1: Apply `MeasureTheory.integral_fintype_prod` (or `volume_pi` + Fubini)
+      to reduce the `Fin 3 → Torus d` integral to nested integrals over `Torus d`.
+    Step 2: Use sup-norm coordinate decomposition (`Pi.dist_def`) to factor the
+      indicator product across the `d` torus coordinates.
+    Step 3: Per coordinate, condition on `u₁ = 0`. The event becomes
+      `|u₂| ≤ r ∧ |u₃| ≤ r ∧ |u₂ - u₃| ≤ r` on the square `[-r,r]²`.
+      Area of square: `4 r²`. Area cut by `|u₂ - u₃| ≤ r` constraint: two
+      corner right-triangles of legs `r`, total area `r²`. Remaining area: `3 r²`.
+    Step 4: Per-coordinate probability is `3 r²`. Raise to dth power. -/
+lemma gamma_pow_eq (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      (if dist (pts 0) (pts 1) ≤ matchRadius p d then (1:ℝ) else 0) *
+      (if dist (pts 0) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) *
+      (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0)
+      ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = (3 * (matchRadius p d) ^ 2) ^ d := by
+  sorry
+
+open Classical MeasureTheory in
+/-- **Sim-A5 / Job 1, Lemma 2.** Single-edge ∧ fill probability under Čech,
+    deep regime `r ≤ 1/4`. Equals `(7 r²)^d`.
+
+    PROVIDED SOLUTION
+    Step 1: Same coordinate factorisation as `gamma_pow_eq`. Per coordinate,
+      we need `PP[|u₁ - u₂| ≤ r ∧ ∃ z : |u_i - z| ≤ r ∀ i]`.
+    Step 2: Condition on `u₁ = 0, u₂ = s` with `|s| ≤ r`. The set of valid
+      `z` is the overlap arc `[max(-r, s-r), min(r, s+r)]` of length `2r - |s|`.
+      Then `u₃ ∈ B(z, r)` for some such `z` ⟺ `u₃ ∈ [s - 2r + |s|, 2r - |s|]`...
+      wait — easier: `u₃ ∈ ⋃_z B(z, r) = [\min_z (z-r), \max_z (z+r)]
+      = [\min(-r, s-r) - r, \max(r, s+r) + r]`. For `s ∈ [0, r]`, this is
+      `[-2r + s, 2r]`... Length `4r - s` for `s ∈ [0, r]` (and `4r + s` for
+      `s ∈ [-r, 0]`, equivalently `4r - |s|`).
+    Step 3: Per-coordinate probability:
+      `∫_{-r}^{r} (4r - |s|) ds = 2 ∫_0^r (4r - s) ds = 2(4r² - r²/2) = 7 r²`.
+    Step 4: Raise to dth power. -/
+lemma mu_e_pow_eq (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      (if dist (pts 0) (pts 1) ≤ matchRadius p d then (1:ℝ) else 0) *
+      (if ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
+                          dist (pts 1) z ≤ matchRadius p d ∧
+                          dist (pts 2) z ≤ matchRadius p d
+       then (1:ℝ) else 0)
+      ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = (7 * (matchRadius p d) ^ 2) ^ d := by
+  sorry
+
+/-- **Sim-A5 / Job 1, Lemma 3.** Filling probability closed form, deep regime
+    `r ≤ 1/4`. By Stevens 1939 + coordinate factorisation, `q = (12 r²)^d`.
+
+    PROVIDED SOLUTION
+    Step 1: Coordinate factorisation as above.
+    Step 2: Per-coordinate, `PP[3 arcs of length 2r on circle share a point]`
+      = `PP[3 uniform points fall in some arc of length 2r]` = `3 (2r)² = 12 r²`
+      for `2r ≤ 1/2` (Stevens 1939; events `E_i` "all three lie in clockwise
+      arc starting at u_i" are pairwise disjoint a.s. for `L ≤ 1/2`).
+    Step 3: Raise to dth power. Reconcile with `fillingProb` definition (which
+      is the ∫-form, equivalent to this PP). -/
+lemma fillingProb_eq_low_r (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    fillingProb p d = (12 * (matchRadius p d) ^ 2) ^ d := by
+  sorry
+
+/-- **Sim-A5 / Job 2, Lemma 4 (8-term collapse).** Closed-form `geometricCov`
+    in the deep regime via the doubly-centered binomial expansion.
+
+    PROVIDED SOLUTION
+    Step 1: Expand `∏_{(ij)}(A_{ij} - p) · (F - q)` into 16 monomials.
+    Step 2: Group by edge-set `S ⊆ {12,13,23}` and fill `u ∈ {0,1}`.
+      Each `EE[A_S F^u] = μ_{S,u}^d` by coordinate factorisation.
+    Step 3: Pair `(S, 0)` with `(S, 1)`. Pair contribution:
+      `(-p)^{3-|S|} μ_{S,0}^d · [(1 - δ_S/μ_{S,0})^d - (1 - δ_∅)^d]`
+      where `δ_S = μ_{S,0} - μ_{S,1}` and `q = (1 - δ_∅)^d`.
+    Step 4 (S=∅): bracket = 0. ✓
+    Step 5 (S=wedge, |S|=2): by `wedge_implies_fill`, `δ_w = 0`. Bracket = 0.
+    Step 6 (S={12,13,23}): all-edges ⟹ fill (by `wedge_implies_fill` twice).
+      So `μ_{S,0} = μ_{S,1} = γ` and contribution is `γ^d · (1 - q)`.
+    Step 7 (S=single edge): `μ_{S,0} = α = 2r`, `μ_{S,1} = μ_e = 7 r²`.
+      `α^d = p`, so contribution per edge is `p² · (μ_e^d - q · α^d) =
+      p² · ((7r²)^d - q · p)`. Summed over 3 edges, and folded with the
+      outer `(-p)^{3-|S|} = p²` and the binomial sign... -- carefully tracked
+      in `analytic_decay_rate.md` §A3.3, lands at `3 p^3 [(7r/2)^d - q]`. -/
+theorem geometricCov_eq_deep (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    geometricCov p d
+    = (1 - fillingProb p d) * (3 * (matchRadius p d) ^ 2) ^ d
+      + 3 * p ^ 3 * ((7 * matchRadius p d / 2) ^ d - fillingProb p d) := by
+  sorry
+
+/-- **Sim-A5 / Job 2, Lemma 5 (decay-rate upper bound).**
+    The corrected one-sided form: `geomCov` is bounded by the leading
+    `(1-q) γ^d` term plus the explicit edge correction.
+
+    The two-sided rate `c₁ (1-q) γ^d ≤ geomCov ≤ c₂ (1-q) γ^d` does NOT hold
+    uniformly in the deep regime because `(7r/2)^d / γ^d = (7/(6r))^d` is
+    unbounded as `r → 0`. Use this upper bound + `geometricCov_pos` (existing)
+    for the matching lower direction; sub-regime two-sided bounds need to be
+    derived separately when needed.
+
+    PROVIDED SOLUTION
+    Direct from `geometricCov_eq_deep`: the second summand
+    `3 p^3 ((7 r/2)^d - q)` is positive (since `μ_e > γ ⟹ (7r/2)^d > (12r²)^d = q`)
+    and lower-bounded by 0; the first summand is `(1 - q) γ^d ≥ 0`.
+    Hence `geomCov ≤ (1-q) γ^d + 3 p^3 (7 r/2)^d`. -/
+theorem geometricCov_decay_rate_le (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    geometricCov p d
+      ≤ (1 - fillingProb p d) * (3 * (matchRadius p d) ^ 2) ^ d
+        + 3 * p ^ 3 * (7 * matchRadius p d / 2) ^ d := by
+  sorry
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- end OQ-16 / Track A stubs
+-- ────────────────────────────────────────────────────────────────────────────
+
 /-- **Lemma A (Variance of doubly-signed stat under 2PC).**
     Under 2PC(n,p,q): E[τ_f] = 0, Var[τ_f] = C(n,3)·p³(1-p)³·q(1-q).
 
