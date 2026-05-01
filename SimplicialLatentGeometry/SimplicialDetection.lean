@@ -1,5 +1,6 @@
 import Mathlib
 import SimplicialLatentGeometry.DisjointTriangles
+import SimplicialLatentGeometry.TorusIntegrals
 
 set_option linter.style.longLine false
 set_option linter.style.whitespace false
@@ -728,7 +729,7 @@ lemma gamma_pow_eq (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d
       (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0)
       ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
     = (3 * (matchRadius p d) ^ 2) ^ d := by
-  sorry
+  convert integral_triangle_eq_pow d hd ( matchRadius p d ) ( by unfold matchRadius; positivity ) hr using 1
 
 open Classical MeasureTheory in
 /-- **Sim-A5 / Job 1, Lemma 2.** Single-edge ∧ fill probability under Čech,
@@ -757,23 +758,14 @@ lemma mu_e_pow_eq (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
        then (1:ℝ) else 0)
       ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
     = (7 * (matchRadius p d) ^ 2) ^ d := by
-  sorry
+  exact integral_edgeFill_eq_pow d hd ( matchRadius p d ) ( by unfold matchRadius; positivity ) hr
 
 /-- **Sim-A5 / Job 1, Lemma 3.** Filling probability closed form, deep regime
-    `r ≤ 1/4`. By Stevens 1939 + coordinate factorisation, `q = (12 r²)^d`.
-
-    PROVIDED SOLUTION
-    Step 1: Coordinate factorisation as above.
-    Step 2: Per-coordinate, `PP[3 arcs of length 2r on circle share a point]`
-      = `PP[3 uniform points fall in some arc of length 2r]` = `3 (2r)² = 12 r²`
-      for `2r ≤ 1/2` (Stevens 1939; events `E_i` "all three lie in clockwise
-      arc starting at u_i" are pairwise disjoint a.s. for `L ≤ 1/2`).
-    Step 3: Raise to dth power. Reconcile with `fillingProb` definition (which
-      is the ∫-form, equivalent to this PP). -/
+    `r ≤ 1/4`. By Stevens 1939 + coordinate factorisation, `q = (12 r²)^d`. -/
 lemma fillingProb_eq_low_r (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
     (hr : matchRadius p d ≤ 1/4) :
     fillingProb p d = (12 * (matchRadius p d) ^ 2) ^ d := by
-  sorry
+  exact integral_fill_eq_pow d hd ( matchRadius p d ) ( show 0 ≤ matchRadius p d from by unfold matchRadius; positivity ) hr
 
 /-- **Sim-A5 / Job 2, Lemma 4 (8-term collapse).** Closed-form `geometricCov`
     in the deep regime via the doubly-centered binomial expansion.
