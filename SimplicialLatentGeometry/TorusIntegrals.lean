@@ -83,25 +83,93 @@ lemma integral_4r_minus_abs (r : ℝ) (hr0 : 0 ≤ r) :
 lemma stevens_formula (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
     (12 : ℝ) * r ^ 2 = 3 * (2 * r) ^ 2 := by ring
 
-/-- Volume of the intersection of two closed balls on T1: for r ≤ 1/4 and s ≤ r,
-    volume(closedBall(a, r) ∩ closedBall(b, r)) = 2r - s where s = dist a b. -/
+/-- **Sim-A5 / Job 1b, Lemma 1.** Volume of the intersection of two closed balls
+    on T1 = AddCircle 1: for r ≤ 1/4 and s = dist a b ≤ r,
+    `volume(closedBall a r ∩ closedBall b r) = 2r - s`.
+
+    PROVIDED SOLUTION
+    Step 1. Use `AddCircle.volume_closedBall` (or the explicit measure on
+      AddCircle 1) which gives `volume (closedBall a r) = ENNReal.ofReal (2r)`
+      for `r ≤ 1/2`.
+    Step 2. By translation invariance of Haar on AddCircle 1, WLOG `a = 0`.
+      Then `closedBall 0 r ∩ closedBall b r` is the set of `x` with
+      `‖x‖ ≤ r` and `‖x - b‖ ≤ r`. On the lift to ℝ this is the union of two
+      disjoint arcs (or one arc, depending on orientation); since `s + r ≤ 2r ≤ 1/2`,
+      the picture stays in a fundamental domain `(-1/2, 1/2]` with no wrap-around.
+    Step 3. The 1D Lebesgue length of `{x ∈ ℝ : |x| ≤ r ∧ |x - s| ≤ r}` for
+      `0 ≤ s ≤ r` is `2r - s` (intersect intervals `[-r,r]` and `[s-r, s+r]`).
+    Step 4. Transfer back via the AddCircle ↔ ℝ quotient measure isomorphism
+      (`AddCircle.measure_preserving_mk` or the integral form).
+-/
 lemma volume_closedBall_inter_T1 (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4)
     (a b : T1) (hs : dist a b ≤ r) :
     volume (Metric.closedBall a r ∩ Metric.closedBall b r)
     = ENNReal.ofReal (2 * r - dist a b) := by
   sorry
 
-/-- 1D triangle probability: volume of triangleSet on (T1)³ equals 3r². -/
+/-- **Sim-A5 / Job 1b, Lemma 2.** 1D triangle probability:
+    `volume(triangleSet r) = 3r²` on (T1)³ for `r ≤ 1/4`.
+
+    PROVIDED SOLUTION
+    Step 1. Fubini over `u 0`: by translation invariance of Haar, fix `u 0 = 0`.
+    Step 2. Conditional on `u 0`, the set `{(u₁, u₂) : dist(u₀,u₁) ≤ r ∧
+      dist(u₀,u₂) ≤ r ∧ dist(u₁,u₂) ≤ r}` factors. Each of `u 1, u 2` lies in
+      `closedBall (u 0) r` (length 2r); call their displacements x₁, x₂ ∈ [-r, r].
+      The constraint `dist(u 1, u 2) ≤ r` becomes `|x₁ - x₂| ≤ r` (no wrap since
+      `2r ≤ 1/2`).
+    Step 3. The remaining 2D Lebesgue integral is
+      `∫_{-r}^r ∫_{x₁ - r ≤ x₂ ≤ x₁ + r, x₂ ∈ [-r,r]} dx₂ dx₁
+       = ∫_{-r}^r (2r - |x₁|) dx₁ = 3r²`
+      (use `integral_2r_minus_abs` already proven above).
+    Step 4. Since the outer Fubini integration over `u 0` contributes `volume(T1) = 1`,
+      the total is `3r²`.
+-/
 lemma volume_triangleSet (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
     volume (triangleSet r) = ENNReal.ofReal (3 * r ^ 2) := by
   sorry
 
-/-- 1D edge-fill probability: volume of edgeFillSet on (T1)³ equals 7r². -/
+/-- **Sim-A5 / Job 1b, Lemma 3.** 1D edge-fill probability:
+    `volume(edgeFillSet r) = 7r²` on (T1)³ for `r ≤ 1/4`.
+
+    PROVIDED SOLUTION
+    Step 1. By translation invariance, fix `u 0 = 0`.
+    Step 2. Conditional on `u 0 = 0`, write x₁, x₂ ∈ T1 for u 1, u 2.
+      Constraint A: `|x₁| ≤ r` (i.e., u 1 ∈ ball(u 0, r)).
+      Constraint B: ∃ z, `|z| ≤ r ∧ |z - x₁| ≤ r ∧ |z - x₂| ≤ r`.
+      Constraint B reduces to `|x₂ - z| ≤ r` for some z in the intersection
+      `closedBall 0 r ∩ closedBall x₁ r`, i.e., z ∈ [max(-r, x₁-r), min(r, x₁+r)]
+      (length `2r - |x₁|` by `volume_closedBall_inter_T1`).
+    Step 3. Hence `x₂` ranges over the Minkowski sum of that interval with `[-r, r]`.
+      Length: `(2r - |x₁|) + 2r = 4r - |x₁|`.
+    Step 4. Integrate: `∫_{-r}^r (4r - |x₁|) dx₁ = 7r²`
+      (use `integral_4r_minus_abs` already proven above).
+-/
 lemma volume_edgeFillSet (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
     volume (edgeFillSet r) = ENNReal.ofReal (7 * r ^ 2) := by
   sorry
 
-/-- 1D fill probability: volume of fillSet on (T1)³ equals 12r². -/
+/-- **Sim-A5 / Job 1b, Lemma 4.** 1D fill probability (Stevens 1939):
+    `volume(fillSet r) = 12r²` on (T1)³ for `r ≤ 1/4`.
+
+    PROVIDED SOLUTION
+    Step 1. `fillSet r = {(u₀,u₁,u₂) : ∃ z, all three within r of z}`.
+      By 1D Helly, this equals `{(u₀,u₁,u₂) : pairwise distances ≤ 2r}`
+      restricted to `r ≤ 1/4` (so that `2r ≤ 1/2` and no wrap).
+    Step 2. Stevens 1939 closed form for three uniform points on a circle of
+      circumference 1, all in some arc of length `L = 2r`:
+        `P[fill] = 3 · L² = 12 r²` for `L ≤ 1/2` (i.e. `r ≤ 1/4`).
+      The factor 3 comes from disjoint events "u_i is the leftmost point in
+      the covering arc" for i=0,1,2.
+    Step 3. Lean route:
+      (a) reduce via translation invariance to fix u 0 = 0;
+      (b) compute the 2D integral over (x₁, x₂) ∈ T1² of the indicator
+          `∃ z, |z|≤r ∧ |z-x₁|≤r ∧ |z-x₂|≤r`;
+      (c) by `volume_closedBall_inter_T1`, conditional on x₁, the set of valid
+          x₂ has measure `2r - |x₁| + ε` where ε accounts for second-arc; the
+          full Stevens calculation gives 12r² total.
+    Alternative: use `AddCircle.volume_arc_cover` if available, or model
+    on Mathlib's `Probability.Distributions.Uniform` patterns.
+-/
 lemma volume_fillSet (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
     volume (fillSet r) = ENNReal.ofReal (12 * r ^ 2) := by
   sorry
