@@ -472,43 +472,292 @@ lemma volume_edgeFillSet (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
       ext; simp [Set.mem_image];
     exact h_closed.measurableSet
 
-/-- **Sim-A5 / Job 1b, Lemma 4.** 1D fill probability (Stevens 1939):
+/-
+**Sim-A5 / Job 1b, Lemma 4.** 1D fill probability (Stevens 1939):
     `volume(fillSet r) = 12r²` on (T1)³ for `r ≤ 1/4`.
 
-    PROVIDED SOLUTION
-    Step 1. `fillSet r = {(u₀,u₁,u₂) : ∃ z, all three within r of z}`.
-      By 1D Helly, this equals `{(u₀,u₁,u₂) : pairwise distances ≤ 2r}`
-      restricted to `r ≤ 1/4` (so that `2r ≤ 1/2` and no wrap).
-    Step 2. Stevens 1939 closed form for three uniform points on a circle of
-      circumference 1, all in some arc of length `L = 2r`:
-        `P[fill] = 3 · L² = 12 r²` for `L ≤ 1/2` (i.e. `r ≤ 1/4`).
-      The factor 3 comes from disjoint events "u_i is the leftmost point in
-      the covering arc" for i=0,1,2.
-    Step 3. Lean route:
-      (a) reduce via translation invariance to fix u 0 = 0;
-      (b) compute the 2D integral over (x₁, x₂) ∈ T1² of the indicator
-          `∃ z, |z|≤r ∧ |z-x₁|≤r ∧ |z-x₂|≤r`;
-      (c) by `volume_closedBall_inter_T1`, conditional on x₁, the set of valid
-          x₂ has measure `2r - |x₁| + ε` where ε accounts for second-arc; the
-          full Stevens calculation gives 12r² total.
-    Alternative: use `AddCircle.volume_arc_cover` if available, or model
-    on Mathlib's `Probability.Distributions.Uniform` patterns.
--/
-/-
 Extended fill_fiber_volume for dist < 2r (strict). The formula 4r - dist is correct
 for all dist < 2r when r ≤ 1/4; it fails only at dist = 2r with r = 1/4
 (where wrap-around makes the fill fiber the whole circle).
 For the integral computation, this boundary has measure 0.
 -/
+lemma fill_fiber_subset_ball_lt (r b' : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) (hb'0 : 0 ≤ b') (hb' : b' < 2 * r) :
+    {c : T1 | ∃ z : T1, dist 0 z ≤ r ∧ dist (QuotientAddGroup.mk b' : T1) z ≤ r ∧ dist c z ≤ r}
+    ⊆ Metric.closedBall (QuotientAddGroup.mk (b'/2) : T1) (2*r - b'/2) := by
+  -- If $b' > r$, then for any $c$ in the set, there exists $z$ such that $dist 0 z \leq r$, $dist (QuotientAddGroup.mk b') z \leq r$, and $dist c z \leq r$.
+  intro c hc
+  obtain ⟨z, hz⟩ := hc;
+  -- By translation invariance, we can shift the problem to the interval [0, 1).
+  obtain ⟨z', hz'⟩ : ∃ z' : ℝ, z = QuotientAddGroup.mk z' ∧ |z' - b'| ≤ r ∧ |z'| ≤ r := by
+    have hz' : ∃ z' : ℝ, z = QuotientAddGroup.mk z' ∧ |z'| ≤ r := by
+      obtain ⟨z', hz'⟩ : ∃ z' : ℝ, z = QuotientAddGroup.mk z' ∧ |z'| ≤ r := by
+        have hz'_exists : ∃ z' : ℝ, z = QuotientAddGroup.mk z' ∧ |z'| ≤ 1 / 2 := by
+          obtain ⟨z', hz'⟩ : ∃ z' : ℝ, z = QuotientAddGroup.mk z' ∧ -1 / 2 ≤ z' ∧ z' < 1 / 2 := by
+            obtain ⟨ z', hz' ⟩ := QuotientAddGroup.mk_surjective z;
+            refine' ⟨ z' - ⌊z' + 1 / 2⌋, _, _, _ ⟩ <;> norm_num [ hz'.symm ];
+            · norm_num [ sub_eq_add_neg, QuotientAddGroup.eq ];
+            · exact Int.floor_le _;
+            · linarith [ Int.lt_floor_add_one ( z' + 1 / 2 ) ];
+          exact ⟨ z', hz'.1, abs_le.mpr ⟨ by linarith, by linarith ⟩ ⟩
+        obtain ⟨ z', rfl, hz' ⟩ := hz'_exists; use z'; simp_all +decide [ dist_eq_norm ] ;
+        convert hz.1 using 1;
+        convert T1_norm_mk_of_abs_le z' ( by norm_num at *; linarith ) |> Eq.symm;
+      use z';
+    obtain ⟨ z', rfl, hz' ⟩ := hz'; use z'; simp_all +decide [ dist_eq_norm ] ;
+    have hz'_dist : ‖(QuotientAddGroup.mk (z' - b') : T1)‖ ≤ r := by
+      convert hz.2.1 using 1 ; norm_num [ norm_sub_rev ];
+    rw [ AddCircle.norm_eq ] at hz'_dist;
+    norm_num [ abs_le ] at *;
+    constructor <;> linarith [ show ( round ( z' - b' ) : ℝ ) = 0 by exact_mod_cast Int.le_antisymm ( Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast ; linarith ) ( Int.le_of_lt_add_one <| by rw [ ← @Int.cast_lt ℝ ] ; push_cast ; linarith ) ];
+  have h_dist : dist c (QuotientAddGroup.mk (b' / 2)) ≤ dist c z + dist z (QuotientAddGroup.mk (b' / 2)) := by
+    exact dist_triangle _ _ _;
+  have h_dist_z : dist z (QuotientAddGroup.mk (b' / 2)) ≤ |z' - b' / 2| := by
+    rw [ hz'.1, T1_dist_mk_of_abs_le ];
+    exact abs_le.mpr ⟨ by linarith [ abs_le.mp hz'.2.1, abs_le.mp hz'.2.2 ], by linarith [ abs_le.mp hz'.2.1, abs_le.mp hz'.2.2 ] ⟩;
+  exact le_trans h_dist ( by cases abs_cases ( z' - b' / 2 ) <;> cases abs_cases ( z' - b' ) <;> cases abs_cases z' <;> linarith )
+
 lemma fill_fiber_volume_lt (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4)
     (a b : T1) (hd : dist a b < 2 * r) :
     volume {c : T1 | ∃ z : T1, dist a z ≤ r ∧ dist b z ≤ r ∧ dist c z ≤ r}
     = ENNReal.ofReal (4 * r - dist a b) := by
-  sorry
+  obtain ⟨b', hb'⟩ : ∃ b' : ℝ, |b'| < 2 * r ∧ b = a + QuotientAddGroup.mk b' := by
+    obtain ⟨x, hx⟩ : ∃ x : ℝ, b = a + x ∧ |x| ≤ 1 / 2 := by
+      obtain ⟨x, hx⟩ : ∃ x : ℝ, b = a + x := by
+        obtain ⟨ x, hx ⟩ := QuotientAddGroup.mk_surjective b; obtain ⟨ y, hy ⟩ := QuotientAddGroup.mk_surjective a; use x - y; aesop;
+      refine' ⟨ x - ⌊x + 1 / 2⌋, _, _ ⟩ <;> norm_num [ hx ];
+      · norm_num [ sub_eq_add_neg ];
+      · exact abs_le.mpr ⟨ by linarith [ Int.floor_le ( x + 1 / 2 ) ], by linarith [ Int.lt_floor_add_one ( x + 1 / 2 ) ] ⟩;
+    use x;
+    simp_all +decide [ dist_eq_norm ];
+    convert hd using 1;
+    convert T1_norm_mk_of_abs_le x ( by norm_num at *; linarith ) |> Eq.symm;
+  -- By translation invariance, reduce to a = 0.
+  suffices h_trans : volume {c : T1 | ∃ z : T1, dist 0 z ≤ r ∧ dist (QuotientAddGroup.mk b') z ≤ r ∧ dist c z ≤ r} = ENNReal.ofReal (4 * r - |b'|) by
+    convert h_trans using 1;
+    · rw [ ← MeasureTheory.measure_preimage_add_right ];
+      congr! 1;
+      swap;
+      exact a;
+      ext; simp [hb'];
+      constructor <;> rintro ⟨ z, hz₁, hz₂, hz₃ ⟩;
+      · use z - a;
+        simp_all +decide [ dist_eq_norm, add_sub_assoc ];
+        simp_all +decide [ norm_sub_rev, sub_eq_add_neg, add_assoc ];
+        exact ⟨ by rw [ ← norm_neg ] ; convert hz₁ using 1; abel_nf, by convert hz₂ using 1; abel_nf ⟩;
+      · use z + a;
+        simp_all +decide [ dist_eq_norm, add_comm a ];
+    · simp +decide [ hb'.2, dist_eq_norm ];
+      rw [ T1_norm_mk_of_abs_le ] ; linarith [ abs_lt.mp hb'.1 ];
+  have h_fill_fiber_subset : {c : T1 | ∃ z : T1, dist 0 z ≤ r ∧ dist (QuotientAddGroup.mk b') z ≤ r ∧ dist c z ≤ r} ⊆ Metric.closedBall (QuotientAddGroup.mk (b'/2) : T1) (2*r - |b'|/2) := by
+    cases abs_cases b' <;> simp +decide [ *, neg_div ];
+    · by_cases hb'_eq : b' = 2 * r;
+      · linarith [ abs_lt.mp hb'.1 ];
+      · convert fill_fiber_subset_ball_lt r b' hr0 hr ( by linarith ) ( lt_of_le_of_ne ( by linarith ) hb'_eq ) using 1;
+        simp +decide [ dist_eq_norm ];
+    · have := fill_fiber_subset_ball_lt r ( -b' ) hr0 hr ( by linarith ) ( by linarith );
+      intro c hc; specialize this ( show ∃ z : T1, dist 0 z ≤ r ∧ dist ( QuotientAddGroup.mk ( -b' ) ) z ≤ r ∧ dist ( -c ) z ≤ r from by
+                                      obtain ⟨ z, hz₁, hz₂, hz₃ ⟩ := hc; use -z; simp_all +decide [ dist_neg ] ; ) ; simp_all +decide [ dist_neg ] ;
+      convert this using 1 <;> ring;
+      norm_num [ dist_eq_norm ];
+  have h_ball_subset : Metric.closedBall (QuotientAddGroup.mk (b'/2) : T1) (2*r - |b'|/2) ⊆ {c : T1 | ∃ z : T1, dist 0 z ≤ r ∧ dist (QuotientAddGroup.mk b') z ≤ r ∧ dist c z ≤ r} := by
+    by_cases hb'_nonneg : 0 ≤ b';
+    · convert ball_subset_fill_fiber r b' hr0 hr hb'_nonneg ( by linarith [ abs_of_nonneg hb'_nonneg ] ) using 1;
+      rw [ abs_of_nonneg hb'_nonneg ];
+    · have h_neg : Metric.closedBall (QuotientAddGroup.mk (-b'/2) : T1) (2*r - |b'|/2) ⊆ {c : T1 | ∃ z : T1, dist 0 z ≤ r ∧ dist (QuotientAddGroup.mk (-b')) z ≤ r ∧ dist c z ≤ r} := by
+        convert ball_subset_fill_fiber r ( -b' ) hr0 hr ( by linarith [ abs_of_neg ( not_le.mp hb'_nonneg ) ] ) ( by linarith [ abs_of_neg ( not_le.mp hb'_nonneg ) ] ) using 1;
+        rw [ abs_of_neg ( not_le.mp hb'_nonneg ) ];
+      intro c hc; specialize h_neg ( show -c ∈ Metric.closedBall ( QuotientAddGroup.mk ( -b' / 2 ) : T1 ) ( 2 * r - |b'| / 2 ) from ?_ ) ; simp_all +decide [ neg_div, dist_neg ] ;
+      obtain ⟨ z, hz₁, hz₂, hz₃ ⟩ := h_neg; use -z; simp_all +decide [ dist_neg ] ;
+  rw [ Set.Subset.antisymm h_fill_fiber_subset h_ball_subset ];
+  rw [ AddCircle.volume_closedBall ] ; ring;
+  rw [ min_eq_right ( by linarith [ abs_nonneg b' ] ) ]
+
+/-
+When dist a b > 2r on the circle (r ≤ 1/4), the balls B(a,r) and B(b,r) are disjoint,
+    so no z can be within r of both.
+-/
+lemma fill_fiber_empty (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4)
+    (a b : T1) (hd : dist a b > 2 * r) :
+    {c : T1 | ∃ z : T1, dist a z ≤ r ∧ dist b z ≤ r ∧ dist c z ≤ r} = ∅ := by
+  rw [ Set.eq_empty_iff_forall_notMem ];
+  intro c hc; obtain ⟨ z, hz₁, hz₂, hz₃ ⟩ := hc; linarith [ dist_triangle_right a b z ] ;
+
+/-
+Key real integral: ∫_{-2r}^{2r} (4r - |x|) dx = 12r².
+-/
+lemma integral_4r_minus_abs_wide (r : ℝ) (hr0 : 0 ≤ r) :
+    ∫ x in Set.Icc (-(2*r)) (2*r), (4 * r - |x|) = 12 * r ^ 2 := by
+  rw [ MeasureTheory.integral_sub ] <;> norm_num;
+  · -- Split the integral into two parts: from -2r to 0 and from 0 to 2r.
+    have h_split : ∫ x in Set.Icc (-(2 * r)) (2 * r), |x| = (∫ x in Set.Icc (-(2 * r)) 0, |x|) + (∫ x in Set.Icc 0 (2 * r), |x|) := by
+      norm_num [ MeasureTheory.integral_Icc_eq_integral_Ioc, ← intervalIntegral.integral_of_le, hr0 ];
+      rw [ intervalIntegral.integral_add_adjacent_intervals ] <;> exact Continuous.intervalIntegrable ( by continuity ) _ _;
+    rw [ h_split, MeasureTheory.setIntegral_congr_fun measurableSet_Icc fun x hx => abs_of_nonpos hx.2, MeasureTheory.setIntegral_congr_fun measurableSet_Icc fun x hx => abs_of_nonneg hx.1 ];
+    rw [ MeasureTheory.integral_neg, MeasureTheory.integral_Icc_eq_integral_Ioc, ← intervalIntegral.integral_of_le, MeasureTheory.integral_Icc_eq_integral_Ioc, ← intervalIntegral.integral_of_le ] <;> norm_num <;> ring <;> norm_num [ hr0 ];
+    ring;
+  · fun_prop;
+  · exact Continuous.integrableOn_Icc ( by continuity )
+
+/-
+The set {u : T1 | dist 0 u = 2*r} has measure zero on T1.
+-/
+lemma T1_dist_eq_measure_zero (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) (a : T1) :
+    volume {u : T1 | dist a u = 2 * r} = 0 := by
+  by_contra h_nonzero;
+  -- The set {u : T1 | dist a u = 2 * r} is finite because it is a sphere in a 1-dimensional manifold.
+  have h_finite : Set.Finite {u : T1 | dist a u = 2 * r} := by
+    -- The set {u : T1 | dist a u = 2 * r} is finite because it is a sphere in a 1-dimensional manifold, which has at most 2 points.
+    have h_finite : ∀ u : T1, dist a u = 2 * r → u = a + QuotientAddGroup.mk (2 * r) ∨ u = a - QuotientAddGroup.mk (2 * r) := by
+      intro u hu
+      have h_dist : ∃ x : ℝ, |x| = 2 * r ∧ u = a + QuotientAddGroup.mk x := by
+        obtain ⟨x, hx⟩ : ∃ x : ℝ, u = a + QuotientAddGroup.mk x ∧ |x| ≤ 1 / 2 := by
+          obtain ⟨x, hx⟩ : ∃ x : ℝ, u = a + QuotientAddGroup.mk x := by
+            obtain ⟨ x, hx ⟩ := QuotientAddGroup.mk_surjective ( u - a );
+            exact ⟨ x, by rw [ hx, add_sub_cancel ] ⟩;
+          refine' ⟨ x - ⌊x + 1 / 2⌋, _, _ ⟩ <;> norm_num [ hx ];
+          · norm_num [ sub_eq_add_neg, AddCircle ];
+          · exact abs_le.mpr ⟨ by linarith [ Int.floor_le ( x + 1 / 2 ) ], by linarith [ Int.lt_floor_add_one ( x + 1 / 2 ) ] ⟩;
+        have h_dist : dist a (a + QuotientAddGroup.mk x) = |x| := by
+          convert T1_dist_mk_of_abs_le 0 x _ using 1 <;> norm_num [ hx.2 ];
+        grind;
+      obtain ⟨ x, hx, rfl ⟩ := h_dist; rcases eq_or_eq_neg_of_abs_eq hx with ( rfl | rfl ) <;> norm_num;
+      exact Or.inr ( by abel1 );
+    exact Set.Finite.subset ( Set.toFinite { a + QuotientAddGroup.mk ( 2 * r ), a - QuotientAddGroup.mk ( 2 * r ) } ) h_finite;
+  have h_singleton : ∀ u : T1, volume {u} = 0 := by
+    intro u; exact (by
+    cases subsingleton_or_nontrivial T1 <;> simp_all +decide [ MeasureTheory.MeasureSpace.volume ];
+    simp_all +decide [ SetLike.ext_iff ];
+    rename_i h; specialize h ( 1 / 2 ) ; obtain ⟨ k, hk ⟩ := h; rcases k with ⟨ _ | _ | k ⟩ <;> norm_num at hk <;> linarith;);
+  exact h_nonzero <| by rw [ show { u : T1 | dist a u = 2 * r } = ⋃ u ∈ h_finite.toFinset, { u } by ext; aesop ] ; exact MeasureTheory.measure_biUnion_null_iff ( Finset.countable_toSet _ ) |>.2 fun u hu => h_singleton u;
+
+/-
+The fill fiber integrand equals ofReal(4r - dist) a.e. when restricted to {dist < 2r},
+    and the complement {dist ≥ 2r} has measure zero except for the boundary {dist = 2r}
+    which has measure zero. So the lintegral equals the integral of (4r - |x|) over [-2r, 2r].
+-/
+lemma fillSet_outer_integral (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
+    ∫⁻ (u1 : T1), volume {c : T1 | ∃ z : T1, dist (0 : T1) z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r}
+    = ENNReal.ofReal (12 * r ^ 2) := by
+  have h_step1 : ∫⁻ (u1 : T1), volume {c : T1 | ∃ z : T1, dist 0 z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r} ∂MeasureTheory.volume = ∫⁻ (u1 : T1) in {u1 : T1 | dist 0 u1 < 2 * r}, ENNReal.ofReal (4 * r - dist 0 u1) ∂MeasureTheory.volume := by
+    rw [ ← MeasureTheory.lintegral_indicator ];
+    · refine' MeasureTheory.lintegral_congr_ae _;
+      refine' MeasureTheory.measure_mono_null _ _;
+      exact { u1 : T1 | dist 0 u1 = 2 * r };
+      · intro u hu; contrapose! hu; simp_all +decide [ Set.indicator ] ;
+        split_ifs <;> simp_all +decide [ dist_eq_norm ];
+        · convert fill_fiber_volume_lt r hr0 ( show r ≤ 1 / 4 by norm_num at *; linarith ) 0 u ( by simpa using by linarith ) using 1;
+          · simp +decide [ dist_eq_norm ];
+          · rw [ dist_zero_left ];
+        · rw [ show { c : T1 | ∃ z : T1, ‖z‖ ≤ r ∧ ‖u - z‖ ≤ r ∧ ‖c - z‖ ≤ r } = ∅ from _ ] ; norm_num;
+          exact Set.eq_empty_of_forall_notMem fun c hc => hu <| by obtain ⟨ z, hz₁, hz₂, hz₃ ⟩ := hc; linarith [ norm_sub_norm_le u z ] ;
+      · convert T1_dist_eq_measure_zero r hr0 hr 0 using 1;
+    · exact measurableSet_lt ( continuous_const.dist continuous_id' |> Continuous.measurable ) measurable_const;
+  -- Step 2: Lift to ℝ using `AddCircle.lintegral_preimage` with a = -1/2.
+  have h_step2 : ∫⁻ (u1 : T1) in {u1 : T1 | dist 0 u1 < 2 * r}, ENNReal.ofReal (4 * r - dist 0 u1) ∂MeasureTheory.volume = ∫⁻ (x : ℝ) in Set.Ioo (-2 * r) (2 * r), ENNReal.ofReal (4 * r - |x|) ∂MeasureTheory.volume := by
+    have := @AddCircle.lintegral_preimage;
+    convert ( this 1 ( -1 / 2 ) fun u1 => ENNReal.ofReal ( 4 * r - dist 0 u1 ) * ( if dist 0 u1 < 2 * r then 1 else 0 ) ) |> Eq.symm using 1;
+    · rw [ ← MeasureTheory.lintegral_indicator ] <;> norm_num [ Set.indicator ];
+      exact measurableSet_Iio.mem.comp measurable_norm;
+    · rw [ ← MeasureTheory.lintegral_indicator, ← MeasureTheory.lintegral_indicator ] <;> norm_num [ Set.indicator ];
+      grind +suggestions;
+  convert h_step1.trans h_step2 using 1;
+  rw [ ← MeasureTheory.ofReal_integral_eq_lintegral_ofReal ];
+  · rw [ ← MeasureTheory.integral_Ioc_eq_integral_Ioo, ← intervalIntegral.integral_of_le ( by linarith ), intervalIntegral.integral_sub ] <;> norm_num;
+    · -- Evaluate the integral of $|x|$ over $[-2r, 2r]$.
+      have h_abs : ∫ x in -(2 * r)..2 * r, |x| = (∫ x in -(2 * r)..0, |x|) + (∫ x in (0)..2 * r, |x|) := by
+        rw [ intervalIntegral.integral_add_adjacent_intervals ] <;> exact Continuous.intervalIntegrable ( by continuity ) _ _;
+      rw [ h_abs, intervalIntegral.integral_congr fun x hx => abs_of_nonpos <| by linarith [ Set.mem_Icc.mp <| by simpa [ hr0 ] using hx ], intervalIntegral.integral_congr fun x hx => abs_of_nonneg <| by linarith [ Set.mem_Icc.mp <| by simpa [ hr0 ] using hx ] ] ; norm_num ; ring;
+      rw [ intervalIntegral.integral_neg ] ; norm_num ; ring;
+      rw [ ENNReal.ofReal_mul ( by positivity ), ENNReal.ofReal_ofNat ];
+    · exact Continuous.intervalIntegrable ( continuous_abs ) _ _;
+  · exact Continuous.integrableOn_Icc ( by continuity ) |> fun h => h.mono_set <| Set.Ioo_subset_Icc_self;
+  · filter_upwards [ MeasureTheory.ae_restrict_mem measurableSet_Ioo ] with x hx using sub_nonneg_of_le <| by cases abs_cases x <;> linarith [ hx.1, hx.2 ] ;
 
 lemma volume_fillSet (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
     volume (fillSet r) = ENNReal.ofReal (12 * r ^ 2) := by
-  sorry
+  have h_fubini : volume {u : Fin 3 → AddCircle (1 : ℝ) | ∃ z : AddCircle (1 : ℝ), dist (u 0) z ≤ r ∧ dist (u 1) z ≤ r ∧ dist (u 2) z ≤ r} = ∫⁻ (u : AddCircle (1 : ℝ)), ∫⁻ (v : AddCircle (1 : ℝ)), ∫⁻ (w : AddCircle (1 : ℝ)), if ∃ z : AddCircle (1 : ℝ), dist u z ≤ r ∧ dist v z ≤ r ∧ dist w z ≤ r then 1 else 0 := by
+    have h_fubini : ∀ {f : (Fin 3 → AddCircle (1 : ℝ)) → ENNReal}, Measurable f → (∫⁻ u : Fin 3 → AddCircle (1 : ℝ), f u) = ∫⁻ u : AddCircle (1 : ℝ), ∫⁻ v : AddCircle (1 : ℝ), ∫⁻ w : AddCircle (1 : ℝ), f (fun i => if i = 0 then u else if i = 1 then v else w) := by
+      intro f hf;
+      have h_fubini : ∫⁻ (u : Fin 3 → AddCircle (1 : ℝ)), f u = ∫⁻ (u : AddCircle (1 : ℝ) × AddCircle (1 : ℝ) × AddCircle (1 : ℝ)), f (fun i => if i = 0 then u.1 else if i = 1 then u.2.1 else u.2.2) := by
+        have h_fubini : MeasureTheory.MeasureSpace.volume = MeasureTheory.Measure.map (fun u : AddCircle (1 : ℝ) × AddCircle (1 : ℝ) × AddCircle (1 : ℝ) => fun i : Fin 3 => if i = 0 then u.1 else if i = 1 then u.2.1 else u.2.2) (MeasureTheory.MeasureSpace.volume.prod (MeasureTheory.MeasureSpace.volume.prod MeasureTheory.MeasureSpace.volume)) := by
+          refine' MeasureTheory.Measure.pi_eq _;
+          intro s hs; erw [ MeasureTheory.Measure.map_apply ];
+          · simp +decide [ Fin.prod_univ_three, Set.preimage ];
+            simp +decide [ Fin.forall_fin_succ, Set.setOf_and ];
+            erw [ show { a : AddCircle 1 × AddCircle 1 × AddCircle 1 | a.1 ∈ s 0 } ∩ ( { a : AddCircle 1 × AddCircle 1 × AddCircle 1 | a.2.1 ∈ s 1 } ∩ { a : AddCircle 1 × AddCircle 1 × AddCircle 1 | a.2.2 ∈ s 2 } ) = ( s 0 ×ˢ s 1 ×ˢ s 2 ) by ext ; aesop ] ; simp +decide [ mul_assoc ];
+          · exact measurable_pi_lambda _ fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd ] ;
+          · exact MeasurableSet.univ_pi hs;
+        rw [ h_fubini, MeasureTheory.lintegral_map ];
+        · rfl;
+        · exact hf;
+        · exact measurable_pi_lambda _ fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd ] ;
+      erw [ h_fubini, MeasureTheory.lintegral_prod ];
+      · congr! 2;
+        erw [ MeasureTheory.lintegral_prod ];
+        exact hf.comp ( measurable_pi_lambda _ fun i => by fin_cases i <;> measurability ) |> Measurable.aemeasurable;
+      · exact hf.aemeasurable.comp_aemeasurable ( by exact Measurable.aemeasurable ( by exact measurable_pi_lambda _ fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd ] ) );
+    convert @h_fubini ( fun u => if ∃ z : AddCircle ( 1 : ℝ ), dist ( u 0 ) z ≤ r ∧ dist ( u 1 ) z ≤ r ∧ dist ( u 2 ) z ≤ r then 1 else 0 ) _ using 1;
+    · erw [ MeasureTheory.lintegral_indicator ];
+      · aesop;
+      · -- The set of points $z$ such that $dist(u_0, z) \leq r$, $dist(u_1, z) \leq r$, and $dist(u_2, z) \leq r$ is closed.
+        have h_closed : IsClosed {u : Fin 3 → AddCircle (1 : ℝ) | ∃ z : AddCircle (1 : ℝ), dist (u 0) z ≤ r ∧ dist (u 1) z ≤ r ∧ dist (u 2) z ≤ r} := by
+          have h_closed : IsClosed {p : (Fin 3 → AddCircle (1 : ℝ)) × AddCircle (1 : ℝ) | dist (p.1 0) p.2 ≤ r ∧ dist (p.1 1) p.2 ≤ r ∧ dist (p.1 2) p.2 ≤ r} := by
+            exact IsClosed.inter ( isClosed_le ( Continuous.dist ( continuous_apply 0 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) ( IsClosed.inter ( isClosed_le ( Continuous.dist ( continuous_apply 1 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) ( isClosed_le ( Continuous.dist ( continuous_apply 2 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) );
+          have h_closed : IsClosed (Set.image (fun p : (Fin 3 → AddCircle (1 : ℝ)) × AddCircle (1 : ℝ) => p.1) {p : (Fin 3 → AddCircle (1 : ℝ)) × AddCircle (1 : ℝ) | dist (p.1 0) p.2 ≤ r ∧ dist (p.1 1) p.2 ≤ r ∧ dist (p.1 2) p.2 ≤ r}) := by
+            apply_rules [ IsCompact.isClosed, IsCompact.image ];
+            · have h_compact : IsCompact (Set.univ : Set (Fin 3 → AddCircle (1 : ℝ))) := by
+                exact isCompact_univ;
+              exact h_compact.prod ( isCompact_univ ) |> fun h => h.of_isClosed_subset h_closed fun p hp => by simp;
+            · exact continuous_fst;
+          convert h_closed using 1;
+          ext; simp [Set.mem_image];
+        exact h_closed.measurableSet;
+    · refine' Measurable.ite _ measurable_const measurable_const;
+      refine' IsClosed.measurableSet _;
+      have h_closed : IsClosed {p : (Fin 3 → AddCircle (1 : ℝ)) × AddCircle (1 : ℝ) | dist (p.1 0) p.2 ≤ r ∧ dist (p.1 1) p.2 ≤ r ∧ dist (p.1 2) p.2 ≤ r} := by
+        exact IsClosed.inter ( isClosed_le ( Continuous.dist ( continuous_apply 0 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) ( IsClosed.inter ( isClosed_le ( Continuous.dist ( continuous_apply 1 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) ( isClosed_le ( Continuous.dist ( continuous_apply 2 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) );
+      have h_closed : IsClosed (Set.image (fun p : (Fin 3 → AddCircle (1 : ℝ)) × AddCircle (1 : ℝ) => p.1) {p : (Fin 3 → AddCircle (1 : ℝ)) × AddCircle (1 : ℝ) | dist (p.1 0) p.2 ≤ r ∧ dist (p.1 1) p.2 ≤ r ∧ dist (p.1 2) p.2 ≤ r}) := by
+        apply_rules [ IsCompact.isClosed, IsCompact.image ];
+        · have h_compact : IsCompact (Set.univ : Set (Fin 3 → AddCircle (1 : ℝ))) := by
+            exact isCompact_univ;
+          exact h_compact.prod ( isCompact_univ ) |> fun h => h.of_isClosed_subset h_closed fun p hp => by simp;
+        · exact continuous_fst;
+      convert h_closed using 1;
+      ext; simp [Set.mem_image];
+  have h_fubini : ∀ (u v : AddCircle (1 : ℝ)), ∫⁻ (w : AddCircle (1 : ℝ)), (if ∃ z : AddCircle (1 : ℝ), dist u z ≤ r ∧ dist v z ≤ r ∧ dist w z ≤ r then 1 else 0) = volume {w : AddCircle (1 : ℝ) | ∃ z : AddCircle (1 : ℝ), dist u z ≤ r ∧ dist v z ≤ r ∧ dist w z ≤ r} := by
+    intro u v; erw [ MeasureTheory.lintegral_indicator ] ; aesop;
+    -- The set {w | ∃ z, dist u z ≤ r ∧ dist v z ≤ r ∧ dist w z ≤ r} is closed, hence measurable.
+    have h_closed : IsClosed {w : AddCircle (1 : ℝ) | ∃ z : AddCircle (1 : ℝ), dist u z ≤ r ∧ dist v z ≤ r ∧ dist w z ≤ r} := by
+      have h_closed : IsClosed {p : AddCircle (1 : ℝ) × AddCircle (1 : ℝ) | dist u p.1 ≤ r ∧ dist v p.1 ≤ r ∧ dist p.2 p.1 ≤ r} := by
+        exact IsClosed.inter ( isClosed_le ( continuous_const.dist continuous_fst ) continuous_const ) ( IsClosed.inter ( isClosed_le ( continuous_const.dist continuous_fst ) continuous_const ) ( isClosed_le ( continuous_snd.dist continuous_fst ) continuous_const ) );
+      have h_closed : IsClosed (Set.image (fun p : AddCircle (1 : ℝ) × AddCircle (1 : ℝ) => p.2) {p : AddCircle (1 : ℝ) × AddCircle (1 : ℝ) | dist u p.1 ≤ r ∧ dist v p.1 ≤ r ∧ dist p.2 p.1 ≤ r}) := by
+        apply_rules [ IsCompact.isClosed, IsCompact.image ];
+        · exact IsClosed.isCompact h_closed;
+        · exact continuous_snd;
+      convert h_closed using 1 ; ext ; aesop;
+    exact h_closed.measurableSet;
+  have h_fubini : ∀ (u : AddCircle (1 : ℝ)), ∫⁻ (v : AddCircle (1 : ℝ)), volume {w : AddCircle (1 : ℝ) | ∃ z : AddCircle (1 : ℝ), dist u z ≤ r ∧ dist v z ≤ r ∧ dist w z ≤ r} = ∫⁻ (v : AddCircle (1 : ℝ)), volume {w : AddCircle (1 : ℝ) | ∃ z : AddCircle (1 : ℝ), dist 0 z ≤ r ∧ dist v z ≤ r ∧ dist w z ≤ r} := by
+    intro u
+    have h_translation_invariance : ∀ (v : AddCircle (1 : ℝ)), volume {w : AddCircle (1 : ℝ) | ∃ z : AddCircle (1 : ℝ), dist u z ≤ r ∧ dist v z ≤ r ∧ dist w z ≤ r} = volume {w : AddCircle (1 : ℝ) | ∃ z : AddCircle (1 : ℝ), dist 0 z ≤ r ∧ dist (v - u) z ≤ r ∧ dist w z ≤ r} := by
+      intro v
+      have h_translation_invariance : ∀ (w : AddCircle (1 : ℝ)), (∃ z : AddCircle (1 : ℝ), dist u z ≤ r ∧ dist v z ≤ r ∧ dist w z ≤ r) ↔ (∃ z : AddCircle (1 : ℝ), dist 0 z ≤ r ∧ dist (v - u) z ≤ r ∧ dist (w - u) z ≤ r) := by
+        intro w
+        constructor
+        intro h
+        obtain ⟨z, hz⟩ := h
+        use z - u
+        simp [hz];
+        rintro ⟨ z, hz₁, hz₂, hz₃ ⟩ ; use z + u; simp_all +decide [ dist_eq_norm ] ;
+        exact ⟨ by convert hz₂ using 1; abel_nf, by convert hz₃ using 1; abel_nf ⟩;
+      rw [ show { w : AddCircle 1 | ∃ z : AddCircle 1, dist u z ≤ r ∧ dist v z ≤ r ∧ dist w z ≤ r } = ( fun w => w - u ) ⁻¹' { w : AddCircle 1 | ∃ z : AddCircle 1, dist 0 z ≤ r ∧ dist ( v - u ) z ≤ r ∧ dist w z ≤ r } by ext; aesop ];
+      have h_translation_invariance : ∀ (S : Set (AddCircle (1 : ℝ))), volume (S.preimage (fun w => w - u)) = volume S := by
+        simp +decide [ sub_eq_add_neg ];
+      exact h_translation_invariance _;
+    simp +decide only [h_translation_invariance];
+    rw [ eq_comm, ← MeasureTheory.lintegral_sub_right_eq_self ];
+  have h_fubini : ∫⁻ (v : AddCircle (1 : ℝ)), volume {w : AddCircle (1 : ℝ) | ∃ z : AddCircle (1 : ℝ), dist 0 z ≤ r ∧ dist v z ≤ r ∧ dist w z ≤ r} = ENNReal.ofReal (12 * r ^ 2) := by
+    convert fillSet_outer_integral r hr0 hr using 1;
+  unfold fillSet; aesop;
 
 /-! ## Coordinate factorisation -/
 
