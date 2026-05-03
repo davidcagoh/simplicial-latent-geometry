@@ -1760,7 +1760,57 @@ theorem geometricCov_decay_rate_le (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 
   linarith [pow_pos hp0 3]
 
 -- ────────────────────────────────────────────────────────────────────────────
--- end OQ-16 / Track A stubs
+-- OQ-16 / Track B stubs — sparse regime lower bound
+-- ────────────────────────────────────────────────────────────────────────────
+
+/-- **Track B, Lemma 1 (geomCov lower bound).**
+    In the deep regime r ≤ 1/4, geometricCov is bounded below by the leading
+    gamma term minus the (small) correction 3p³.
+
+    Formally: geomCov(p,d) ≥ (1−q)·γ^d − 3p³
+
+    where γ^d = (3·r²)^d, q = fillingProb p d, r = matchRadius p d.
+
+    PROVIDED SOLUTION
+    Step 1: Apply `geometricCov_eq_deep`: geomCov = (1−q)·γ^d + 3p³·((7r/2)^d − 1).
+    Step 2: Since r ≤ 1/4, we have 7r/2 ≤ 7/8 < 1. By `pow_le_one` (all d ≥ 1,
+      base in [0,1]), (7r/2)^d ≤ 1^d = 1. So (7r/2)^d − 1 ≤ 0.
+    Step 3: Since p > 0, we have 3p³ > 0 (use `pow_pos`). Therefore
+      3p³ · ((7r/2)^d − 1) ≥ 3p³ · (0 − 1) = −3p³.
+    Step 4: Conclude geomCov ≥ (1−q)·γ^d − 3p³ by `linarith`. -/
+lemma geometricCov_lower_bound (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (1 - fillingProb p d) * (3 * matchRadius p d ^ 2) ^ d - 3 * p ^ 3
+      ≤ geometricCov p d := by
+  sorry
+
+/-- **Track B, Lemma 2 (geomCov lower bound, explicit p form).**
+    In the deep regime r ≤ 1/4, and using the matchRadius identity (2r)^d = p,
+    the leading term satisfies (3·r²)^d = (3/4)^d · p^2.
+
+    Therefore: geomCov(p,d) ≥ (1−q) · (3/4)^d · p^2 − 3p³.
+
+    This is the form used in Corollary~\ref{cor:sparse}: taking sequences (p_n, d_n)
+    with n^{3/2} · (3/4)^{d_n} · p_n^2 → ∞ yields n^{3/2} · geomCov → ∞.
+
+    PROVIDED SOLUTION
+    Step 1: Apply `geometricCov_lower_bound` to get
+      geomCov ≥ (1−q) · (3·r²)^d − 3p³.
+    Step 2: Show (3·r²)^d = (3/4)^d · p^2 using the matchRadius identity (2r)^d = p.
+      Calculation: (3·r²)^d = 3^d · r^(2d) = 3^d · (r^d)^2.
+      From (2r)^d = p: 2^d · r^d = p, so r^d = p / 2^d.
+      Hence r^(2d) = (r^d)^2 = p^2 / 4^d (by `pow_mul`, `sq`).
+      So (3·r²)^d = 3^d · p^2 / 4^d = (3/4)^d · p^2 (by `div_pow`, `mul_div_assoc`).
+    Step 3: Use `fillingProb_nonneg` and `fillingProb_le_one` to bound (1−q) ∈ [0,1].
+    Step 4: Combine with Step 1 to get geomCov ≥ (1−q) · (3/4)^d · p^2 − 3p³. -/
+lemma geometricCov_lower_bound_explicit (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (1 - fillingProb p d) * (3/4 : ℝ) ^ d * p ^ 2 - 3 * p ^ 3
+      ≤ geometricCov p d := by
+  sorry
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- end OQ-16 / Track A+B stubs
 -- ────────────────────────────────────────────────────────────────────────────
 
 /-- **Lemma A (Variance of doubly-signed stat under 2PC).**

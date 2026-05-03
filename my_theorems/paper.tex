@@ -1019,6 +1019,67 @@ The following results carry complete, sorry-free Lean~4 proofs.
   \leanverified{disjoint\_triangles\_indepFun}
 \end{itemize}
 
+\smallskip\noindent\textit{OQ-16 Track A — geometric covariance expansion (Aristotle jobs
+\texttt{43761387}, \texttt{b28b078b}, \texttt{0bc2c753}, \texttt{9d63166a}, \texttt{c00e2fe7},
+April--May~2026).}
+These results close the open question on the quantitative decay of $\geomCov$ and supply
+the exact formula~\eqref{eq:geomcov-deep} used in the sparse-regime corollary
+(Corollary~\ref{cor:sparse}).
+
+\begin{itemize}[leftmargin=*, itemsep=4pt]
+\item \lean{fillingProb\_eq\_low\_r}: $\fillingP(p,d) = (12r^2)^d$ for $r \leq 1/4$,
+  i.e.\ $\PP[\text{three arcs of radius }r\text{ on }\TT^1\text{ share a point}]^d$
+  equals the coordinate-product formula. Aristotle job \texttt{43761387}.
+
+\item \lean{gamma\_pow\_eq}: $\gamma(r)^d = (3r^2)^d$, the $d$-fold product formula for the
+  Čech filling probability $\gamma(r) = \PP[\text{three balls of radius }r\text{ have
+  nonempty intersection on }\TT^1]$. Aristotle job \texttt{43761387}.
+
+\item \lean{mu\_e\_pow\_eq}: $\mu_e(r)^d = (7r/2)^d$, the edge-pair integral
+  $\int \mathbf{1}[B(x,r)\cap B(y,r)\neq\emptyset]\,\mathrm{d}x\,\mathrm{d}y$
+  factorized per coordinate. Aristotle job \texttt{43761387}.
+
+\item \lean{wedge\_implies\_fill}: For any three points $x_1, x_2, x_3$ on $\TT^d$,
+  if $A_{12} = 1$ and $A_{13} = 1$ (two edges share vertex $x_1$), then $F_{123} = 1$
+  (the triangle is filled). This is the 1D Helly argument: $x_1$ witnesses the triple
+  intersection per coordinate. Aristotle job \texttt{43761387}.
+
+\item \lean{volume\_closedBall\_inter\_T1}, \lean{volume\_triangleSet},
+  \lean{volume\_edgeFillSet}: measure computations for intersections of closed balls on
+  $\TT^1$ used to establish the primitive integrals above. \lean{volume\_fillSet} adds the
+  full fill-region volume $= 12r^2$ via Fubini with measure-zero boundary handling.
+  Aristotle jobs \texttt{b28b078b} and \texttt{0bc2c753}; all in
+  \texttt{TorusIntegrals.lean} (1063~lines, sorry-free).
+
+\item \lean{centered\_edge\_moment}: The centered three-edge moment
+  $\int (A_{12}-p)(A_{13}-p)(A_{23}-p)\,\mathrm{d}\mu = \gamma^d - p^3$, proved by
+  multilinear expansion and symmetry reduction via measure-preserving $\mathrm{Fin}\,3$
+  permutations. Aristotle job \texttt{c00e2fe7}.
+
+\item \lean{centered\_edge\_moment\_fill}: The fill-weighted version
+  $\int (A_{12}-p)(A_{13}-p)(A_{23}-p)\cdot F\,\mathrm{d}\mu
+  = \gamma^d - 3p^3 + 3p^2\mu_e^d - p^3 q$,
+  derived via \lean{wedge\_implies\_fill} + linearity of integration.
+  Aristotle job \texttt{c00e2fe7}.
+  Seven helper lemmas support the assembly: \lean{edge\_integral\_02},
+  \lean{edge\_integral\_12}, \lean{wedge\_integral\_1center},
+  \lean{wedge\_integral\_2center}, \lean{mu\_e\_pow\_eq\_02}, \lean{mu\_e\_pow\_eq\_12},
+  \lean{integrand\_fill\_rewrite}.
+
+\item \lean{geometricCov\_eq\_deep}: The exact collapse formula
+  \[
+    \geomCov(p,d) = (1-q)\,\gamma(r)^d + 3p^3\bigl[(7r/2)^d - 1\bigr],
+    \quad r \leq 1/4,
+  \]
+  proved by assembling all eight monomials from the binomial expansion of
+  $\prod_{(ij)}(A_{ij}-p)\cdot(F-q)$ and applying the wedge, edge, and fill moment
+  results above. This is the primary quantitative result of Track~A.
+  Aristotle job \texttt{9d63166a}.
+
+\item \lean{geometricCov\_decay\_rate\_le}: An upper bound on $\geomCov(p,d)$ in the
+  deep regime. Aristotle job \texttt{9d63166a}.
+\end{itemize}
+
 \begin{remark}
 The results \lean{matchRadius\_spec} and \lean{matchRadius\_tendsto\_half} (job
 \texttt{069b1a71}) use \texttt{Real.rpow\_mul} and \texttt{Filter.Tendsto.rpow} from
