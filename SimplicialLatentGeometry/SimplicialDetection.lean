@@ -945,6 +945,216 @@ theorem geometricCov_eq_deep (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd
   sorry
 -/
 
+/-! ### Symmetric integral helpers -/
+
+open Classical MeasureTheory in
+/-- Integral of A₁₃ (edge indicator for vertices 0,2) equals p. By symmetry with edge_integral. -/
+lemma edge_integral_02 (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      (if dist (pts 0) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = p := by
+      -- The swap is measure-preserving, so the integral of the composition is equal to the integral of the original function.
+      have h_swap : MeasureTheory.MeasurePreserving (fun (pts : Fin 3 → Torus d) => fun i => pts (Equiv.swap 1 2 i)) (MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d)))) (MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d)))) := by
+        refine' ⟨ _, _ ⟩;
+        · fun_prop;
+        · refine' ( MeasureTheory.Measure.pi_eq _ ).symm;
+          intro s hs; erw [ MeasureTheory.Measure.map_apply ] ; simp +decide [ *, Fin.prod_univ_three ] ;
+          · rw [ show ( fun pts i => pts ( Equiv.swap 1 2 i ) ) ⁻¹' Set.univ.pi s = Set.pi Set.univ ( fun i => s ( Equiv.swap 1 2 i ) ) from ?_ ];
+            · erw [ MeasureTheory.Measure.pi_pi ] ; simp +decide [ Fin.prod_univ_three ] ; ring!;
+            · grind;
+          · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+          · exact MeasurableSet.univ_pi hs;
+      convert edge_integral p d hp0 hp1 hd hr using 1;
+      rw [ ← h_swap.integral_comp ];
+      · rfl;
+      · constructor;
+        · exact fun x y hxy => funext fun i => by simpa using congr_fun hxy ( Equiv.swap 1 2 i ) ;
+        · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+        · intro s hs; rw [ Set.image_eq_preimage_of_inverse ];
+          rotate_right;
+          use fun pts i => pts ( Equiv.swap 1 2 i );
+          · exact hs.preimage ( measurable_pi_lambda _ fun _ => measurable_pi_apply _ );
+          · exact fun x => by ext i; fin_cases i <;> rfl;
+          · exact fun x => by ext i; fin_cases i <;> rfl;
+
+open Classical MeasureTheory in
+/-- Integral of A₂₃ (edge indicator for vertices 1,2) equals p. By symmetry with edge_integral. -/
+lemma edge_integral_12 (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = p := by
+      convert edge_integral_02 p d hp0 hp1 hd hr using 1;
+      -- Apply the measure-preserving permutation to the integral.
+      have h_perm : MeasureTheory.MeasurePreserving (fun pts : Fin 3 → Torus d => fun i => pts (Equiv.swap 0 1 i)) (Measure.pi (fun _ => volume)) (Measure.pi (fun _ => volume)) := by
+        refine' ⟨ _, _ ⟩;
+        · fun_prop;
+        · refine' ( MeasureTheory.Measure.pi_eq _ ).symm;
+          intro s hs; erw [ MeasureTheory.Measure.map_apply ] ; simp +decide [ Fin.prod_univ_three ] ;
+          · rw [ show ( fun pts : Fin 3 → Torus d => fun i => pts ( Equiv.swap 0 1 i ) ) ⁻¹' Set.univ.pi s = Set.pi Set.univ ( fun i => s ( Equiv.swap 0 1 i ) ) from ?_ ];
+            · erw [ MeasureTheory.Measure.pi_pi ] ; simp +decide [ Fin.prod_univ_three ] ; ring!;
+            · grind +qlia;
+          · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+          · exact MeasurableSet.univ_pi hs;
+      rw [ ← h_perm.integral_comp ];
+      · rfl;
+      · refine' ⟨ _, _, _ ⟩;
+        · exact fun x y hxy => funext fun i => by simpa using congr_fun hxy ( Equiv.swap 0 1 i ) ;
+        · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+        · intro s hs; rw [ Set.image_eq_preimage_of_inverse ];
+          rotate_right;
+          use fun pts i => pts ( Equiv.swap 0 1 i );
+          · exact h_perm.measurable hs;
+          · exact fun x => by ext i; fin_cases i <;> rfl;
+          · exact fun x => by ext i; fin_cases i <;> rfl;
+
+open Classical MeasureTheory in
+/-- Wedge integral for edges (0,1) and (1,2), sharing vertex 1, equals p². -/
+lemma wedge_integral_1center (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      (if dist (pts 0) (pts 1) ≤ matchRadius p d then (1:ℝ) else 0) *
+      (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = p ^ 2 := by
+      have := @wedge_integral;
+      convert this p d hp0 hp1 hd hr using 1;
+      -- The permutation that swaps 0 and 1 and leaves 2 fixed is measure-preserving.
+      have h_perm : MeasureTheory.MeasurePreserving (fun pts : Fin 3 → Torus d => fun i => pts (Equiv.swap 0 1 i)) (Measure.pi (fun _ : Fin 3 => volume)) (Measure.pi (fun _ : Fin 3 => volume)) := by
+        refine' ⟨ _, _ ⟩;
+        · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+        · refine' ( MeasureTheory.Measure.pi_eq _ ).symm;
+          intro s hs; erw [ MeasureTheory.Measure.map_apply ] ; simp +decide [ Fin.prod_univ_three, hs ] ;
+          · simp +decide [ Set.preimage, Fin.forall_fin_succ ];
+            erw [ show { x : Fin 3 → Torus d | x 1 ∈ s 0 ∧ x 0 ∈ s 1 ∧ x 2 ∈ s 2 } = ( Set.pi Set.univ fun i => if i = 0 then s 1 else if i = 1 then s 0 else s 2 ) by ext; simp +decide [ Fin.forall_fin_succ ] ; tauto ] ; erw [ MeasureTheory.Measure.pi_pi ] ; simp +decide [ Fin.prod_univ_three ] ; ring;
+          · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+          · exact MeasurableSet.univ_pi hs;
+      rw [ ← h_perm.integral_comp ];
+      · simp +decide [ dist_comm ];
+        rfl;
+      · constructor;
+        · exact fun x y hxy => funext fun i => by simpa using congr_fun hxy ( Equiv.swap 0 1 i ) ;
+        · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+        · intro s hs; rw [ Set.image_eq_preimage_of_inverse ];
+          rotate_right;
+          use fun pts i => pts ( Equiv.swap 0 1 i );
+          · exact h_perm.measurable hs;
+          · exact fun x => by ext i; fin_cases i <;> rfl;
+          · exact fun x => by ext i; fin_cases i <;> rfl;
+
+open Classical MeasureTheory in
+/-- Wedge integral for edges (0,2) and (1,2), sharing vertex 2, equals p². -/
+lemma wedge_integral_2center (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      (if dist (pts 0) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) *
+      (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = p ^ 2 := by
+      -- The integral is invariant under permutation of the variables, so we canswap the variables.
+      have h_perm : ∀ (f : (Fin 3 → Torus d) → ℝ), (∫ pts : Fin 3 → Torus d, f pts ∂(Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d)))) = ∫ pts : Fin 3 → Torus d, f (pts ∘ (Equiv.swap 1 2)) ∂(Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d)))) ) := by
+        intro f
+        have h_measure_preserving : MeasureTheory.MeasurePreserving (fun pts : Fin 3 → Torus d => pts ∘ (Equiv.swap 1 2)) (Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d)))) (Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d)))) := by
+          refine' ⟨ _, _ ⟩;
+          · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+          · refine' ( MeasureTheory.Measure.pi_eq _ ).symm;
+            intro s hs; erw [ MeasureTheory.Measure.map_apply ] ; simp +decide [ hs, Fin.prod_univ_three ] ;
+            · rw [ show ( fun pts : Fin 3 → Torus d => pts ∘ ⇑ ( Equiv.swap 1 2 ) ) ⁻¹' Set.univ.pi s = Set.pi Set.univ ( fun i => s ( Equiv.swap 1 2 i ) ) from ?_ ];
+              · erw [ MeasureTheory.Measure.pi_pi ] ; simp +decide [ Fin.prod_univ_three ] ; ring!;
+              · ext; simp +decide [ Set.mem_univ_pi ] ;
+                exact ⟨ fun h i => by simpa using h ( Equiv.swap 1 2 i ), fun h i => by simpa using h ( Equiv.swap 1 2 i ) ⟩;
+            · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+            · exact MeasurableSet.univ_pi hs;
+        rw [ ← h_measure_preserving.integral_comp ];
+        constructor;
+        · exact fun x y hxy => funext fun i => by simpa using congr_fun hxy ( Equiv.swap 1 2 i ) ;
+        · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+        · intro s hs; rw [ Set.image_eq_preimage_of_inverse ];
+          rotate_right;
+          use fun pts => pts ∘ ( Equiv.swap 1 2 );
+          · exact h_measure_preserving.measurable hs;
+          · exact fun x => by ext i; fin_cases i <;> rfl;
+          · exact fun x => by ext i; fin_cases i <;> rfl;
+      convert h_perm _ using 3 ; norm_num [ Equiv.swap_apply_def ];
+      convert wedge_integral_1center p d hp0 hp1 hd hr |> Eq.symm using 3 ; norm_num [ dist_comm ];
+      simp +decide [ dist_comm ]
+
+open Classical MeasureTheory in
+/-- Edge-fill integral for edge (0,2): ∫ A₁₃·F = (7r²)^d. By symmetry with mu_e_pow_eq. -/
+lemma mu_e_pow_eq_02 (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      (if dist (pts 0) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) *
+      (if ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
+                          dist (pts 1) z ≤ matchRadius p d ∧
+                          dist (pts 2) z ≤ matchRadius p d
+       then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = (7 * (matchRadius p d) ^ 2) ^ d := by
+      convert mu_e_pow_eq p d hp0 hp1 hd hr using 1;
+      -- The permutation is measure-preserving, so the integrals are equal.
+      have h_measure_preserving : MeasureTheory.MeasurePreserving (fun pts : Fin 3 → Torus d => ![pts 0, pts 2, pts 1]) (Measure.pi fun _ => volume) (Measure.pi fun _ => volume) := by
+        refine' ⟨ _, _ ⟩;
+        · exact measurable_pi_iff.mpr fun i => by fin_cases i <;> [ exact measurable_pi_apply 0; exact measurable_pi_apply 2; exact measurable_pi_apply 1 ] ;
+        · refine' ( MeasureTheory.Measure.pi_eq _ ).symm;
+          intro s hs; erw [ MeasureTheory.Measure.map_apply ];
+          · simp +decide [ Set.preimage, Fin.prod_univ_three ];
+            simp +decide [ Fin.forall_fin_succ, Set.setOf_and ];
+            erw [ show { a : Fin 3 → Torus d | a 0 ∈ s 0 } ∩ ( { a : Fin 3 → Torus d | a 2 ∈ s 1 } ∩ { a : Fin 3 → Torus d | a 1 ∈ s 2 } ) = ( Set.pi Set.univ fun i => if i = 0 then s 0 else if i = 1 then s 2 else s 1 ) by ext; simp +decide [ Fin.forall_fin_succ ] ; tauto ] ; erw [ MeasureTheory.Measure.pi_pi ] ; simp +decide [ Fin.prod_univ_three ] ; ring!;
+          · exact measurable_pi_iff.mpr fun i => by fin_cases i <;> [ exact measurable_pi_apply 0; exact measurable_pi_apply 2; exact measurable_pi_apply 1 ] ;
+          · exact MeasurableSet.univ_pi hs;
+      rw [ ← h_measure_preserving.integral_comp ];
+      · simp +decide [ dist_comm ];
+        simp +decide only [and_comm];
+      · constructor;
+        · exact fun x y h => by ext i; fin_cases i <;> have := congr_fun h 0 <;> have := congr_fun h 1 <;> have := congr_fun h 2 <;> aesop;
+        · exact measurable_pi_iff.mpr fun i => by fin_cases i <;> [ exact measurable_pi_apply 0; exact measurable_pi_apply 2; exact measurable_pi_apply 1 ] ;
+        · intro s hs; rw [ Set.image_eq_preimage_of_inverse ];
+          rotate_right;
+          use fun pts => ![pts 0, pts 2, pts 1];
+          · exact h_measure_preserving.measurable hs;
+          · exact fun x => by ext i; fin_cases i <;> rfl;
+          · intro pts; ext i; fin_cases i <;> rfl;
+
+open Classical MeasureTheory in
+/-- Edge-fill integral for edge (1,2): ∫ A₂₃·F = (7r²)^d. By symmetry with mu_e_pow_eq. -/
+lemma mu_e_pow_eq_12 (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) *
+      (if ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
+                          dist (pts 1) z ≤ matchRadius p d ∧
+                          dist (pts 2) z ≤ matchRadius p d
+       then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = (7 * (matchRadius p d) ^ 2) ^ d := by
+      convert mu_e_pow_eq_02 p d hp0 hp1 hd hr using 1;
+      -- By symmetry of the measure, we can swap the indices 0 and 1.
+      have h_symm : MeasureTheory.MeasurePreserving (fun pts : Fin 3 → Torus d => fun i => pts (Equiv.swap 0 1 i)) (MeasureTheory.Measure.pi fun _ => MeasureTheory.volume) (MeasureTheory.Measure.pi fun _ => MeasureTheory.volume) := by
+        refine' ⟨ _, _ ⟩;
+        · fun_prop;
+        · refine' ( MeasureTheory.Measure.pi_eq _ ).symm;
+          intro s hs; erw [ MeasureTheory.Measure.map_apply ] ; simp +decide [ Fin.prod_univ_three ] ;
+          · rw [ show ( fun pts : Fin 3 → Torus d => fun i => pts ( Equiv.swap 0 1 i ) ) ⁻¹' Set.univ.pi s = Set.pi Set.univ ( fun i => s ( Equiv.swap 0 1 i ) ) from ?_ ];
+            · erw [ MeasureTheory.Measure.pi_pi ] ; simp +decide [ Fin.prod_univ_three ] ; ring!;
+            · grind;
+          · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+          · exact MeasurableSet.univ_pi hs;
+      rw [ ← h_symm.integral_comp ] ; norm_num [ Equiv.swap_apply_def ] ; ring;
+      · simp +decide [ and_comm, and_left_comm, and_assoc ];
+      · constructor;
+        · exact fun x y hxy => funext fun i => by simpa using congr_fun hxy ( Equiv.swap 0 1 i ) ;
+        · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+        · intro s hs; rw [ Set.image_eq_preimage_of_inverse ];
+          rotate_right;
+          use fun pts i => pts ( Equiv.swap 0 1 i );
+          · exact h_symm.measurable hs;
+          · exact fun x => by ext i; fin_cases i <;> rfl;
+          · exact fun x => by ext i; fin_cases i <;> rfl;
+
 open Classical MeasureTheory in
 /-- The centered third moment of edge indicators: ∫ (A₁₂-p)(A₁₃-p)(A₂₃-p) = γ - p³.
     Expands the product and uses gamma_pow_eq, wedge_integral, edge_integral. -/
@@ -956,12 +1166,198 @@ lemma centered_edge_moment (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd :
       ((if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) - p)
       ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
     = (3 * (matchRadius p d) ^ 2) ^ d - p ^ 3 := by
-  sorry
+  -- Expand the integrand using the binomial theorem.
+  have h_expand : ∀ pts : Fin 3 → Torus d, ((if dist (pts 0) (pts 1) ≤ matchRadius p d then (1 : ℝ) else 0) - p) * ((if dist (pts 0) (pts 2) ≤ matchRadius p d then (1 : ℝ) else 0) - p) * ((if dist (pts 1) (pts 2) ≤ matchRadius p d then (1 : ℝ) else 0) - p) = (if dist (pts 0) (pts 1) ≤ matchRadius p d then (1 : ℝ) else 0) * (if dist (pts 0) (pts 2) ≤ matchRadius p d then (1 : ℝ) else 0) * (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1 : ℝ) else 0) - p * ((if dist (pts 0) (pts 1) ≤ matchRadius p d then (1 : ℝ) else 0) * (if dist (pts 0) (pts 2) ≤ matchRadius p d then (1 : ℝ) else 0) + (if dist (pts 0) (pts 1) ≤ matchRadius p d then (1 : ℝ) else 0) * (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1 : ℝ) else 0) + (if dist (pts 0) (pts 2) ≤ matchRadius p d then (1 : ℝ) else 0) * (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1 : ℝ) else 0)) + p ^ 2 * ((if dist (pts 0) (pts 1) ≤ matchRadius p d then (1 : ℝ) else 0) + (if dist (pts 0) (pts 2) ≤ matchRadius p d then (1 : ℝ) else 0) + (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1 : ℝ) else 0)) - p ^ 3 := by
+    intro pts; ring;
+  rw [ MeasureTheory.integral_congr_ae ( Filter.Eventually.of_forall h_expand ), MeasureTheory.integral_sub, MeasureTheory.integral_add ];
+  · rw [ MeasureTheory.integral_sub ];
+    · rw [ MeasureTheory.integral_const_mul, MeasureTheory.integral_const_mul ];
+      rw [ MeasureTheory.integral_add, MeasureTheory.integral_add ];
+      · rw [ MeasureTheory.integral_add, MeasureTheory.integral_add ];
+        · rw [ gamma_pow_eq, wedge_integral, wedge_integral_1center, wedge_integral_2center, edge_integral, edge_integral_02, edge_integral_12 ] ; norm_num ; ring;
+          all_goals assumption;
+        · refine' MeasureTheory.Integrable.indicator _ _;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const;
+        · refine' MeasureTheory.Integrable.indicator _ _;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · exact measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const;
+        · refine' MeasureTheory.Integrable.add _ _;
+          · refine' MeasureTheory.Integrable.indicator _ _;
+            · norm_num [ MeasureTheory.integrable_const_iff ];
+            · exact measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const;
+          · refine' MeasureTheory.Integrable.indicator _ _;
+            · norm_num [ MeasureTheory.integrable_const_iff ];
+            · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+        · refine' MeasureTheory.Integrable.indicator _ _;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+      · refine' MeasureTheory.Integrable.mono' _ _ _;
+        refine' fun a => 1;
+        · norm_num [ MeasureTheory.integrable_const_iff ];
+        · refine' Measurable.aestronglyMeasurable _;
+          apply_rules [ Measurable.mul, Measurable.ite, measurable_const ];
+          · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const;
+          · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+        · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+      · refine' MeasureTheory.Integrable.mono' _ _ _;
+        refine' fun _ => 1;
+        · norm_num [ MeasureTheory.integrable_const_iff ];
+        · refine' Measurable.aestronglyMeasurable _;
+          refine' Measurable.mul _ _;
+          · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) measurable_const measurable_const;
+          · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const;
+        · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+      · refine' MeasureTheory.Integrable.add _ _;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · refine' Measurable.aestronglyMeasurable _;
+            refine' Measurable.mul _ _;
+            · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) measurable_const measurable_const;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · refine' Measurable.aestronglyMeasurable _;
+            apply_rules [ Measurable.mul, Measurable.ite, measurable_const ];
+            · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const;
+            · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+      · refine' MeasureTheory.Integrable.mono' _ _ _;
+        refine' fun a => 1;
+        · norm_num [ MeasureTheory.integrable_const_iff ];
+        · refine' Measurable.aestronglyMeasurable _;
+          refine' Measurable.mul _ _;
+          · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const;
+          · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const;
+        · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+    · refine' MeasureTheory.Integrable.mono' _ _ _;
+      refine' fun pts => 1;
+      · norm_num [ MeasureTheory.integrable_const_iff ];
+      · refine' Measurable.aestronglyMeasurable _;
+        apply_rules [ Measurable.mul, Measurable.ite, measurable_const ];
+        · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const;
+        · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+        · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+      · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+    · refine' MeasureTheory.Integrable.const_mul _ _;
+      refine' MeasureTheory.Integrable.add ( MeasureTheory.Integrable.add _ _ ) _;
+      · refine' MeasureTheory.Integrable.mono' _ _ _;
+        refine' fun _ => 1;
+        · norm_num [ MeasureTheory.integrable_const_iff ];
+        · refine' Measurable.aestronglyMeasurable _;
+          refine' Measurable.mul _ _;
+          · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) measurable_const measurable_const;
+          · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+        · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+      · refine' MeasureTheory.Integrable.mono' _ _ _;
+        refine' fun _ => 1;
+        · norm_num [ MeasureTheory.integrable_const_iff ];
+        · refine' Measurable.aestronglyMeasurable _;
+          refine' Measurable.mul _ _;
+          · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const;
+          · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const;
+        · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+      · refine' MeasureTheory.Integrable.mono' _ _ _;
+        refine' fun _ => 1;
+        · norm_num [ MeasureTheory.integrable_const_iff ];
+        · refine' Measurable.aestronglyMeasurable _;
+          refine' Measurable.mul _ _;
+          · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+          · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+        · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+  · refine' MeasureTheory.Integrable.sub _ _;
+    · refine' MeasureTheory.Integrable.mono' _ _ _;
+      refine' fun _ => 1;
+      · norm_num [ MeasureTheory.integrable_const_iff ];
+      · refine' Measurable.aestronglyMeasurable _;
+        apply_rules [ Measurable.mul, Measurable.ite, measurable_const ];
+        · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const;
+        · exact measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const;
+        · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+      · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+    · refine' MeasureTheory.Integrable.const_mul _ _;
+      refine' MeasureTheory.Integrable.add _ _;
+      · refine' MeasureTheory.Integrable.add _ _;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · refine' Measurable.aestronglyMeasurable _;
+            refine' Measurable.mul _ _;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · refine' Measurable.aestronglyMeasurable _;
+            refine' Measurable.mul _ _;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+      · refine' MeasureTheory.Integrable.mono' _ _ _;
+        refine' fun _ => 1;
+        · norm_num [ MeasureTheory.integrable_const_iff ];
+        · refine' Measurable.aestronglyMeasurable _;
+          refine' Measurable.mul _ _;
+          · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+          · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+        · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+  · refine' MeasureTheory.Integrable.const_mul _ _;
+    refine' MeasureTheory.Integrable.add ( MeasureTheory.Integrable.add _ _ ) _;
+    · refine' MeasureTheory.Integrable.indicator _ _;
+      · norm_num [ MeasureTheory.integrable_const_iff ];
+      · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const;
+    · refine' MeasureTheory.Integrable.indicator _ _;
+      · norm_num [ MeasureTheory.integrable_const_iff ];
+      · exact measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const;
+    · refine' MeasureTheory.Integrable.indicator _ _;
+      · fun_prop;
+      · exact measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const;
+  · refine' MeasureTheory.Integrable.mono' _ _ _;
+    refine' fun pts => 1 + p * 3 + p ^ 2 * 3 + p ^ 3;
+    · norm_num;
+    · refine' Measurable.aestronglyMeasurable _;
+      apply_rules [ Measurable.sub, Measurable.add, Measurable.mul, measurable_const ];
+      all_goals apply_rules [ Measurable.ite, measurable_const ];
+      all_goals exact measurableSet_le ( measurable_pi_apply _ |> Measurable.dist <| measurable_pi_apply _ ) measurable_const;
+    · refine' Filter.Eventually.of_forall fun x => abs_le.mpr ⟨ _, _ ⟩ <;> split_ifs <;> nlinarith [ pow_pos hp0 3 ];
+  · norm_num
 
 open Classical MeasureTheory in
+/-- Pointwise rewriting: (A₁₂-p)(A₁₃-p)(A₂₃-p)·F = A₁₂·A₁₃·A₂₃ - p(A₁₂·A₁₃ + A₁₂·A₂₃ + A₁₃·A₂₃)
+    + p²(A₁₂·F + A₁₃·F + A₂₃·F) - p³·F.
+    Uses wedge_implies_fill: if two edges sharing a vertex are present, then F=1,
+    so wedge·F = wedge and triangle·F = triangle. -/
+lemma integrand_fill_rewrite (d : ℕ) (r : ℝ) (p : ℝ) (hr0 : 0 ≤ r)
+    (pts : Fin 3 → Torus d) :
+    let A₁₂ := if dist (pts 0) (pts 1) ≤ r then (1:ℝ) else 0
+    let A₁₃ := if dist (pts 0) (pts 2) ≤ r then (1:ℝ) else 0
+    let A₂₃ := if dist (pts 1) (pts 2) ≤ r then (1:ℝ) else 0
+    let F := if ∃ z : Torus d, dist (pts 0) z ≤ r ∧ dist (pts 1) z ≤ r ∧ dist (pts 2) z ≤ r
+             then (1:ℝ) else 0
+    (A₁₂ - p) * (A₁₃ - p) * (A₂₃ - p) * F =
+    A₁₂ * A₁₃ * A₂₃
+    - p * (A₁₂ * A₁₃ + A₁₂ * A₂₃ + A₁₃ * A₂₃)
+    + p ^ 2 * (A₁₂ * F + A₁₃ * F + A₂₃ * F)
+    - p ^ 3 * F := by
+  by_cases h : ∃ z : Torus d, dist ( pts 0 ) z ≤ r ∧ dist ( pts 1 ) z ≤ r ∧ dist ( pts 2 ) z ≤ r <;> simp +decide [ h ] ; ring;
+  · split_ifs <;> ring;
+  · split_ifs <;> norm_num;
+    · exact False.elim <| h <| wedge_implies_fill r hr0 _ _ _ ‹_› ‹_›;
+    · exact False.elim <| h ⟨ pts 2, by assumption, by assumption, by simp +decide [ hr0 ] ⟩;
+    · contrapose! h;
+      use pts 1;
+      simp_all +decide [ dist_comm ];
+    · exact False.elim <| h <| wedge_implies_fill r hr0 _ _ _ ‹_› ‹_›
+
+set_option maxHeartbeats 800000 in
+open Classical MeasureTheory in
 /-- The centered third moment times fill: ∫ (A₁₂-p)(A₁₃-p)(A₂₃-p)·F = γ - 3p³ + 3p²μ - p³q.
-    Uses wedge_implies_fill to simplify wedge·F = wedge, then
-    gamma_pow_eq, wedge_integral, mu_e_pow_eq, fillingProb definition. -/
+    Uses integrand_fill_rewrite for the pointwise identity, then linearity of the integral
+    with gamma_pow_eq, wedge_integral, mu_e_pow_eq, fillingProb. -/
 lemma centered_edge_moment_fill (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
     (hr : matchRadius p d ≤ 1/4) :
     (∫ pts : Fin 3 → Torus d,
@@ -976,7 +1372,288 @@ lemma centered_edge_moment_fill (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) 
     = (3 * (matchRadius p d) ^ 2) ^ d - 3 * p ^ 3
       + 3 * p ^ 2 * (7 * (matchRadius p d) ^ 2) ^ d
       - p ^ 3 * fillingProb p d := by
-  sorry
+  rw [ MeasureTheory.integral_congr_ae ];
+  any_goals filter_upwards [ ] with pts; exact integrand_fill_rewrite d ( matchRadius p d ) p ( by unfold matchRadius; positivity ) pts;
+  rw [ MeasureTheory.integral_sub, MeasureTheory.integral_add ];
+  · rw [ MeasureTheory.integral_sub ];
+    · congr;
+      · convert gamma_pow_eq p d hp0 hp1 hd hr using 1;
+      · rw [ MeasureTheory.integral_const_mul, MeasureTheory.integral_add, MeasureTheory.integral_add ];
+        · rw [ wedge_integral, wedge_integral_1center, wedge_integral_2center ] <;> ring <;> aesop;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num;
+          · refine' Measurable.aestronglyMeasurable _;
+            refine' Measurable.mul _ _;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · refine' Measurable.aestronglyMeasurable _;
+            exact Measurable.mul ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const ) ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const );
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+        · refine' MeasureTheory.Integrable.add _ _;
+          · refine' MeasureTheory.Integrable.mono' _ _ _;
+            refine' fun _ => 1;
+            · norm_num [ MeasureTheory.integrable_const_iff ];
+            · refine' Measurable.aestronglyMeasurable _;
+              refine' Measurable.mul _ _;
+              · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const;
+              · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+            · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+          · refine' MeasureTheory.Integrable.mono' _ _ _;
+            refine' fun _ => 1;
+            · norm_num [ MeasureTheory.integrable_const_iff ];
+            · refine' Measurable.aestronglyMeasurable _;
+              refine' Measurable.mul _ _;
+              · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const;
+              · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+            · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · refine' Measurable.aestronglyMeasurable _;
+            refine' Measurable.mul _ _;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+      · rw [ MeasureTheory.integral_const_mul ];
+        rw [ MeasureTheory.integral_add, MeasureTheory.integral_add ];
+        · rw [ mu_e_pow_eq, mu_e_pow_eq_02, mu_e_pow_eq_12 ];
+          all_goals linarith;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num;
+          · refine' Measurable.aestronglyMeasurable _;
+            refine' Measurable.mul _ _;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const;
+            · refine' Measurable.ite _ measurable_const measurable_const;
+              convert measurableSet_hasFill ( matchRadius p d ) ( ⟨ { 0, 1, 2 }, by simp +decide ⟩ : { σ : Finset ( Fin 3 ) // σ.card = 3 } ) using 1;
+              simp +decide [ Fin.forall_fin_succ ];
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · refine' Measurable.aestronglyMeasurable _;
+            refine' Measurable.mul _ _;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+            · refine' Measurable.ite _ measurable_const measurable_const;
+              convert measurableSet_hasFill ( matchRadius p d ) using 1;
+              rotate_left;
+              exact 3;
+              bv_omega;
+              constructor <;> intro h;
+              · convert measurableSet_hasFill ( matchRadius p d ) using 1;
+              · convert h ⟨ { 0, 1, 2 }, by decide ⟩ using 1;
+                simp +decide [ Fin.forall_fin_succ ];
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+        · refine' MeasureTheory.Integrable.add _ _;
+          · refine' MeasureTheory.Integrable.mono' _ _ _;
+            refine' fun _ => 1;
+            · fun_prop;
+            · refine' Measurable.aestronglyMeasurable _;
+              refine' Measurable.mul _ _;
+              · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const;
+              · refine' Measurable.ite _ measurable_const measurable_const;
+                convert measurableSet_hasFill ( matchRadius p d ) ( ⟨ { 0, 1, 2 }, by simp +decide ⟩ : { σ : Finset ( Fin 3 ) // σ.card = 3 } ) using 1;
+                simp +decide [ Fin.forall_fin_succ ];
+            · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+          · refine' MeasureTheory.Integrable.mono' _ _ _;
+            refine' fun _ => 1;
+            · norm_num [ MeasureTheory.integrable_const_iff ];
+            · refine' Measurable.aestronglyMeasurable _;
+              refine' Measurable.mul _ _;
+              · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+              · refine' Measurable.ite _ measurable_const measurable_const;
+                have h_measurable : MeasurableSet {a : Fin 3 → Torus d | ∃ z : Torus d, dist (a 0) z ≤ matchRadius p d ∧ dist (a 1) z ≤ matchRadius p d ∧ dist (a 2) z ≤ matchRadius p d} := by
+                  have h_closed : IsClosed {a : Fin 3 → Torus d | ∃ z : Torus d, dist (a 0) z ≤ matchRadius p d ∧ dist (a 1) z ≤ matchRadius p d ∧ dist (a 2) z ≤ matchRadius p d} := by
+                    refine' isClosed_of_closure_subset _;
+                    intro a ha;
+                    rw [ mem_closure_iff_seq_limit ] at ha;
+                    obtain ⟨ x, hx₁, hx₂ ⟩ := ha;
+                    choose z hz using hx₁;
+                    -- Since $z_n$ is a sequence in a compact space, it has a convergent subsequence.
+                    obtain ⟨z', hz'⟩ : ∃ z' : Torus d, ∃ subseq : ℕ → ℕ, StrictMono subseq ∧ Filter.Tendsto (fun n => z (subseq n)) Filter.atTop (nhds z') := by
+                      have h_compact : IsCompact (Set.univ : Set (Torus d)) := by
+                        exact isCompact_univ;
+                      have := h_compact.isSeqCompact fun n => Set.mem_univ ( z n ) ; aesop;
+                    obtain ⟨ subseq, hsubseq₁, hsubseq₂ ⟩ := hz';
+                    use z';
+                    have h_dist : Filter.Tendsto (fun n => dist (x (subseq n) 0) (z (subseq n))) Filter.atTop (nhds (dist (a 0) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 1) (z (subseq n))) Filter.atTop (nhds (dist (a 1) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 2) (z (subseq n))) Filter.atTop (nhds (dist (a 2) z')) := by
+                      exact ⟨ Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 0 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 1 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 2 ) hsubseq₂ ⟩;
+                    exact ⟨ le_of_tendsto_of_tendsto' h_dist.1 tendsto_const_nhds fun n => hz _ |>.1, le_of_tendsto_of_tendsto' h_dist.2.1 tendsto_const_nhds fun n => hz _ |>.2.1, le_of_tendsto_of_tendsto' h_dist.2.2 tendsto_const_nhds fun n => hz _ |>.2.2 ⟩
+                  exact h_closed.measurableSet;
+                exact h_measurable;
+            · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · refine' Measurable.aestronglyMeasurable _;
+            refine' Measurable.mul _ _;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+            · refine' Measurable.ite _ measurable_const measurable_const;
+              convert measurableSet_hasFill ( matchRadius p d ) using 1;
+              rotate_left;
+              exact 3;
+              bv_omega;
+              constructor <;> intro h;
+              · convert measurableSet_hasFill ( matchRadius p d ) using 1;
+              · convert h ⟨ { 0, 1, 2 }, by decide ⟩ using 1;
+                simp +decide [ Fin.forall_fin_succ ];
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+      · rw [ MeasureTheory.integral_const_mul, fillingProb ];
+    · refine' MeasureTheory.Integrable.mono' _ _ _;
+      refine' fun _ => 1;
+      · norm_num [ MeasureTheory.integrable_const_iff ];
+      · refine' Measurable.aestronglyMeasurable _;
+        apply_rules [ Measurable.mul, Measurable.ite, measurable_const ];
+        · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const;
+        · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+        · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+      · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+    · refine' MeasureTheory.Integrable.const_mul _ _;
+      refine' MeasureTheory.Integrable.mono' _ _ _;
+      refine' fun _ => 3;
+      · fun_prop;
+      · refine' Measurable.aestronglyMeasurable _;
+        apply_rules [ Measurable.add, Measurable.mul, Measurable.ite, measurable_const ];
+        all_goals exact measurableSet_le ( measurable_pi_apply _ |> Measurable.dist <| measurable_pi_apply _ ) measurable_const;
+      · exact Filter.Eventually.of_forall fun x => abs_le.mpr ⟨ by split_ifs <;> norm_num, by split_ifs <;> norm_num ⟩;
+  · refine' MeasureTheory.Integrable.sub _ _;
+    · refine' MeasureTheory.Integrable.mono' _ _ _;
+      refine' fun _ => 1;
+      · norm_num [ MeasureTheory.integrable_const_iff ];
+      · refine' Measurable.aestronglyMeasurable _;
+        apply_rules [ Measurable.mul, Measurable.ite, measurable_const ];
+        · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const;
+        · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+        · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+      · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+    · refine' MeasureTheory.Integrable.const_mul _ _;
+      refine' MeasureTheory.Integrable.add _ _;
+      · refine' MeasureTheory.Integrable.add _ _;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · refine' Measurable.aestronglyMeasurable _;
+            refine' Measurable.mul _ _;
+            · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) measurable_const measurable_const;
+            · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+        · refine' MeasureTheory.Integrable.mono' _ _ _;
+          refine' fun _ => 1;
+          · norm_num [ MeasureTheory.integrable_const_iff ];
+          · refine' Measurable.aestronglyMeasurable _;
+            apply_rules [ Measurable.mul, Measurable.ite, measurable_const ];
+            · exact measurableSet_le ( measurable_norm.comp ( measurable_pi_apply 0 |> Measurable.sub <| measurable_pi_apply 1 ) ) measurable_const;
+            · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const;
+          · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+      · refine' MeasureTheory.Integrable.mono' _ _ _;
+        refine' fun _ => 1;
+        · norm_num [ MeasureTheory.integrable_const_iff ];
+        · refine' Measurable.aestronglyMeasurable _;
+          exact Measurable.mul ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const ) ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const );
+        · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+  · refine' MeasureTheory.Integrable.mono' _ _ _;
+    refine' fun _ => p ^ 2 * 3;
+    · fun_prop;
+    · apply_rules [ Measurable.aestronglyMeasurable, Measurable.mul, Measurable.add, measurable_const ];
+      all_goals apply_rules [ Measurable.ite, measurable_const ];
+      any_goals exact measurableSet_le ( measurable_pi_apply _ |> Measurable.dist <| measurable_pi_apply _ ) measurable_const;
+      · convert measurableSet_hasFill ( matchRadius p d ) using 1;
+        rotate_left;
+        exact 3;
+        bv_omega;
+        constructor <;> intro h;
+        · convert measurableSet_hasFill ( matchRadius p d ) using 1;
+        · convert h ⟨ { 0, 1, 2 }, by decide ⟩ using 1;
+          simp +decide [ Fin.forall_fin_succ ];
+      · convert measurableSet_hasFill ( matchRadius p d ) ( ⟨ { 0, 1, 2 }, by simp +decide ⟩ : { σ : Finset ( Fin 3 ) // σ.card = 3 } ) using 1;
+        simp +decide [ Fin.forall_fin_succ ];
+      · refine' MeasurableSet.congr _ _;
+        exact { a : Fin 3 → Torus d | ∃ z : Torus d, dist ( a 0 ) z ≤ matchRadius p d ∧ dist ( a 1 ) z ≤ matchRadius p d ∧ dist ( a 2 ) z ≤ matchRadius p d };
+        · convert measurableSet_hasFill ( matchRadius p d ) using 1;
+          rotate_left;
+          exact 3;
+          bv_omega;
+          constructor <;> intro h;
+          · convert measurableSet_hasFill ( matchRadius p d ) using 1;
+          · convert h ⟨ { 0, 1, 2 }, by decide ⟩ using 1;
+            simp +decide [ Fin.forall_fin_succ ];
+        · rfl;
+    · filter_upwards [ ] with x using by rw [ Real.norm_of_nonneg ( by positivity ) ] ; split_ifs <;> nlinarith;
+  · refine' MeasureTheory.Integrable.mono' _ _ _;
+    refine' fun _ => 1 + p + p ^ 2 * 3;
+    · norm_num;
+    · apply_rules [ Measurable.aestronglyMeasurable, Measurable.sub, Measurable.add, Measurable.mul, measurable_const ];
+      all_goals apply_rules [ Measurable.ite, measurable_const ];
+      all_goals apply_rules [ IsClosed.measurableSet, measurableSet_le ];
+      any_goals exact isClosed_le ( Continuous.dist ( continuous_apply _ ) ( continuous_apply _ ) ) continuous_const;
+      · refine' isClosed_of_closure_subset _;
+        intro a ha;
+        rw [ mem_closure_iff_seq_limit ] at ha;
+        obtain ⟨ x, hx₁, hx₂ ⟩ := ha;
+        choose z hz using hx₁;
+        -- Since $z_n$ is a sequence in a compact space, it has a convergent subsequence.
+        obtain ⟨z', hz'⟩ : ∃ z' : Torus d, ∃ subseq : ℕ → ℕ, StrictMono subseq ∧ Filter.Tendsto (fun n => z (subseq n)) Filter.atTop (nhds z') := by
+          have h_compact : IsCompact (Set.univ : Set (Torus d)) := by
+            exact isCompact_univ;
+          have := h_compact.isSeqCompact fun n => Set.mem_univ ( z n ) ; aesop;
+        obtain ⟨ subseq, hsubseq₁, hsubseq₂ ⟩ := hz';
+        use z';
+        have h_dist : Filter.Tendsto (fun n => dist (x (subseq n) 0) (z (subseq n))) Filter.atTop (nhds (dist (a 0) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 1) (z (subseq n))) Filter.atTop (nhds (dist (a 1) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 2) (z (subseq n))) Filter.atTop (nhds (dist (a 2) z')) := by
+          exact ⟨ Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 0 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 1 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 2 ) hsubseq₂ ⟩;
+        exact ⟨ le_of_tendsto_of_tendsto' h_dist.1 tendsto_const_nhds fun n => hz _ |>.1, le_of_tendsto_of_tendsto' h_dist.2.1 tendsto_const_nhds fun n => hz _ |>.2.1, le_of_tendsto_of_tendsto' h_dist.2.2 tendsto_const_nhds fun n => hz _ |>.2.2 ⟩;
+      · refine' isClosed_of_closure_subset _;
+        intro a ha;
+        rw [ mem_closure_iff_seq_limit ] at ha;
+        obtain ⟨ x, hx₁, hx₂ ⟩ := ha;
+        choose z hz using hx₁;
+        -- Since $z_n$ is a sequence in a compact space, it has a convergent subsequence.
+        obtain ⟨z', hz'⟩ : ∃ z' : Torus d, ∃ subseq : ℕ → ℕ, StrictMono subseq ∧ Filter.Tendsto (fun n => z (subseq n)) Filter.atTop (nhds z') := by
+          have h_compact : IsCompact (Set.univ : Set (Torus d)) := by
+            exact isCompact_univ;
+          have := h_compact.isSeqCompact fun n => Set.mem_univ ( z n ) ; aesop;
+        obtain ⟨ subseq, hsubseq₁, hsubseq₂ ⟩ := hz';
+        use z';
+        have h_dist : Filter.Tendsto (fun n => dist (x (subseq n) 0) (z (subseq n))) Filter.atTop (nhds (dist (a 0) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 1) (z (subseq n))) Filter.atTop (nhds (dist (a 1) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 2) (z (subseq n))) Filter.atTop (nhds (dist (a 2) z')) := by
+          exact ⟨ Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 0 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 1 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 2 ) hsubseq₂ ⟩;
+        exact ⟨ le_of_tendsto_of_tendsto' h_dist.1 tendsto_const_nhds fun n => hz _ |>.1, le_of_tendsto_of_tendsto' h_dist.2.1 tendsto_const_nhds fun n => hz _ |>.2.1, le_of_tendsto_of_tendsto' h_dist.2.2 tendsto_const_nhds fun n => hz _ |>.2.2 ⟩;
+      · refine' isClosed_of_closure_subset _;
+        intro a ha;
+        rw [ mem_closure_iff_seq_limit ] at ha;
+        obtain ⟨ x, hx₁, hx₂ ⟩ := ha;
+        choose z hz using hx₁;
+        -- Since $z_n$ is a sequence in a compact space, it has a convergent subsequence.
+        obtain ⟨z', hz'⟩ : ∃ z' : Torus d, ∃ subseq : ℕ → ℕ, StrictMono subseq ∧ Filter.Tendsto (fun n => z (subseq n)) Filter.atTop (nhds z') := by
+          have h_compact : IsCompact (Set.univ : Set (Torus d)) := by
+            exact isCompact_univ;
+          have := h_compact.isSeqCompact fun n => Set.mem_univ ( z n ) ; aesop;
+        obtain ⟨ subseq, hsubseq₁, hsubseq₂ ⟩ := hz';
+        use z';
+        have h_dist : Filter.Tendsto (fun n => dist (x (subseq n) 0) (z (subseq n))) Filter.atTop (nhds (dist (a 0) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 1) (z (subseq n))) Filter.atTop (nhds (dist (a 1) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 2) (z (subseq n))) Filter.atTop (nhds (dist (a 2) z')) := by
+          exact ⟨ Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 0 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 1 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 2 ) hsubseq₂ ⟩;
+        exact ⟨ le_of_tendsto_of_tendsto' h_dist.1 tendsto_const_nhds fun n => hz _ |>.1, le_of_tendsto_of_tendsto' h_dist.2.1 tendsto_const_nhds fun n => hz _ |>.2.1, le_of_tendsto_of_tendsto' h_dist.2.2 tendsto_const_nhds fun n => hz _ |>.2.2 ⟩;
+    · refine' Filter.Eventually.of_forall fun x => _;
+      split_ifs <;> norm_num <;> try nlinarith;
+      all_goals rw [ abs_le ] ; constructor <;> nlinarith;
+  · refine' MeasureTheory.Integrable.const_mul _ _;
+    refine' MeasureTheory.Integrable.mono' _ _ _;
+    refine' fun _ => 1;
+    · norm_num [ MeasureTheory.integrable_const_iff ];
+    · refine' Measurable.aestronglyMeasurable _;
+      refine' Measurable.ite _ measurable_const measurable_const;
+      convert measurableSet_hasFill ( matchRadius p d ) using 1;
+      rotate_left;
+      exact 3;
+      bv_omega;
+      constructor <;> intro h;
+      · convert measurableSet_hasFill ( matchRadius p d ) using 1;
+      · convert h ⟨ { 0, 1, 2 }, by decide ⟩ using 1;
+        simp +decide [ Fin.forall_fin_succ ];
+    · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
 
 set_option maxHeartbeats 800000 in
 open Classical MeasureTheory in
