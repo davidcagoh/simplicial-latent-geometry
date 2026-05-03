@@ -767,7 +767,146 @@ lemma fillingProb_eq_low_r (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd :
     fillingProb p d = (12 * (matchRadius p d) ^ 2) ^ d := by
   exact integral_fill_eq_pow d hd ( matchRadius p d ) ( show 0 ≤ matchRadius p d from by unfold matchRadius; positivity ) hr
 
-/-- **Sim-A5 / Job 2, Lemma 4 (8-term collapse).** Closed-form `geometricCov`
+/-
+────────────────────────────────────────────────────────────────────────────
+Helper lemmas for geometricCov expansion
+────────────────────────────────────────────────────────────────────────────
+-/
+open Classical MeasureTheory in
+/-- The integral of a single edge indicator over the 3-point product measure
+    equals the edge probability `p = (2r)^d`. -/
+lemma edge_integral (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      (if dist (pts 0) (pts 1) ≤ matchRadius p d then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = p := by
+  have h_volume_edge : volume ( {pts : Fin 3 → Torus d | dist (pts 0) (pts 1) ≤ matchRadius p d} ) = ENNReal.ofReal ( (2 * matchRadius p d) ^ d ) := by
+    convert volume_coordFactored_eq_pow d ( { pts : Fin 3 → AddCircle ( 1 : ℝ ) | dist ( pts 0 ) ( pts 1 ) ≤ matchRadius p d } ) _ using 1;
+    · congr with x ; simp +decide [ dist_eq_norm ];
+      rw [ pi_norm_le_iff_of_nonneg ];
+      · rfl;
+      · unfold matchRadius; positivity;
+    · have h_volume_edge : volume ( {pts : Fin 3 → AddCircle ( 1 : ℝ ) | dist (pts 0) (pts 1) ≤ matchRadius p d} ) = ENNReal.ofReal (2 * matchRadius p d) := by
+        have h_volume : volume {pts : Fin 3 → T1 | dist (pts 0) (pts 1) ≤ matchRadius p d} = ∫⁻ (x : T1), volume {y : T1 | dist x y ≤ matchRadius p d} ∂volume := by
+          have h_volume : volume {pts : Fin 3 → T1 | dist (pts 0) (pts 1) ≤ matchRadius p d} = ∫⁻ (x : T1 × T1 × T1), (if dist x.1 x.2.1 ≤ matchRadius p d then 1 else 0) ∂volume := by
+            have h_volume : volume {pts : Fin 3 → T1 | dist (pts 0) (pts 1) ≤ matchRadius p d} = ∫⁻ (x : Fin 3 → T1), (if dist (x 0) (x 1) ≤ matchRadius p d then 1 else 0) ∂volume := by
+              erw [ MeasureTheory.lintegral_indicator ];
+              · aesop;
+              · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const;
+            rw [ h_volume ];
+            have h_volume : MeasureTheory.MeasureSpace.volume = MeasureTheory.Measure.map (fun x : T1 × T1 × T1 => ![x.1, x.2.1, x.2.2]) (MeasureTheory.MeasureSpace.volume) := by
+              simp +decide [ MeasureTheory.MeasureSpace.volume ];
+              erw [ MeasureTheory.Measure.pi_eq ];
+              intro s hs; erw [ MeasureTheory.Measure.map_apply ];
+              · simp +decide [ Set.preimage, Fin.prod_univ_three ];
+                simp +decide [ Fin.forall_fin_succ, Set.setOf_and ];
+                erw [ show { a : T1 × T1 × T1 | a.1 ∈ s 0 } ∩ ( { a : T1 × T1 × T1 | a.2.1 ∈ s 1 } ∩ { a : T1 × T1 × T1 | a.2.2 ∈ s 2 } ) = ( s 0 ×ˢ s 1 ×ˢ s 2 ) by ext ; aesop ] ; simp +decide [ mul_assoc ];
+              · exact measurable_pi_iff.mpr fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd ] ;
+              · exact MeasurableSet.univ_pi hs;
+            rw [ h_volume, MeasureTheory.lintegral_map ];
+            · rfl;
+            · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) measurable_const measurable_const;
+            · exact measurable_pi_iff.mpr fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd ];
+          erw [ h_volume, MeasureTheory.lintegral_prod ];
+          · congr! 2;
+            erw [ MeasureTheory.lintegral_prod ];
+            · erw [ MeasureTheory.lintegral_congr_ae, MeasureTheory.lintegral_indicator ];
+              exact?;
+              · exact measurableSet_le ( measurable_const.dist measurable_id' ) measurable_const;
+              · filter_upwards [ ] with x ; aesop;
+            · exact Measurable.aemeasurable ( by exact Measurable.ite ( measurableSet_le ( measurable_const.dist measurable_fst ) measurable_const ) measurable_const measurable_const );
+          · exact Measurable.aemeasurable ( by exact Measurable.ite ( measurableSet_le ( measurable_fst.dist measurable_snd.fst ) measurable_const ) measurable_const measurable_const );
+        have h_volume : ∀ x : T1, volume {y : T1 | dist x y ≤ matchRadius p d} = ENNReal.ofReal (2 * matchRadius p d) := by
+          intro x;
+          convert volume_closedBall_inter_T1 ( matchRadius p d ) ( show 0 ≤ matchRadius p d from ?_ ) ( show matchRadius p d ≤ 1 / 4 from hr ) x x ?_ using 1 <;> norm_num [ dist_comm ];
+          · exact congr_arg _ ( by ext; simp +decide [ dist_comm ] );
+          · unfold matchRadius; positivity;
+          · unfold matchRadius; positivity;
+        aesop;
+      rw [ h_volume_edge, ENNReal.ofReal_pow ( by exact mul_nonneg zero_le_two ( by unfold matchRadius; positivity ) ) ];
+    · exact measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const;
+  convert congr_arg ENNReal.toReal h_volume_edge using 1;
+  · erw [ MeasureTheory.integral_indicator ] <;> norm_num [ Set.indicator ];
+    · rfl;
+    · exact measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const;
+  · rw [ ENNReal.toReal_ofReal ( pow_nonneg ( mul_nonneg zero_le_two ( by unfold matchRadius; positivity ) ) _ ), matchRadius_spec p d hp0 hp1 hd ]
+
+open Classical MeasureTheory in
+/-- The integral of a wedge indicator (two edges sharing a vertex) over the
+    3-point product measure equals `p²`, because the two edge events are
+    conditionally independent given the shared vertex. -/
+lemma wedge_integral (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      (if dist (pts 0) (pts 1) ≤ matchRadius p d then (1:ℝ) else 0) *
+      (if dist (pts 0) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = p ^ 2 := by
+  have h_volume : (∫ (pts : Fin 3 → Torus d), (if dist (pts 0) (pts 1) ≤ matchRadius p d then 1 else 0) * (if dist (pts 0) (pts 2) ≤ matchRadius p d then 1 else 0) ∂Measure.pi fun _ => volume) = (4 * (matchRadius p d) ^ 2) ^ d := by
+    convert volume_coordFactored_eq_pow d _ _ using 1;
+    case convert_1 => exact { pts : Fin 3 → T1 | dist ( pts 0 ) ( pts 1 ) ≤ matchRadius p d ∧ dist ( pts 0 ) ( pts 2 ) ≤ matchRadius p d };
+    · rw [ MeasureTheory.integral_congr_ae, MeasureTheory.integral_indicator ];
+      change (∫ x in { pts : Fin 3 → Torus d | dist ( pts 0 ) ( pts 1 ) ≤ matchRadius p d ∧ dist ( pts 0 ) ( pts 2 ) ≤ matchRadius p d }, 1 ∂Measure.pi fun _ => volume) = _ ↔ _;
+      · simp +decide [ MeasureTheory.measureReal_def ];
+        rw [ ← ENNReal.toReal_eq_toReal_iff' ] <;> norm_num;
+        convert Iff.rfl using 2;
+        · congr! 2;
+          ext; simp +decide [ dist_pi_le_iff ] ;
+          rw [ dist_pi_le_iff, dist_pi_le_iff ] ; aesop;
+          · unfold matchRadius; positivity;
+          · unfold matchRadius; positivity;
+        · have h_volume : volume {pts : Fin 3 → T1 | dist (pts 0) (pts 1) ≤ matchRadius p d ∧ dist (pts 0) (pts 2) ≤ matchRadius p d} = ENNReal.ofReal (4 * (matchRadius p d) ^ 2) := by
+            have h_volume : volume ({pts : Fin 3 → T1 | dist (pts 0) (pts 1) ≤ matchRadius p d ∧ dist (pts 0) (pts 2) ≤ matchRadius p d}) = ∫⁻ (u1 : T1), volume ({c : T1 | dist u1 c ≤ matchRadius p d}) * volume ({c : T1 | dist u1 c ≤ matchRadius p d}) ∂volume := by
+              have h_volume : volume ({pts : Fin 3 → T1 | dist (pts 0) (pts 1) ≤ matchRadius p d ∧ dist (pts 0) (pts 2) ≤ matchRadius p d}) = ∫⁻ (u1 : T1), volume ({c : T1 × T1 | dist u1 c.1 ≤ matchRadius p d ∧ dist u1 c.2 ≤ matchRadius p d}) ∂volume := by
+                erw [ MeasureTheory.volume_pi ];
+                erw [ MeasureTheory.Measure.pi_eq ];
+                rotate_right;
+                exact MeasureTheory.Measure.map ( fun x : T1 × T1 × T1 => ![x.1, x.2.1, x.2.2] ) ( MeasureTheory.Measure.prod ( MeasureTheory.MeasureSpace.volume ) ( MeasureTheory.Measure.prod ( MeasureTheory.MeasureSpace.volume ) ( MeasureTheory.MeasureSpace.volume ) ) );
+                · rw [ MeasureTheory.Measure.map_apply ];
+                  · erw [ MeasureTheory.Measure.prod_apply ];
+                    · congr! 2;
+                    · simp +decide [ Set.preimage ];
+                      exact MeasurableSet.mem ( MeasurableSet.inter ( measurableSet_le ( measurable_fst.dist measurable_snd.fst ) measurable_const ) ( measurableSet_le ( measurable_fst.dist measurable_snd.snd ) measurable_const ) );
+                  · exact measurable_pi_iff.mpr fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd ];
+                  · exact MeasurableSet.inter ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const );
+                · intro s hs; erw [ MeasureTheory.Measure.map_apply ] ; norm_num [ Fin.prod_univ_three ] ;
+                  · simp +decide [ Set.preimage, Fin.forall_fin_succ ];
+                    erw [ show { x : T1 × T1 × T1 | x.1 ∈ s 0 ∧ x.2.1 ∈ s 1 ∧ x.2.2 ∈ s 2 } = ( s 0 ×ˢ s 1 ×ˢ s 2 ) by ext ; aesop ] ; erw [ MeasureTheory.Measure.prod_prod ] ; erw [ MeasureTheory.Measure.prod_prod ] ; ring;
+                  · exact measurable_pi_iff.mpr fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd ] ;
+                  · exact MeasurableSet.univ_pi hs;
+              convert h_volume using 3;
+              erw [ ← MeasureTheory.Measure.prod_prod ];
+              exact?;
+            have h_volume : ∀ u1 : T1, volume ({c : T1 | dist u1 c ≤ matchRadius p d}) = ENNReal.ofReal (2 * matchRadius p d) := by
+              intro u1;
+              have h_volume : volume (Metric.closedBall u1 (matchRadius p d)) = ENNReal.ofReal (2 * matchRadius p d) := by
+                rw [ two_mul, AddCircle.volume_closedBall ];
+                grind;
+              convert h_volume using 1;
+              exact congr_arg _ ( by ext; simp +decide [ dist_comm ] );
+            simp_all +decide [ mul_pow ];
+            rw [ ENNReal.ofReal_pow ( by unfold matchRadius; positivity ) ] ; ring;
+          rw [ h_volume, ENNReal.toReal_ofReal ( by positivity ) ];
+      · exact MeasurableSet.inter ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const );
+      · filter_upwards [ ] with x using by rw [ Set.indicator_apply ] ; aesop;
+    · exact MeasurableSet.inter ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const );
+  convert h_volume using 1;
+  rw [ show 4 * matchRadius p d ^ 2 = ( 2 * matchRadius p d ) ^ 2 by ring, ← pow_mul, Nat.mul_comm, pow_mul, matchRadius_spec p d hp0 hp1 hd ]
+
+open Classical MeasureTheory in
+/-- Algebraic identity: `p² · (7r²)^d = p³ · (7r/2)^d`,
+    used to convert between the mu_e and half-radius forms. -/
+lemma p_sq_mu_eq (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d) :
+    p ^ 2 * (7 * (matchRadius p d) ^ 2) ^ d
+    = p ^ 3 * (7 * matchRadius p d / 2) ^ d := by
+  have h_match : p = (2 * matchRadius p d) ^ d := by
+    exact?;
+  rw [ show p ^ 3 = p ^ 2 * p by ring, h_match ] ; ring;
+  rw [ show matchRadius p d ^ d * 2 ^ d = p by rw [ ← mul_pow, mul_comm ] ; exact h_match.symm ] ; ring;
+  norm_num [ pow_mul', ← mul_pow ] ; ring
+
+/- **Sim-A5 / Job 2, Lemma 4 (8-term collapse).** Closed-form `geometricCov`
     in the deep regime via the doubly-centered binomial expansion.
 
     PROVIDED SOLUTION
@@ -785,35 +924,163 @@ lemma fillingProb_eq_low_r (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd :
       `α^d = p`, so contribution per edge is `p² · (μ_e^d - q · α^d) =
       p² · ((7r²)^d - q · p)`. Summed over 3 edges, and folded with the
       outer `(-p)^{3-|S|} = p²` and the binomial sign... -- carefully tracked
-      in `analytic_decay_rate.md` §A3.3, lands at `3 p^3 [(7r/2)^d - q]`. -/
+      in `analytic_decay_rate.md` §A3.3, lands at `3 p^3 [(7r/2)^d - q]`.
+
+   COMMENTED OUT: The formula below is false. The proof sketch in §A3.3 incorrectly
+   claims the wedge (|S|=2) contributions vanish. In fact, for any wedge S (e.g. S={12,13}),
+   `wedge_implies_fill` gives A_S · F = A_S pointwise, so
+   E[A_S · (F - q)] = (1 - q) · E[A_S] ≠ 0 in general.
+   Since E[A₁₂·A₁₃] = (4r²)^d = p² (where p = (2r)^d), the total wedge contribution is
+   -3p·(1-q)·p² = -3p³(1-q), yielding the corrected formula:
+     geometricCov = (1-q)·(3r²)^d + 3p³·((7r/2)^d - 1)
+   The original formula has `-fillingProb p d` where `-1` should appear.
+   Numerical check: d=1, p=1/4 gives geometricCov = 3/256 ≈ 0.01172,
+   but the formula below gives 51/1024 ≈ 0.04980. -/
+/-
 theorem geometricCov_eq_deep (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
     (hr : matchRadius p d ≤ 1/4) :
     geometricCov p d
     = (1 - fillingProb p d) * (3 * (matchRadius p d) ^ 2) ^ d
       + 3 * p ^ 3 * ((7 * matchRadius p d / 2) ^ d - fillingProb p d) := by
   sorry
+-/
+
+open Classical MeasureTheory in
+/-- The centered third moment of edge indicators: ∫ (A₁₂-p)(A₁₃-p)(A₂₃-p) = γ - p³.
+    Expands the product and uses gamma_pow_eq, wedge_integral, edge_integral. -/
+lemma centered_edge_moment (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      ((if dist (pts 0) (pts 1) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
+      ((if dist (pts 0) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
+      ((if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) - p)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = (3 * (matchRadius p d) ^ 2) ^ d - p ^ 3 := by
+  sorry
+
+open Classical MeasureTheory in
+/-- The centered third moment times fill: ∫ (A₁₂-p)(A₁₃-p)(A₂₃-p)·F = γ - 3p³ + 3p²μ - p³q.
+    Uses wedge_implies_fill to simplify wedge·F = wedge, then
+    gamma_pow_eq, wedge_integral, mu_e_pow_eq, fillingProb definition. -/
+lemma centered_edge_moment_fill (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    (∫ pts : Fin 3 → Torus d,
+      ((if dist (pts 0) (pts 1) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
+      ((if dist (pts 0) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
+      ((if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
+      (if ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
+                          dist (pts 1) z ≤ matchRadius p d ∧
+                          dist (pts 2) z ≤ matchRadius p d
+       then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    = (3 * (matchRadius p d) ^ 2) ^ d - 3 * p ^ 3
+      + 3 * p ^ 2 * (7 * (matchRadius p d) ^ 2) ^ d
+      - p ^ 3 * fillingProb p d := by
+  sorry
+
+set_option maxHeartbeats 800000 in
+open Classical MeasureTheory in
+/-- **Corrected Sim-A5 / Job 2, Lemma 4.**
+    The correct 8-term collapse formula for `geometricCov` in the deep regime.
+    The difference from the original (commented out above) is that the last term
+    is `- 1` instead of `- fillingProb p d`.
+
+    Proof: Expand (A₁₂-p)(A₁₃-p)(A₂₃-p)(F-q) into 8 groups by edge-set S:
+    * S=∅: E[1·(F-q)] = 0
+    * S=single edge (×3): p²·(E[A₁₂·F] - q·E[A₁₂]) = p²·((7r²)^d - q·p)
+    * S=wedge (×3): -p·(1-q)·E[A₁₂·A₁₃] = -p·(1-q)·p²  (since wedge⟹fill)
+    * S=triangle: (1-q)·E[A₁₂A₁₃A₂₃] = (1-q)·(3r²)^d  (since triangle⟹fill)
+    Total = (1-q)(3r²)^d - 3p³(1-q) + 3p²((7r²)^d - qp)
+          = (1-q)(3r²)^d - 3p³ + 3p²(7r²)^d
+    Using p²(7r²)^d = p³(7r/2)^d (from matchRadius_spec):
+          = (1-q)(3r²)^d + 3p³((7r/2)^d - 1)  -/
+theorem geometricCov_eq_deep (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    geometricCov p d
+    = (1 - fillingProb p d) * (3 * (matchRadius p d) ^ 2) ^ d
+      + 3 * p ^ 3 * ((7 * matchRadius p d / 2) ^ d - 1) := by
+  -- Use centered_edge_moment and centered_edge_moment_fill to decompose
+  have h_cem := centered_edge_moment p d hp0 hp1 hd hr
+  have h_cemf := centered_edge_moment_fill p d hp0 hp1 hd hr
+  have h_psm := p_sq_mu_eq p d hp0 hp1 hd
+  -- geometricCov = cemf - fillingProb * cem
+  -- = (γ - 3p³ + 3p²μ - p³q) - q(γ - p³)
+  -- = γ(1-q) - 3p³ + 3p²μ
+  -- = (1-q)γ + 3p³((7r/2)^d - 1)  [using h_psm]
+  -- Step 1: Show geometricCov = ∫PF - q·∫P
+  have h_gcov : geometricCov p d =
+    (∫ pts : Fin 3 → Torus d,
+      ((if dist (pts 0) (pts 1) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
+      ((if dist (pts 0) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
+      ((if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
+      (if ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
+                          dist (pts 1) z ≤ matchRadius p d ∧
+                          dist (pts 2) z ≤ matchRadius p d
+       then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
+    - fillingProb p d *
+    (∫ pts : Fin 3 → Torus d,
+      ((if dist (pts 0) (pts 1) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
+      ((if dist (pts 0) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
+      ((if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) - p)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d)))) := by
+    rw [ ← MeasureTheory.integral_const_mul ];
+    rw [ ← MeasureTheory.integral_sub ];
+    · nontriviality;
+      unfold geometricCov; norm_num; ring;
+      congr; ext; split_ifs <;> ring;
+    · refine' MeasureTheory.Integrable.mono' _ _ _;
+      refine' fun pts => 1;
+      · norm_num [ MeasureTheory.integrable_const_iff ];
+      · refine' Measurable.aestronglyMeasurable _;
+        refine' Measurable.mul _ _;
+        · refine' Measurable.mul _ _;
+          · refine' Measurable.mul _ _;
+            · exact Measurable.sub ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const ) measurable_const;
+            · exact Measurable.sub ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const ) measurable_const;
+          · exact Measurable.sub ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const ) measurable_const;
+        · refine' Measurable.ite _ measurable_const measurable_const;
+          convert measurableSet_hasFill _ _ using 1;
+          rotate_left;
+          exact matchRadius p d;
+          exact ⟨ { 0, 1, 2 }, by simp +decide ⟩;
+          simp +decide [ Fin.forall_fin_succ ];
+      · refine' Filter.Eventually.of_forall fun x => _;
+        split_ifs <;> norm_num [ abs_of_nonneg, hp0.le, hp1.le ];
+        all_goals nlinarith [ mul_pos hp0 hp0, mul_pos hp0 ( sub_pos.mpr hp1 ), mul_pos ( sub_pos.mpr hp1 ) ( sub_pos.mpr hp1 ) ] ;
+    · refine' MeasureTheory.Integrable.const_mul _ _;
+      refine' MeasureTheory.Integrable.mono' _ _ _;
+      refine' fun a => 1;
+      · norm_num [ MeasureTheory.integrable_const_iff ];
+      · refine' Measurable.aestronglyMeasurable _;
+        refine' Measurable.mul ( Measurable.mul _ _ ) _;
+        · exact Measurable.sub ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const ) measurable_const;
+        · exact Measurable.sub ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const ) measurable_const;
+        · exact Measurable.sub ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const ) measurable_const;
+      · refine' Filter.Eventually.of_forall fun x => _;
+        split_ifs <;> norm_num [ abs_of_nonneg, hp0.le, hp1.le ];
+        all_goals nlinarith [ mul_pos hp0 ( sub_pos.mpr hp1 ) ] ;
+  -- Combine h_gcov, h_cemf, h_cem, h_psm to get the result algebraically
+  have h1 : geometricCov p d =
+      ((3 * (matchRadius p d) ^ 2) ^ d - 3 * p ^ 3
+        + 3 * p ^ 2 * (7 * (matchRadius p d) ^ 2) ^ d
+        - p ^ 3 * fillingProb p d)
+      - fillingProb p d * ((3 * (matchRadius p d) ^ 2) ^ d - p ^ 3) := by
+    rw [h_gcov, h_cemf, h_cem]
+  rw [h1]
+  nlinarith
 
 /-- **Sim-A5 / Job 2, Lemma 5 (decay-rate upper bound).**
-    The corrected one-sided form: `geomCov` is bounded by the leading
-    `(1-q) γ^d` term plus the explicit edge correction.
-
-    The two-sided rate `c₁ (1-q) γ^d ≤ geomCov ≤ c₂ (1-q) γ^d` does NOT hold
-    uniformly in the deep regime because `(7r/2)^d / γ^d = (7/(6r))^d` is
-    unbounded as `r → 0`. Use this upper bound + `geometricCov_pos` (existing)
-    for the matching lower direction; sub-regime two-sided bounds need to be
-    derived separately when needed.
-
-    PROVIDED SOLUTION
-    Direct from `geometricCov_eq_deep`: the second summand
-    `3 p^3 ((7 r/2)^d - q)` is positive (since `μ_e > γ ⟹ (7r/2)^d > (12r²)^d = q`)
-    and lower-bounded by 0; the first summand is `(1 - q) γ^d ≥ 0`.
-    Hence `geomCov ≤ (1-q) γ^d + 3 p^3 (7 r/2)^d`. -/
+    Follows from `geometricCov_eq_deep` (corrected): since
+    `geometricCov = (1-q)·γ^d + 3p³·((7r/2)^d - 1)` and `3p³ > 0`,
+    dropping the `-3p³` gives the upper bound. -/
 theorem geometricCov_decay_rate_le (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
     (hr : matchRadius p d ≤ 1/4) :
     geometricCov p d
       ≤ (1 - fillingProb p d) * (3 * (matchRadius p d) ^ 2) ^ d
         + 3 * p ^ 3 * (7 * matchRadius p d / 2) ^ d := by
-  sorry
+  have h := geometricCov_eq_deep p d hp0 hp1 hd hr
+  linarith [pow_pos hp0 3]
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- end OQ-16 / Track A stubs
