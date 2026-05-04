@@ -30,6 +30,9 @@
 %% ── Enumitem for tighter lists ───────────────────────────────────────────────
 \usepackage{enumitem}
 
+%% ── Figures ──────────────────────────────────────────────────────────────────
+\usepackage{tikz}
+
 %% ─────────────────────────────────────────────────────────────────────────────
 %%  MACROS
 %% ─────────────────────────────────────────────────────────────────────────────
@@ -93,12 +96,14 @@
 \title[Testing for Simplicial Geometry]{Testing for Simplicial Geometry: A Signed Triangle
   Statistic for the \v{C}ech--2PC Phase Transition}
 
-\author[Goh and Cook]{David Goh}
-\address{Department of Computer Science, University of Toronto}
+\author[Goh and Cook]{David Goh\textsuperscript{$\star$}}
+\address{\textsuperscript{$\star$}Department of Computer Science, University of Toronto}
 \email{daveed@cs.toronto.edu}
 
-\author{Nicholas A.\ Cook}
-\address{Department of Mathematics, Duke University}
+\author{Nicholas A.\ Cook\textsuperscript{$\ddagger$}}
+\thanks{${}^{\ddagger}$ Supported in part by NSF grant DMS-2154029.}
+\address{\textsuperscript{$\ddagger$}Department of Mathematics, Duke University, Durham, NC, USA}
+\email{nicholas.cook@duke.edu}
 
 \date{}
 
@@ -164,12 +169,13 @@ model of Kahle~\cite{Kahle2016}). This encodes no geometry---all events are mutu
 independent. The geometric alternative is the \emph{\v{C}ech complex} $\Cech(n,r,d)$: sample
 $n$ points uniformly on the flat torus $\TT^d$, connect two points whenever they lie within
 distance $r$, and fill a triangle whenever the three associated sup-norm balls of radius $r$
-share a common point (the nerve criterion). The fundamental detection question is: given only
+share a common point (the nerve criterion~\cite{Bjorner1995}; see also
+Figure~\ref{fig:models}). The fundamental detection question is: given only
 the observed simplicial complex, can one tell which model generated it?
 
 \subsection{Related Work}\label{sec:related}
 
-\paragraph{Geometry testing for random graphs.}
+\subsubsection*{Geometry testing for random graphs}
 Bubeck, Ding, Eldan, and R\'acz~\cite{Bubeck2016} introduced the signed triangle statistic
 for testing $G(n,p)$ vs.\ $\RGG(n,p,d)$ on $\Sph^{d-1}$, establishing the $d\asymp n^3$
 phase transition: random geometric graphs are detectable when $d\ll n^3$ and
@@ -196,7 +202,7 @@ $n^3\cdot\mathrm{cov}^2\to\infty$. Our simplicial analogue, by contrast, has a
 collapse of geometric signal at a computable threshold, making detection impossible
 above it regardless of sample size (Theorem~\ref{thm:phase-transition}).
 
-\paragraph{Hypergraph detection.}
+\subsubsection*{Hypergraph detection}
 Dhawan, Mao, and Wein~\cite{DhawanMaoWein2023} study detection of planted dense
 subhypergraphs via low-degree polynomials in $r$-uniform hypergraphs, establishing sharp
 thresholds in the log-density regime. Their setting is combinatorial (planted structure in an
@@ -208,7 +214,7 @@ hypergraph, and the \v{C}ech complex plays the role of their planted dense subst
 but the source of dependence (latent torus positions rather than a planted clique) is
 qualitatively different and yields a different class of tests.
 
-\paragraph{Random geometric complexes and TDA.}
+\subsubsection*{Random geometric complexes and TDA}
 Kahle~\cite{Kahle2011} established homology thresholds for \v{C}ech and Vietoris-Rips
 complexes on random points in $\RR^d$, motivated by the need for null models in TDA.
 Kahle~\cite{Kahle2016} surveys the multi-parameter model $X(n;p_1,p_2,\ldots)$ (of which
@@ -277,7 +283,7 @@ point, so every triple fills deterministically and the fill indicator carries no
   Under $\Cech(n,r,d)$ with matched parameters,
   $\EE[\tauf] = \binom{n}{3}\cdot\geomCov(p,d)$.
 
-\item \textbf{Phase transition and finite critical dimension}
+\item \textbf{Phase transition and finite critical dimension threshold}
   (Definition~\ref{def:critical-dim}, Theorem~\ref{thm:phase-transition}).
   For $d \geq d^*(p)$, the matched ball radius exceeds $1/3$, every triple fills by a
   1D Helly argument (Lemma~\ref{lem:helly}), and $\geomCov(p,d) = 0$ exactly.
@@ -370,6 +376,67 @@ cleanly. The signed statistic $\tauf$ and the detection analysis go through unde
 convention with only superficial changes.
 \end{remark}
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  vert/.style={circle,fill=black,inner sep=2.5pt},
+  scale=1.1
+]
+%% ─── Left panel: 2PC ────────────────────────────────────────────────────────
+\begin{scope}[xshift=0cm]
+  \coordinate (A) at ( 0.0,  1.4);
+  \coordinate (B) at (-1.2,  0.0);
+  \coordinate (C) at ( 1.2,  0.0);
+  \coordinate (D) at (-0.5, -1.2);
+  \coordinate (E) at ( 0.9, -1.0);
+  \fill[blue!20] (A)--(B)--(C)--cycle;
+  \draw[thick] (A)--(B) (A)--(C) (B)--(C);
+  \draw[thick] (B)--(D) (C)--(E) (D)--(E);
+  \foreach \p in {A,B,C,D,E} \node[vert] at (\p) {};
+  \node[draw=none,fill=none,font=\footnotesize,blue!70!black] at (0,0.55)
+    {filled (prob.\ $q$)};
+  \node[draw=none,fill=none,font=\small] at (0,-1.85) {$\PC(n,p,q)$};
+  \node[draw=none,fill=none,font=\scriptsize,gray,text width=3.5cm,align=center]
+    at (0,-2.3) {edges \& fills placed independently};
+\end{scope}
+%% ─── Divider ─────────────────────────────────────────────────────────────────
+\draw[gray!35,thin] (2.4,1.9)--(2.4,-2.0);
+%% ─── Right panel: Čech ───────────────────────────────────────────────────────
+\begin{scope}[xshift=4.8cm]
+  \coordinate (A2) at ( 0.0,  1.4);
+  \coordinate (B2) at (-1.2,  0.0);
+  \coordinate (C2) at ( 1.2,  0.0);
+  \coordinate (D2) at (-0.5, -1.2);
+  \coordinate (E2) at ( 0.9, -1.0);
+  \begin{scope}[opacity=0.18]
+    \fill[blue!50] (A2) circle (1.05);
+    \fill[blue!50] (B2) circle (1.05);
+    \fill[blue!50] (C2) circle (1.05);
+  \end{scope}
+  \draw[blue!55,dashed,thick] (A2) circle (1.05);
+  \draw[blue!55,dashed,thick] (B2) circle (1.05);
+  \draw[blue!55,dashed,thick] (C2) circle (1.05);
+  \fill[blue!25] (A2)--(B2)--(C2)--cycle;
+  \draw[thick] (A2)--(B2) (A2)--(C2) (B2)--(C2);
+  \draw[thick] (B2)--(D2) (C2)--(E2) (D2)--(E2);
+  \foreach \p in {A2,B2,C2,D2,E2} \node[vert] at (\p) {};
+  \node[draw=none,fill=none,font=\footnotesize,blue!70!black] at (0,0.55)
+    {filled ($\cap_i B_i\neq\emptyset$)};
+  \node[draw=none,fill=none,font=\small] at (0,-1.85) {$\Cech(n,r,d)$};
+  \node[draw=none,fill=none,font=\scriptsize,gray,text width=3.5cm,align=center]
+    at (0,-2.3) {fill determined by ball intersection};
+\end{scope}
+\end{tikzpicture}
+\caption{The two models on $n=5$ vertices (schematic; the paper uses sup-norm balls on
+  $\TT^d$). \emph{Left:} Under $\PC(n,p,q)$, each edge appears independently with
+  probability~$p$ and each completed triangle is filled independently with probability~$q$
+  (shaded); the bottom triangle has all three edges present but no fill.
+  \emph{Right:} Under $\Cech(n,r,d)$, edges connect vertices within distance~$r$ and
+  a triple fills whenever the three balls of radius~$r$ share a common point---a
+  geometric constraint, not an independent coin flip.}
+\label{fig:models}
+\end{figure}
+
 \subsection{Parameter Matching}
 
 To compare $\PC$ and $\Cech$ on equal footing, we match the marginal edge probability $p$
@@ -432,7 +499,7 @@ vertex). The additional factor $(F_{ijk} - q)$ is specific to the simplicial set
 it centers the nerve-criterion indicator, encoding triple-overlap information---whether
 the three sup-norm balls share a common point, not merely intersect pairwise. Multiplying
 and centering all four yields a per-triangle quantity that vanishes whenever any one of
-the indicators decouples from the rest. Above the critical dimension, $F$ becomes
+the indicators decouples from the rest. Above the critical dimension threshold, $F$ becomes
 deterministic given the edges and the fill layer ceases to carry information, collapsing
 $\geomCov$ to zero (Theorem~\ref{thm:phase-transition}(b))---a collapse that is
 \emph{invisible} at the level of the BDER signed edge product alone, since that
@@ -493,7 +560,7 @@ Fix $p\in(0,1)$.
 $\log r(p,d) = (\log p)/d - \log 2 \to -\log 2$ as $d\to\infty$, giving $r(p,d)\to 1/2$.
 Monotonicity holds because $p^{1/d}$ is increasing in $d$ for $p\in(0,1)$.
 
-\textit{Part~(b).} The critical dimension $d^*(p) = |\log p|/\log(3/2)$ is finite.
+\textit{Part~(b).} The critical dimension threshold $d^*(p) = |\log p|/\log(3/2)$ is finite.
 We claim that for all integer $d \geq \lceil d^*(p)\rceil$, $\geomCov(p,d) = 0$ exactly;
 the limit follows immediately since the sequence is eventually zero.
 
@@ -576,11 +643,11 @@ expectation. One checks case by case that for any two distinct triangles (sharin
 3 vertices), at least one such unshared indicator exists.
 
 \textit{Part~(b), diagonal terms.} By mutual independence in $\PC$,
-\[
+\begin{align*}
   \Var[Z_t] = \EE[Z_t^2]
-  = \EE[(A_{ij}-p)^2]\cdot\EE[(A_{ik}-p)^2]\cdot\EE[(A_{jk}-p)^2]\cdot\EE[(F_{ijk}-q)^2]
-  = p(1-p)\cdot p(1-p)\cdot p(1-p)\cdot q(1-q).
-\]
+  &= \EE[(A_{ij}-p)^2]\cdot\EE[(A_{ik}-p)^2]\cdot\EE[(A_{jk}-p)^2]\cdot\EE[(F_{ijk}-q)^2]\\
+  &= p(1-p)\cdot p(1-p)\cdot p(1-p)\cdot q(1-q).
+\end{align*}
 Since the $\binom{n}{3}$ diagonal terms are uncorrelated, summing gives
 $\Var[\tauf] = \binom{n}{3}\cdot p^3(1-p)^3 q(1-q)$.
 \end{proof}
@@ -595,6 +662,7 @@ Under $\Cech(n,r,d)$ with $r = r(p,d)$ and matched $q = \fillingP(p,d)$:
 \item $\EE[\tauf] = \binom{n}{3}\cdot\geomCov(p,d)$.
   \hfill \leanverified{moments\_cech\_signed}
 \item $\Var[\tauf] = O(n^4)$.
+  \textup{(Pen-and-paper; see Appendix~\ref{app:variance-bound}.)}
 \end{enumerate}
 \end{proposition}
 
@@ -748,13 +816,13 @@ $\TV(\PC,\Cech)\to 1$.
 
 \subsection{Phase Transition}
 
-\begin{definition}[Critical dimension]\label{def:critical-dim}
-Define the critical dimension
+\begin{definition}[Critical dimension threshold]\label{def:critical-dim}
+Define the critical dimension threshold
 \begin{equation}\label{eq:critical-dim}
   d^*(p) \;=\; \frac{|\log p|}{\log(3/2)},
 \end{equation}
 the threshold at which the matched radius $r(p,d) = p^{1/d}/2$ crosses $1/3$.
-Equivalently, $d^*(p)$ is the infimum of $d > 0$ such that $p^{1/d} \geq 2/3$,
+Equivalently, $d^*(p)$ is the smallest positive real number $d$ such that $p^{1/d} \geq 2/3$,
 i.e., $r(p,d) \geq 1/3$.
 \end{definition}
 
@@ -865,7 +933,7 @@ bounds in the spirit of~\cite[\S6]{Bubeck2016} and is left open
 
 \subsection{Open Problems}\label{sec:open}
 
-\paragraph{Sharp threshold and simultaneous limits.}
+\subsubsection*{Sharp threshold and simultaneous limits}
 Theorem~\ref{thm:detection} is a fixed-$d$ detection statement. Pinning down the decay
 rate of $\geomCov(p,d)$ as $d\nearrow d^*(p)$, and upgrading to a simultaneous
 $(n,d)\to\infty$ limit, are linked. The Paley--Zygmund step in Theorem~\ref{thm:detection}
@@ -879,7 +947,7 @@ adjacent sparse regime. Resolving the power-comparison question of
 \S\ref{sec:comparison-bder} reduces to the same decay-rate analysis applied to both
 $\geomCov(p,d)$ and $\mathrm{trip}(p,d)$.
 
-\paragraph{Higher-dimensional simplices.}
+\subsubsection*{Higher-dimensional simplices}
 The construction generalizes to $k$-simplices for $k\geq 2$ via a multiply-signed
 statistic
 \(
@@ -900,7 +968,7 @@ Fix $p\in(0,1)$ and $k\geq 2$. Under $(k+1)\PC(n,p,q_k)$ vs.\ the $k$-dimensiona
   p^{\binom{k+1}{2}}(1-p)^{\binom{k+1}{2}}\,q_k(1-q_k) = \Theta(n^{k+1})$;
 \item $\EE[\tau_{(k)}\mid\Cech_k] = \binom{n}{k+1}\cdot\geomCov_k(p,d)$, giving the
   detection condition $n^{(k+1)/2}\cdot\geomCov_k(p,d)\to\infty$;
-\item \emph{Critical dimension.} $\geomCov_k(p,d) = 0$ \emph{exactly} for
+\item \emph{Critical dimension threshold.} $\geomCov_k(p,d) = 0$ \emph{exactly} for
   $d\geq d^*_k(p) = |\log p|/\log((k+1)/k)$.
 \end{enumerate}
 \end{conjecture}
@@ -909,19 +977,21 @@ A proof requires generalizing Proposition~\ref{prop:moments-cech}(b) to
 $\binom{k+1}{2}$-fold overlap patterns---mechanically analogous to the $k=2$ case but
 with more bookkeeping---and the $k=2$ Lean formalization provides a template.
 
-\paragraph{Beyond flat torus and triangle-count tests.}
-Three further directions combine into a single program. (i)~\emph{Sphere geometry:}
-porting the analysis to $\Sph^{d-1}$ replaces the Helly argument with spherical-cap
-intersections and a transcendental matched-radius formula. (ii)~\emph{Low-degree
-optimality:} Bangachev and Bresler~\cite{BangachevBresler2024} showed that $\tau_\Delta$
+\subsubsection*{Low-degree optimality}
+Bangachev and Bresler~\cite{BangachevBresler2024} showed that $\tau_\Delta$
 is optimal among low-degree tests for the graph problem; Yu, Zadik, and
 Zhang~\cite{Yu2024} established constant-degree optimality for planted-subgraph
 detection; Dhawan, Mao, and Wein~\cite{DhawanMaoWein2023} developed a low-degree
 framework for hyperedge-count statistics. Adapting these frameworks to bound $\tauf$
 against all low-degree tests on $\TT^d$---or finding a strictly more powerful low-degree
-test---would complete the computational picture. (iii)~\emph{Other latent geometries:}
-extensions to anisotropic~\cite{Brennan2022} or hyperbolic~\cite{Litvak2022} latent
-geometries, where triangle-based tests behave differently, remain open.
+test---would complete the computational picture.
+
+\subsubsection*{Beyond the flat torus}
+Porting the analysis to the sphere $\Sph^{d-1}$ with geodesic distance replaces the
+Helly argument with spherical-cap intersections and a transcendental matched-radius
+formula. It would also be interesting to consider extensions to other latent geometries,
+e.g.\ anisotropic~\cite{Brennan2022} or hyperbolic~\cite{Litvak2022}, where
+triangle-based tests behave differently.
 
 %% ─────────────────────────────────────────────────────────────────────────────
 \section*{Acknowledgments}
