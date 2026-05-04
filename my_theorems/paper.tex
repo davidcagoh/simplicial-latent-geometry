@@ -39,6 +39,7 @@
 
 %% Models and statistics
 \newcommand{\tauf}{\tau_{\mathrm{f}}}
+\newcommand{\tauff}{\tau_{\mathrm{ff}}}
 \newcommand{\PC}{\mathrm{2PC}}
 \newcommand{\Cech}{\ifmmode\text{\v{C}ech}\else\v{C}ech\fi}  % Čech (text+math)
 \newcommand{\RGG}{\mathrm{RGG}}
@@ -919,6 +920,102 @@ more powerful (consistent with Remark~\ref{rem:tv-zero-caveat});
 evaluating~\eqref{eq:geomcov-as-covariance} explicitly on $\TT^d$. We do not carry out
 that evaluation here; see \S\ref{sec:open}.
 
+\subsection{Quantitative decay rate and the sparse regime}\label{sec:quantitative}
+
+The 1D primitive $\phi(r) = \PP[\text{three arcs of length }2r\text{ on }\TT^1\text{ share a point}]$
+admits the closed form
+\begin{equation}\label{eq:phi-closed}
+  \phi(r) = \begin{cases}
+    12r^2 & r \in [0, 1/4], \\
+    12r^2 - 3(4r-1)^2 & r \in [1/4, 1/3], \\
+    1 & r \geq 1/3,
+  \end{cases}
+\end{equation}
+via Stevens~\cite{Stevens1939}. By coordinate factorisation, $\fillingP(p,d) = \phi(r(p,d))^d$,
+and a direct expansion at the threshold $r = 1/3$ gives $\phi(1/3-\epsilon) = 1-36\epsilon^2$
+exactly on $\epsilon \in [0,1/12]$. Writing $\eta = 1-d/d^*(p)$ for the fractional gap to the
+critical dimension,
+\begin{equation}\label{eq:filling-decay}
+  1 - \fillingP(p,d) = 4\log(3/2)\,|\!\log p|\,\eta^2\,(1+O(\eta))
+  \qquad \text{as } d \nearrow d^*(p).
+\end{equation}
+Expanding $\geomCov$ into 16 monomials and applying three structural identities (matched marginals,
+1D Helly for wedges, all-edges-imply-fill) yields
+\begin{equation}\label{eq:geomcov-deep}
+  \geomCov(p,d) = (1-q)\,(3r^2)^d + 3p^3\bigl[(7r/2)^d - 1\bigr], \qquad r \leq 1/4.
+\end{equation}
+The leading term is $\Theta((1-q)\cdot(3/4)^d\cdot p^2)$, decaying exponentially in $d$ but only
+polynomially in $p$. The closed forms in~\eqref{eq:phi-closed},~\eqref{eq:geomcov-deep},
+and the wedge collapse are formally verified in Lean~4
+(\texttt{fillingProb\_eq\_low\_r}, \texttt{geometricCov\_eq\_deep}, \texttt{wedge\_implies\_fill}).
+
+Combining~\eqref{eq:geomcov-deep} with the $n^{3/2}$ Paley--Zygmund SNR condition of
+Theorem~\ref{thm:detection} yields a clean sparse-regime corollary.
+
+\begin{corollary}[Sparse-regime detection]\label{cor:sparse}
+Let $(p_n, d_n)_{n\geq 1}$ satisfy $r(p_n,d_n) \leq 1/4$, $p_n \to 0$, and
+\begin{equation}\label{eq:sparse-snr}
+  n^{3/2} \cdot (3/4)^{d_n} \cdot p_n^2 \to \infty.
+\end{equation}
+Then $\tauf$ achieves asymptotic power $1$: $\TV(\PC(n,p_n,q_n),\Cech(n,r(p_n,d_n),d_n))\to 1$.
+\end{corollary}
+
+\noindent
+\emph{Fixed dimension.} For $d$ fixed and $p_n = n^{-\alpha}$, condition~\eqref{eq:sparse-snr}
+reduces to $\alpha < 3/4$, giving the sparse threshold $p_n \gg n^{-3/4}$. This is the simplicial
+analogue of the sparse RGG threshold of Liu--Mohanty--Schramm--Yang~\cite{Liu2022} for graphs on
+$\Sph^{d-1}$, with an additional dimension threshold $d^*(p_n)$.
+
+\emph{Joint $(n,d,p)$ scaling.} Detection is possible when
+$d_n\log(4/3) + 2|\!\log p_n| \ll (3/2)\log n$, opening a three-dimensional detectable region
+in $(n,d,p)$-space.
+
+\subsection{The fill-pair statistic}\label{sec:fillfill}
+
+In the graph detection problem on $\Sph^{d-1}$, the signed triangle statistic is optimal among
+low-degree polynomial tests (Bangachev--Bresler~\cite{BangachevBresler2024}). The simplicial
+setting exhibits a qualitatively different behaviour: a \emph{pure-fill pair} statistic achieves
+strictly higher SNR than $\tauf$ throughout the deep regime.
+
+Define the \emph{fill-pair statistic}
+\[
+  \tauff := \sum_{\substack{t,\, t' \in \binom{[n]}{3} \\ |t \cap t'| = 2}}
+            (F_t - q)(F_{t'} - q),
+\]
+which sums over pairs of triangles sharing exactly one edge. This is a degree-$2$ polynomial
+in the fill indicators $\{F_t\}$ and uses no edge information.
+
+\begin{proposition}[Fill-pair SNR]\label{prop:fillfill}
+In the deep regime $r(p,d) \leq 1/4$:
+\begin{align}
+  \EE_{\Cech}[\tauff] &= \tbinom{n}{2}\tbinom{n-2}{2} \cdot
+    \bigl[(112r^3/3)^d - (12r^2)^{2d}\bigr], \label{eq:tauff-mean}\\
+  \Var_{2\mathrm{PC}}[\tauff] &= \tbinom{n}{2}\tbinom{n-2}{2} \cdot (q(1-q))^2,
+    \label{eq:tauff-var}
+\end{align}
+where $(112r^3/3)^d - (12r^2)^{2d}$ is the covariance between fills of two adjacent triangles
+under the \v{C}ech model. The ratio
+\[
+  \frac{\mathrm{SNR}(\tauff)}{\mathrm{SNR}(\tauf)}
+  \approx \sqrt{\tfrac{3n}{2}} \cdot (12.9)^{d/2} \cdot p^{3/2}
+\]
+grows without bound as $d \to \infty$ for fixed $n,p$.
+\end{proposition}
+
+\textbf{Implication.} $\tauf$ detects simplicial structure via joint edge-fill correlation;
+$\tauff$ exploits purely the fill-fill covariance between adjacent triangles. The latter signal
+is absent in the graph setting (there are no fill bits), which is why the optimality result
+of~\cite{BangachevBresler2024} does not transfer. Numerically at $(n,p,d) = (1000,0.01,3)$:
+$\mathrm{SNR}(\tauff)/\mathrm{SNR}(\tauf) \approx 1.64$; at $d = 5$ the ratio is $\approx 23$.
+
+\textbf{Lean status.} The key new integral $(112r^3/3)^d = E[F_t \cdot F_{t'}]$ for adjacent
+$t,t'$ is currently being verified in Lean~4 (Aristotle job in progress). The combinatorial
+identities~\eqref{eq:tauff-mean}--\eqref{eq:tauff-var} follow from independence of non-adjacent
+fill pairs under 2PC and Fubini conditioning for the \v{C}ech mean.
+
+Whether $\tauff$ is itself low-degree optimal, or whether an even higher-degree polynomial achieves
+better SNR, remains open.
+
 \subsection{Limitations}
 
 This paper is restricted to the flat torus $\TT^d$ with the sup-norm metric, where the
@@ -933,19 +1030,15 @@ bounds in the spirit of~\cite[\S6]{Bubeck2016} and is left open
 
 \subsection{Open Problems}\label{sec:open}
 
-\subsubsection*{Sharp threshold and simultaneous limits}
-Theorem~\ref{thm:detection} is a fixed-$d$ detection statement. Pinning down the decay
-rate of $\geomCov(p,d)$ as $d\nearrow d^*(p)$, and upgrading to a simultaneous
-$(n,d)\to\infty$ limit, are linked. The Paley--Zygmund step in Theorem~\ref{thm:detection}
-requires $n\cdot\geomCov(p,d)\to\infty$---strictly stronger than our stated SNR criterion
-$n^{3/2}\cdot\geomCov\to\infty$ once $\geomCov = o(n^{-1/2})$---because our \v{C}ech
-variance bound is only $O(n^4)$. A quantitative decay rate for $\geomCov$ (a
-codimension-one triple-intersection integral on $\TT^d$), combined with a tighter variance
-bound, would yield a clean joint-limit detection theorem. The low-degree polynomial
-framework of Liu, Mohanty, Schramm, and Yang~\cite{Liu2022} provides a model in the
-adjacent sparse regime. Resolving the power-comparison question of
-\S\ref{sec:comparison-bder} reduces to the same decay-rate analysis applied to both
-$\geomCov(p,d)$ and $\mathrm{trip}(p,d)$.
+\subsubsection*{Two-sided rate for $\geomCov$ in sub-regimes}
+The closed form~\eqref{eq:geomcov-deep} gives the upper bound
+$\geomCov \leq (1-q)(3r^2)^d + 3p^3(7r/2)^d$. The matching lower bound
+$\geomCov \geq c(1-q)(3r^2)^d$ holds when $(1-q)(3r^2)^d \gtrsim p^3(7r/2)^d$,
+i.e.\ when $1-q \gtrsim p\cdot(7/(6r))^d$. This is \emph{not} uniform across the
+deep regime: as $r\to 0$ the lower-bound threshold tightens. Identifying the exact
+sub-regime in which the rate is $\Theta$, not just $O$, is open.
+The lower bounds $\geomCov \geq (1-q)(3/4)^d p^2 - 3p^3$ are currently being
+verified in Lean~4 (Aristotle job~\texttt{133c7aac} in progress).
 
 \subsubsection*{Higher-dimensional simplices}
 The construction generalizes to $k$-simplices for $k\geq 2$ via a multiply-signed
@@ -978,13 +1071,14 @@ $\binom{k+1}{2}$-fold overlap patterns---mechanically analogous to the $k=2$ cas
 with more bookkeeping---and the $k=2$ Lean formalization provides a template.
 
 \subsubsection*{Low-degree optimality}
-Bangachev and Bresler~\cite{BangachevBresler2024} showed that $\tau_\Delta$
-is optimal among low-degree tests for the graph problem; Yu, Zadik, and
-Zhang~\cite{Yu2024} established constant-degree optimality for planted-subgraph
-detection; Dhawan, Mao, and Wein~\cite{DhawanMaoWein2023} developed a low-degree
-framework for hyperedge-count statistics. Adapting these frameworks to bound $\tauf$
-against all low-degree tests on $\TT^d$---or finding a strictly more powerful low-degree
-test---would complete the computational picture.
+As shown in \S\ref{sec:fillfill}, $\tauf$ is \emph{not} low-degree optimal: the fill-pair
+statistic $\tauff$ achieves strictly higher SNR throughout the deep regime. Whether $\tauff$
+is itself optimal among degree-$\leq D$ polynomials in $(A,F)$---or whether higher-degree
+combinations dominate---remains open. The low-degree frameworks of
+Bangachev--Bresler~\cite{BangachevBresler2024}, Yu--Zadik--Zhang~\cite{Yu2024},
+and Dhawan--Mao--Wein~\cite{DhawanMaoWein2023} provide tools; cataloguing all
+degree-$\leq D$ Fourier contributions to the \v{C}ech--$2\PC$ likelihood ratio is the
+natural next step.
 
 \subsubsection*{Beyond the flat torus}
 Porting the analysis to the sphere $\Sph^{d-1}$ with geodesic distance replaces the

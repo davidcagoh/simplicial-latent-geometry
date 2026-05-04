@@ -1813,6 +1813,39 @@ lemma geometricCov_lower_bound_explicit (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 :
 -- end OQ-16 / Track A+B stubs
 -- ────────────────────────────────────────────────────────────────────────────
 
+-- ────────────────────────────────────────────────────────────────────────────
+-- OQ-16 / Track C stubs — fill-pair statistic τ_ff
+-- ────────────────────────────────────────────────────────────────────────────
+
+/-- **Track C, Job 5 — double-fill joint probability.**
+    For adjacent triangles {1,2,3} and {1,2,4} sharing edge {1,2},
+    the probability that BOTH are filled under the Čech model equals
+    (112/3 · r³)^d.
+
+    Proof strategy (factorisation over the d coordinates of 𝕋^d):
+    Step 1: By Fubini, condition on (x1, x2); x3 and x4 are then independent.
+      E[F_{123}·F_{124}] = ∫_{x1,x2} g(x1,x2)² dx1 dx2
+      where g(x1,x2) = ∫_{x3} fill_{123} = vol_d(fill fiber | x1,x2).
+    Step 2: By the coordinate product structure of 𝕋^d = (𝕋^1)^d,
+      g(x1,x2) = ∏_l fill_fiber_1D(x1^l, x2^l).
+    Step 3: New 1D lemma in TorusIntegrals.lean (`integral_fill_fiber_sq_line`):
+      2 * ∫_0^{2r} (4r − b)² db = 112/3 · r³.
+      (Here 4r − b is the fill-fiber length at distance b, from `fill_fiber_real_length`.)
+    Step 4: Lift to d dimensions:
+      ∫_{x1,x2 ∈ 𝕋^{2d}} g(x1,x2)² = (112/3 · r³)^d. -/
+lemma doubleFill_joint_prob (d : ℕ) (hd : 1 ≤ d) (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
+    ∫ pts : Fin 4 → (Fin d → T1),
+      (if (∃ z : Fin d → T1, dist (pts 0) z ≤ r ∧ dist (pts 1) z ≤ r ∧ dist (pts 2) z ≤ r) ∧
+          (∃ z : Fin d → T1, dist (pts 0) z ≤ r ∧ dist (pts 1) z ≤ r ∧ dist (pts 3) z ≤ r)
+       then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 4 => (volume : Measure (Fin d → T1)))
+    = (112 / 3 * r ^ 3) ^ d := by
+  sorry
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- end OQ-16 / Track C stubs
+-- ────────────────────────────────────────────────────────────────────────────
+
 /-- **Lemma A (Variance of doubly-signed stat under 2PC).**
     Under 2PC(n,p,q): E[τ_f] = 0, Var[τ_f] = C(n,3)·p³(1-p)³·q(1-q).
 
