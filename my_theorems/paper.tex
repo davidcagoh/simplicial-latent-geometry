@@ -1251,6 +1251,34 @@ The results \lean{matchRadius\_spec} and \lean{matchRadius\_tendsto\_half} (job
 Mathlib to formalize the algebraic identity $(p^{1/d})^d = p$ and the limit $p^{1/d}\to 1$.
 \end{remark}
 
+\smallskip\noindent\textit{OQ-16 Track B — sparse-regime lower bounds (Aristotle job
+\texttt{133c7aac}, May~2026).}
+
+\begin{itemize}[leftmargin=*, itemsep=4pt]
+\item \lean{geometricCov\_lower\_bound}: $\geomCov(p,d) \geq (1-q)\,\gamma(r)^d - 3p^3$,
+  proved by applying \lean{geometricCov\_eq\_deep} and using positivity of $3p^3$ together
+  with $(7r/2)^d \leq 1$ for $r \leq 1/4$.
+
+\item \lean{geometricCov\_lower\_bound\_explicit}:
+  $\geomCov(p,d) \geq (1-q)\,(3/4)^d\,p^2 - 3p^3$,
+  derived from \lean{geometricCov\_lower\_bound} via the matchRadius identity $(2r)^d = p$,
+  which gives $(3r^2)^d = (3/4)^d p^2$.
+\end{itemize}
+
+\smallskip\noindent\textit{OQ-16 Track C — fill-pair joint probability (Aristotle job
+\texttt{12474171}, May~2026).}
+
+\begin{itemize}[leftmargin=*, itemsep=4pt]
+\item \lean{doubleFill\_joint\_prob}:
+  $\EE_{\Cech}[F_t \cdot F_{t'}] = (112r^3/3)^d$ for adjacent triangles $t, t'$ sharing
+  an edge, proved via Fubini and coordinate factorisation over the $d$ torus components.
+  New infrastructure in \texttt{TorusIntegrals.lean}: \lean{doubleFillSet},
+  \lean{integral\_fill\_fiber\_sq\_line}
+  ($2\int_0^{2r}(4r-b)^2\,\mathrm{d}b = 112r^3/3$),
+  \lean{volume\_doubleFillSet}, \lean{doubleFillSet\_torus\_eq},
+  \lean{volume\_coordFactored4\_eq\_pow}.
+\end{itemize}
+
 \subsection*{Formalization Architecture}
 
 The proof is organized as follows. Strategy~2 material begins at approximately line~634 of the
