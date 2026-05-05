@@ -1782,7 +1782,8 @@ lemma geometricCov_lower_bound (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (
     (hr : matchRadius p d ≤ 1/4) :
     (1 - fillingProb p d) * (3 * matchRadius p d ^ 2) ^ d - 3 * p ^ 3
       ≤ geometricCov p d := by
-  sorry
+  rw [ geometricCov_eq_deep p d hp0 hp1 hd hr ];
+  nlinarith [ show 0 ≤ 3 * p ^ 3 by positivity, show ( 7 * matchRadius p d / 2 ) ^ d ≥ 0 by exact pow_nonneg ( by unfold matchRadius; split_ifs <;> positivity ) _ ]
 
 /-- **Track B, Lemma 2 (geomCov lower bound, explicit p form).**
     In the deep regime r ≤ 1/4, and using the matchRadius identity (2r)^d = p,
@@ -1807,7 +1808,9 @@ lemma geometricCov_lower_bound_explicit (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 :
     (hr : matchRadius p d ≤ 1/4) :
     (1 - fillingProb p d) * (3/4 : ℝ) ^ d * p ^ 2 - 3 * p ^ 3
       ≤ geometricCov p d := by
-  sorry
+  refine le_trans ?_ ( geometricCov_lower_bound p d hp0 hp1 hd hr );
+  rw [ show matchRadius p d = p ^ (1 / ( d : ℝ ) ) / 2 by unfold matchRadius; aesop ] ; ring_nf;
+  rw [ ← Real.rpow_natCast _ ( d * 2 ), ← Real.rpow_mul ( by positivity ) ] ; norm_num [ show d ≠ 0 by linarith ] ; ring_nf ; norm_num
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- end OQ-16 / Track A+B stubs
@@ -1817,7 +1820,7 @@ lemma geometricCov_lower_bound_explicit (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 :
 -- OQ-16 / Track C stubs — fill-pair statistic τ_ff
 -- ────────────────────────────────────────────────────────────────────────────
 
-/-- **Track C, Job 5 — double-fill joint probability.**
+/- **Track C, Job 5 — double-fill joint probability.**
     For adjacent triangles {1,2,3} and {1,2,4} sharing edge {1,2},
     the probability that BOTH are filled under the Čech model equals
     (112/3 · r³)^d.
@@ -1833,14 +1836,27 @@ lemma geometricCov_lower_bound_explicit (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 :
       (Here 4r − b is the fill-fiber length at distance b, from `fill_fiber_real_length`.)
     Step 4: Lift to d dimensions:
       ∫_{x1,x2 ∈ 𝕋^{2d}} g(x1,x2)² = (112/3 · r³)^d. -/
+open Classical MeasureTheory MeasureTheory.Measure in
 lemma doubleFill_joint_prob (d : ℕ) (hd : 1 ≤ d) (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
     ∫ pts : Fin 4 → (Fin d → T1),
       (if (∃ z : Fin d → T1, dist (pts 0) z ≤ r ∧ dist (pts 1) z ≤ r ∧ dist (pts 2) z ≤ r) ∧
           (∃ z : Fin d → T1, dist (pts 0) z ≤ r ∧ dist (pts 1) z ≤ r ∧ dist (pts 3) z ≤ r)
        then (1:ℝ) else 0)
-      ∂Measure.pi (fun _ : Fin 4 => (volume : Measure (Fin d → T1)))
+      ∂MeasureTheory.Measure.pi (fun _ : Fin 4 => (MeasureTheory.volume : MeasureTheory.Measure (Fin d → T1)))
     = (112 / 3 * r ^ 3) ^ d := by
-  sorry
+  rw [ MeasureTheory.integral_congr_ae, MeasureTheory.integral_indicator ];
+  change (∫ x in { pts : Fin 4 → Fin d → T1 | (∃ z, dist (pts 0) z ≤ r ∧ dist (pts 1) z ≤ r ∧ dist (pts 2) z ≤ r) ∧ (∃ z, dist (pts 0) z ≤ r ∧ dist (pts 1) z ≤ r ∧ dist (pts 3) z ≤ r) }, 1 ∂Measure.pi fun _ => volume) = _;
+  · convert congr_arg ENNReal.toReal ( volume_coordFactored4_eq_pow d ( doubleFillSet r ) ( doubleFillSet_measurableSet r ) ) using 1;
+    · rw [ doubleFillSet_torus_eq d hd r hr0 hr ];
+      aesop;
+    · rw [ volume_doubleFillSet r hr0 hr, ENNReal.toReal_pow, ENNReal.toReal_ofReal ( by positivity ) ];
+  · convert doubleFillSet_measurableSet r |> MeasurableSet.preimage <| measurable_pi_lambda _ fun i => measurable_pi_apply i using 1;
+    rw [ doubleFillSet_torus_eq d hd r hr0 hr ];
+    constructor <;> intro h;
+    · convert doubleFillSet_measurableSet r using 1;
+    · simp +decide only [Set.setOf_forall];
+      exact MeasurableSet.iInter fun i => h.preimage <| measurable_pi_lambda _ fun j => measurable_pi_apply i |> Measurable.comp <| measurable_pi_apply j;
+  · norm_num [ Filter.EventuallyEq, Set.indicator ]
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- end OQ-16 / Track C stubs

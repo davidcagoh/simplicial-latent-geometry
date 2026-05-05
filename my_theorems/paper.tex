@@ -398,10 +398,10 @@ convention with only superficial changes.
     {filled (prob.\ $q$)};
   \node[draw=none,fill=none,font=\small] at (0,-1.85) {$\PC(n,p,q)$};
   \node[draw=none,fill=none,font=\scriptsize,gray,text width=3.5cm,align=center]
-    at (0,-2.3) {edges \& fills placed independently};
+    at (0,-2.65) {edges \& fills placed independently};
 \end{scope}
 %% ─── Divider ─────────────────────────────────────────────────────────────────
-\draw[gray!35,thin] (2.4,1.9)--(2.4,-2.0);
+\draw[gray!35,thin] (2.4,1.9)--(2.4,-2.7);
 %% ─── Right panel: Čech ───────────────────────────────────────────────────────
 \begin{scope}[xshift=4.8cm]
   \coordinate (A2) at ( 0.0,  1.4);
@@ -410,13 +410,13 @@ convention with only superficial changes.
   \coordinate (D2) at (-0.5, -1.2);
   \coordinate (E2) at ( 0.9, -1.0);
   \begin{scope}[opacity=0.18]
-    \fill[blue!50] (A2) circle (1.05);
-    \fill[blue!50] (B2) circle (1.05);
-    \fill[blue!50] (C2) circle (1.05);
+    \fill[blue!50] (A2) circle (1.4);
+    \fill[blue!50] (B2) circle (1.4);
+    \fill[blue!50] (C2) circle (1.4);
   \end{scope}
-  \draw[blue!55,dashed,thick] (A2) circle (1.05);
-  \draw[blue!55,dashed,thick] (B2) circle (1.05);
-  \draw[blue!55,dashed,thick] (C2) circle (1.05);
+  \draw[blue!55,dashed,thick] (A2) circle (1.4);
+  \draw[blue!55,dashed,thick] (B2) circle (1.4);
+  \draw[blue!55,dashed,thick] (C2) circle (1.4);
   \fill[blue!25] (A2)--(B2)--(C2)--cycle;
   \draw[thick] (A2)--(B2) (A2)--(C2) (B2)--(C2);
   \draw[thick] (B2)--(D2) (C2)--(E2) (D2)--(E2);
@@ -425,7 +425,7 @@ convention with only superficial changes.
     {filled ($\cap_i B_i\neq\emptyset$)};
   \node[draw=none,fill=none,font=\small] at (0,-1.85) {$\Cech(n,r,d)$};
   \node[draw=none,fill=none,font=\scriptsize,gray,text width=3.5cm,align=center]
-    at (0,-2.3) {fill determined by ball intersection};
+    at (0,-2.65) {fill determined by ball intersection};
 \end{scope}
 \end{tikzpicture}
 \caption{The two models on $n=5$ vertices (schematic; the paper uses sup-norm balls on

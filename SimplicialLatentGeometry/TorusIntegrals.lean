@@ -1062,3 +1062,369 @@ theorem integral_fill_eq_pow (d : ℕ) (hd : 1 ≤ d) (r : ℝ) (hr0 : 0 ≤ r) 
       · grind +revert;
     convert h_closed_ball.image ( show Continuous fun p : ( Fin 3 → T1 ) × T1 => p.1 from continuous_fst ) using 1;
     ext; simp [fillSet]
+def doubleFillSet (r : ℝ) : Set (Fin 4 → T1) :=
+  {u | (∃ z : T1, dist (u 0) z ≤ r ∧ dist (u 1) z ≤ r ∧ dist (u 2) z ≤ r) ∧
+       (∃ z : T1, dist (u 0) z ≤ r ∧ dist (u 1) z ≤ r ∧ dist (u 3) z ≤ r)}
+
+/-
+Key 1D integral: 2 * ∫_0^{2r} (4r - b)² db = 112/3 * r³.
+This is the squared fill-fiber length integrated over the separation distribution.
+-/
+lemma integral_fill_fiber_sq_line (r : ℝ) (hr0 : 0 ≤ r) :
+    2 * ∫ b in Set.Icc 0 (2 * r), (4 * r - b) ^ 2 = 112 / 3 * r ^ 3 := by
+  rw [ MeasureTheory.integral_Icc_eq_integral_Ioc, ← intervalIntegral.integral_of_le ( by linarith ), intervalIntegral.integral_comp_sub_left fun x => x ^ 2 ] ; norm_num ; ring;
+
+/-
+Helper: the fill fiber volume squared integral on ℝ.
+∫_{-2r}^{2r} (4r - |x|)^2 dx = 112/3 * r^3.
+-/
+lemma integral_4r_minus_abs_sq (r : ℝ) (hr0 : 0 ≤ r) :
+    ∫ x in Set.Icc (-(2*r)) (2*r), (4 * r - |x|) ^ 2 = 112 / 3 * r ^ 3 := by
+  -- Split the integral into two parts: from -2r to 0 and from 0 to 2r.
+  have h_split : ∫ x in Set.Icc (-(2 * r)) (2 * r), (4 * r - |x|) ^ 2 = (∫ x in Set.Icc (-(2 * r)) 0, (4 * r + x) ^ 2) + (∫ x in Set.Icc 0 (2 * r), (4 * r - x) ^ 2) := by
+    have h_split : ∫ x in Set.Icc (-(2 * r)) (2 * r), (4 * r - |x|) ^ 2 = (∫ x in Set.Icc (-(2 * r)) 0, (4 * r - |x|) ^ 2) + (∫ x in Set.Icc 0 (2 * r), (4 * r - |x|) ^ 2) := by
+      norm_num [ MeasureTheory.integral_Icc_eq_integral_Ioc, ← intervalIntegral.integral_of_le, hr0 ];
+      rw [ intervalIntegral.integral_add_adjacent_intervals ] <;> exact Continuous.intervalIntegrable ( by continuity ) _ _;
+    exact h_split.trans ( congrArg₂ _ ( MeasureTheory.setIntegral_congr_fun measurableSet_Icc fun x hx => by rw [ abs_of_nonpos hx.2 ] ; ring ) ( MeasureTheory.setIntegral_congr_fun measurableSet_Icc fun x hx => by rw [ abs_of_nonneg hx.1 ] ) );
+  rw [ h_split, MeasureTheory.integral_Icc_eq_integral_Ioc, MeasureTheory.integral_Icc_eq_integral_Ioc ];
+  norm_num [ add_sq, sub_sq, mul_pow, mul_comm, ← intervalIntegral.integral_of_le, hr0 ] ; ring
+
+/-
+Helper: the lintegral of fill_fiber_vol(0,u)^2 over T1 equals 112/3 * r^3 (for r ≤ 1/4).
+Here fill_fiber_vol(a,b) = volume {c | ∃ z, dist a z ≤ r ∧ dist b z ≤ r ∧ dist c z ≤ r}.
+-/
+lemma lintegral_fill_fiber_sq_T1 (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
+    ∫⁻ u : T1, (volume {c : T1 | ∃ z : T1, dist (0:T1) z ≤ r ∧ dist u z ≤ r ∧ dist c z ≤ r}) ^ 2
+    = ENNReal.ofReal (112 / 3 * r ^ 3) := by
+  have h_integral_eq : ∫⁻ (u : T1), volume {c : T1 | ∃ z : T1, dist (0 : T1) z ≤ r ∧ dist u z ≤ r ∧ dist c z ≤ r} ^ 2 = ∫⁻ (y : ℝ) in Set.Icc (-1 / 2) (1 / 2), volume {c : T1 | ∃ z : T1, dist (0 : T1) z ≤ r ∧ dist (QuotientAddGroup.mk y : T1) z ≤ r ∧ dist c z ≤ r} ^ 2 := by
+    have h_integral_eq : ∫⁻ (u : T1), volume {c : T1 | ∃ z : T1, dist (0 : T1) z ≤ r ∧ dist u z ≤ r ∧ dist c z ≤ r} ^ 2 = ∫⁻ (y : ℝ) in Set.Ico (-1 / 2) (1 / 2), volume {c : T1 | ∃ z : T1, dist (0 : T1) z ≤ r ∧ dist (QuotientAddGroup.mk y : T1) z ≤ r ∧ dist c z ≤ r} ^ 2 := by
+      have := @AddCircle.lintegral_preimage;
+      convert this 1 ( -1 / 2 ) _ |> Eq.symm using 1;
+      rw [ ← MeasureTheory.Measure.restrict_congr_set MeasureTheory.Ico_ae_eq_Ioc ] ; norm_num;
+    rw [ h_integral_eq, MeasureTheory.Measure.restrict_congr_set MeasureTheory.Ico_ae_eq_Icc ];
+  -- Apply the result from `fill_fiber_volume_lt` to rewrite the integrand.
+  have h_integrand : ∀ᵐ y ∂MeasureTheory.Measure.restrict MeasureTheory.volume (Set.Icc (-1 / 2) (1 / 2)), volume {c : T1 | ∃ z : T1, dist (0 : T1) z ≤ r ∧ dist (QuotientAddGroup.mk y : T1) z ≤ r ∧ dist c z ≤ r} ^ 2 = ENNReal.ofReal ((4 * r - |y|) ^ 2) * (if |y| ≤ 2 * r then 1 else 0) := by
+    have h_integrand : ∀ᵐ y ∂MeasureTheory.Measure.restrict MeasureTheory.volume (Set.Icc (-1 / 2) (1 / 2)), |y| ≠ 2 * r → volume {c : T1 | ∃ z : T1, dist (0 : T1) z ≤ r ∧ dist (QuotientAddGroup.mk y : T1) z ≤ r ∧ dist c z ≤ r} = ENNReal.ofReal (4 * r - |y|) * (if |y| ≤ 2 * r then 1 else 0) := by
+      have h_integrand : ∀ y ∈ Set.Icc (-1 / 2) (1 / 2), |y| ≠ 2 * r → volume {c : T1 | ∃ z : T1, dist (0 : T1) z ≤ r ∧ dist (QuotientAddGroup.mk y : T1) z ≤ r ∧ dist c z ≤ r} = ENNReal.ofReal (4 * r - |y|) * (if |y| ≤ 2 * r then 1 else 0) := by
+        intro y hy hy_ne
+        by_cases hy_le : |y| ≤ 2 * r;
+        · have := fill_fiber_volume_lt r hr0 hr ( 0 : T1 ) ( QuotientAddGroup.mk y ) ?_ <;> norm_num at *;
+          · rw [ this, if_pos hy_le, T1_norm_mk_of_abs_le ] ; norm_num [ abs_le ] at * ; constructor <;> linarith;
+          · rw [ T1_norm_mk_of_abs_le ] <;> norm_num at * <;> cases abs_cases y <;> cases lt_or_gt_of_ne hy_ne <;> linarith;
+        · have h_empty : {c : T1 | ∃ z : T1, dist (0 : T1) z ≤ r ∧ dist (QuotientAddGroup.mk y : T1) z ≤ r ∧ dist c z ≤ r} = ∅ := by
+            apply fill_fiber_empty r hr0 hr (QuotientAddGroup.mk 0) (QuotientAddGroup.mk y);
+            rw [ T1_dist_mk_of_abs_le ] <;> norm_num at *;
+            · lia;
+            · cases abs_cases y <;> linarith;
+          rw [ h_empty, MeasureTheory.measure_empty ] ; norm_num [ hy_le ];
+      filter_upwards [ MeasureTheory.ae_restrict_mem measurableSet_Icc ] with y hy using h_integrand y hy;
+    filter_upwards [ h_integrand, MeasureTheory.measure_eq_zero_iff_ae_notMem.mp ( MeasureTheory.measure_singleton ( 2 * r ) ), MeasureTheory.measure_eq_zero_iff_ae_notMem.mp ( MeasureTheory.measure_singleton ( -2 * r ) ) ] with y hy₁ hy₂ hy₃;
+    by_cases hy₄ : |y| = 2 * r <;> simp_all +decide [ ENNReal.ofReal_pow ];
+    · cases abs_cases y <;> cases lt_or_gt_of_ne hy₂ <;> cases lt_or_gt_of_ne hy₃ <;> linarith;
+    · split_ifs <;> norm_num [ ENNReal.ofReal_pow ];
+      rw [ ENNReal.ofReal_pow ( by linarith ) ];
+  rw [ h_integral_eq, MeasureTheory.lintegral_congr_ae h_integrand ];
+  -- Apply the result from `integral_4r_minus_abs_sq` to conclude the proof.
+  have h_integral_eq : ∫⁻ (y : ℝ) in Set.Icc (-2 * r) (2 * r), ENNReal.ofReal ((4 * r - |y|) ^ 2) = ENNReal.ofReal (112 / 3 * r ^ 3) := by
+    rw [ ← MeasureTheory.ofReal_integral_eq_lintegral_ofReal ];
+    · convert congr_arg ENNReal.ofReal ( integral_4r_minus_abs_sq r hr0 ) using 1;
+      norm_num;
+    · exact Continuous.integrableOn_Icc ( by continuity );
+    · exact Filter.Eventually.of_forall fun x => sq_nonneg _;
+  rw [ ← h_integral_eq, ← MeasureTheory.lintegral_indicator ];
+  · rw [ ← MeasureTheory.lintegral_indicator ] <;> norm_num [ Set.indicator ];
+    grind;
+  · norm_num
+
+lemma volume_doubleFillSet (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
+    volume (doubleFillSet r) = ENNReal.ofReal (112 / 3 * r ^ 3) := by
+  -- Express the volume as a double integral over u0 and u1.
+  have h_volume : volume (doubleFillSet r) = ∫⁻ u0 : T1, ∫⁻ u1 : T1, (volume {c : T1 | ∃ z : T1, dist u0 z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r}) ^ 2 := by
+    have h_volume : volume (doubleFillSet r) = ∫⁻ (u : Fin 4 → T1), (if (∃ z : T1, dist (u 0) z ≤ r ∧ dist (u 1) z ≤ r ∧ dist (u 2) z ≤ r) ∧ (∃ z : T1, dist (u 0) z ≤ r ∧ dist (u 1) z ≤ r ∧ dist (u 3) z ≤ r) then 1 else 0) := by
+      rw [ MeasureTheory.lintegral_congr_ae, MeasureTheory.lintegral_indicator ];
+      exact?;
+      · apply_rules [ IsClosed.measurableSet, IsOpen.measurableSet ];
+        refine' IsClosed.inter _ _;
+        · refine' isClosed_of_closure_subset _;
+          intro u hu;
+          rw [ mem_closure_iff_seq_limit ] at hu;
+          obtain ⟨ x, hx₁, hx₂ ⟩ := hu;
+          choose z hz using hx₁;
+          -- Since $z_n$ is a sequence in a compact space, it has a convergent subsequence.
+          obtain ⟨z', hz'⟩ : ∃ z' : T1, ∃ subseq : ℕ → ℕ, StrictMono subseq ∧ Filter.Tendsto (fun n => z (subseq n)) Filter.atTop (nhds z') := by
+            have h_compact : IsCompact (Set.univ : Set T1) := by
+              exact isCompact_univ;
+            have := h_compact.isSeqCompact fun n => Set.mem_univ ( z n ) ; aesop;
+          obtain ⟨ subseq, hsubseq₁, hsubseq₂ ⟩ := hz';
+          use z';
+          have h_dist : Filter.Tendsto (fun n => dist (x (subseq n) 0) (z (subseq n))) Filter.atTop (nhds (dist (u 0) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 1) (z (subseq n))) Filter.atTop (nhds (dist (u 1) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 2) (z (subseq n))) Filter.atTop (nhds (dist (u 2) z')) := by
+            exact ⟨ Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 0 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 1 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 2 ) hsubseq₂ ⟩;
+          exact ⟨ le_of_tendsto_of_tendsto' h_dist.1 tendsto_const_nhds fun n => hz _ |>.1, le_of_tendsto_of_tendsto' h_dist.2.1 tendsto_const_nhds fun n => hz _ |>.2.1, le_of_tendsto_of_tendsto' h_dist.2.2 tendsto_const_nhds fun n => hz _ |>.2.2 ⟩;
+        · refine' isClosed_of_closure_subset _;
+          intro u hu;
+          rw [ mem_closure_iff_seq_limit ] at hu;
+          obtain ⟨ x, hx₁, hx₂ ⟩ := hu;
+          choose z hz using hx₁;
+          -- Since $z_n$ is a sequence in a compact space, it has a convergent subsequence.
+          obtain ⟨z', hz'⟩ : ∃ z' : T1, ∃ subseq : ℕ → ℕ, StrictMono subseq ∧ Filter.Tendsto (fun n => z (subseq n)) Filter.atTop (nhds z') := by
+            have h_compact : IsCompact (Set.univ : Set T1) := by
+              exact isCompact_univ;
+            have := h_compact.isSeqCompact fun n => Set.mem_univ ( z n ) ; aesop;
+          obtain ⟨ subseq, hsubseq₁, hsubseq₂ ⟩ := hz';
+          use z';
+          have h_dist : Filter.Tendsto (fun n => dist (x (subseq n) 0) (z (subseq n))) Filter.atTop (nhds (dist (u 0) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 1) (z (subseq n))) Filter.atTop (nhds (dist (u 1) z')) ∧ Filter.Tendsto (fun n => dist (x (subseq n) 3) (z (subseq n))) Filter.atTop (nhds (dist (u 3) z')) := by
+            exact ⟨ Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 0 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 1 ) hsubseq₂, Filter.Tendsto.dist ( tendsto_pi_nhds.mp ( hx₂.comp hsubseq₁.tendsto_atTop ) 3 ) hsubseq₂ ⟩;
+          exact ⟨ le_of_tendsto_of_tendsto' h_dist.1 tendsto_const_nhds fun n => hz _ |>.1, le_of_tendsto_of_tendsto' h_dist.2.1 tendsto_const_nhds fun n => hz _ |>.2.1, le_of_tendsto_of_tendsto' h_dist.2.2 tendsto_const_nhds fun n => hz _ |>.2.2 ⟩;
+      · norm_num [ Filter.EventuallyEq, Set.indicator ];
+        exact Filter.Eventually.of_forall fun x => by unfold doubleFillSet; aesop;
+    have h_fubini : ∀ (f : (Fin 4 → T1) → ENNReal), Measurable f → ∫⁻ (u : Fin 4 → T1), f u = ∫⁻ (u0 : T1), ∫⁻ (u1 : T1), ∫⁻ (u2 : T1), ∫⁻ (u3 : T1), f (fun i => if i = 0 then u0 else if i = 1 then u1 else if i = 2 then u2 else u3) := by
+      intro f hf
+      have h_fubini : ∫⁻ (u : Fin 4 → T1), f u = ∫⁻ (u : T1 × T1 × T1 × T1), f (fun i => if i = 0 then u.1 else if i = 1 then u.2.1 else if i = 2 then u.2.2.1 else u.2.2.2) := by
+        have h_fubini : MeasureTheory.MeasureSpace.volume = MeasureTheory.Measure.map (fun u : T1 × T1 × T1 × T1 => fun i : Fin 4 => if i = 0 then u.1 else if i = 1 then u.2.1 else if i = 2 then u.2.2.1 else u.2.2.2) (MeasureTheory.Measure.prod (MeasureTheory.MeasureSpace.volume) (MeasureTheory.Measure.prod (MeasureTheory.MeasureSpace.volume) (MeasureTheory.Measure.prod (MeasureTheory.MeasureSpace.volume) (MeasureTheory.MeasureSpace.volume)))) := by
+          refine' MeasureTheory.Measure.pi_eq _;
+          intro s hs; erw [ MeasureTheory.Measure.map_apply ] ; simp +decide [ Fin.prod_univ_four ] ;
+          · simp +decide [ Set.preimage, Fin.forall_fin_succ ];
+            erw [ show { x : T1 × T1 × T1 × T1 | x.1 ∈ s 0 ∧ x.2.1 ∈ s 1 ∧ x.2.2.1 ∈ s 2 ∧ x.2.2.2 ∈ s 3 } = ( s 0 ×ˢ s 1 ×ˢ s 2 ×ˢ s 3 ) by ext ; aesop ] ; simp +decide [ mul_assoc ] ;
+          · exact measurable_pi_lambda _ fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd.fst; exact measurable_snd.snd.snd ] ;
+          · exact MeasurableSet.univ_pi hs;
+        rw [ h_fubini, MeasureTheory.lintegral_map ];
+        · rfl;
+        · exact hf;
+        · exact measurable_pi_lambda _ fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd.fst; exact measurable_snd.snd.snd ] ;
+      erw [ h_fubini, MeasureTheory.lintegral_prod ];
+      · congr! 2;
+        erw [ MeasureTheory.lintegral_prod ];
+        · congr! 2;
+          erw [ MeasureTheory.lintegral_prod ];
+          exact hf.comp ( measurable_pi_lambda _ fun i => by fin_cases i <;> measurability ) |> Measurable.aemeasurable;
+        · exact hf.comp ( measurable_pi_lambda _ fun i => by fin_cases i <;> measurability ) |> Measurable.aemeasurable;
+      · exact hf.aemeasurable.comp_aemeasurable ( by exact Measurable.aemeasurable ( by exact measurable_pi_lambda _ fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd.fst; exact measurable_snd.snd.snd ] ) );
+    rw [ h_volume, h_fubini ];
+    · refine' MeasureTheory.lintegral_congr fun u0 => MeasureTheory.lintegral_congr fun u1 => _;
+      simp +decide [ sq, Set.indicator ];
+      rw [ MeasureTheory.lintegral_congr_ae, MeasureTheory.lintegral_indicator ];
+      change ∫⁻ u2 in { c : T1 | ∃ z : T1, dist u0 z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r }, volume { c : T1 | ∃ z : T1, dist u0 z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r } = _;
+      · simp +decide [ mul_comm ];
+      · refine' IsClosed.measurableSet _;
+        have h_closed : IsCompact {z : T1 | dist u0 z ≤ r ∧ dist u1 z ≤ r} := by
+          have h_closed : IsCompact {z : T1 | dist u0 z ≤ r} := by
+            convert ProperSpace.isCompact_closedBall u0 r using 1;
+            exact Set.ext fun x => by simp +decide [ dist_comm ] ;
+          exact h_closed.inter_right ( isClosed_le ( continuous_const.dist continuous_id' ) continuous_const );
+        have h_closed : IsClosed (Set.image (fun p : T1 × T1 => p.1) {p : T1 × T1 | p.2 ∈ {z : T1 | dist u0 z ≤ r ∧ dist u1 z ≤ r} ∧ dist p.1 p.2 ≤ r}) := by
+          apply_rules [ IsCompact.isClosed, IsCompact.image ];
+          · have h_closed : IsCompact {p : T1 × T1 | p.2 ∈ {z : T1 | dist u0 z ≤ r ∧ dist u1 z ≤ r} ∧ dist p.1 p.2 ≤ r} := by
+              have h_closed : IsClosed {p : T1 × T1 | p.2 ∈ {z : T1 | dist u0 z ≤ r ∧ dist u1 z ≤ r} ∧ dist p.1 p.2 ≤ r} := by
+                exact IsClosed.inter ( h_closed.isClosed.preimage continuous_snd ) ( isClosed_le ( continuous_fst.dist continuous_snd ) continuous_const )
+              exact IsCompact.of_isClosed_subset ( isCompact_univ.prod ‹IsCompact { z : T1 | dist u0 z ≤ r ∧ dist u1 z ≤ r } › ) h_closed fun p hp => ⟨ Set.mem_univ _, hp.1 ⟩;
+            exact h_closed;
+          · exact continuous_fst;
+        convert h_closed using 1;
+        ext; simp [Set.mem_image];
+        simp +decide only [and_assoc];
+      · filter_upwards [ ] with u2 ; by_cases h : ∃ z : T1, dist u0 z ≤ r ∧ dist u1 z ≤ r ∧ dist u2 z ≤ r <;> simp +decide [ h ];
+        rw [ MeasureTheory.lintegral_congr_ae, MeasureTheory.lintegral_indicator ];
+        change ∫⁻ u3 in { c : T1 | ∃ z : T1, dist u0 z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r }, 1 = _;
+        · norm_num;
+        · have h_closed : IsClosed {c : T1 | ∃ z : T1, dist u0 z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r} := by
+            have h_compact : IsCompact {z : T1 | dist u0 z ≤ r ∧ dist u1 z ≤ r} := by
+              have h_compact : IsCompact {z : T1 | dist u0 z ≤ r} := by
+                convert ProperSpace.isCompact_closedBall u0 r using 1;
+                exact Set.ext fun x => by simp +decide [ dist_comm ] ;
+              exact h_compact.inter_right ( isClosed_le ( continuous_const.dist continuous_id' ) continuous_const )
+            have h_closed : IsClosed (Set.image (fun p : T1 × T1 => p.1) {p : T1 × T1 | p.2 ∈ {z : T1 | dist u0 z ≤ r ∧ dist u1 z ≤ r} ∧ dist p.1 p.2 ≤ r}) := by
+              apply_rules [ IsCompact.isClosed, IsCompact.image ];
+              · have h_closed : IsCompact {p : T1 × T1 | p.2 ∈ {z : T1 | dist u0 z ≤ r ∧ dist u1 z ≤ r} ∧ dist p.1 p.2 ≤ r} := by
+                  have h_closed : IsClosed {p : T1 × T1 | p.2 ∈ {z : T1 | dist u0 z ≤ r ∧ dist u1 z ≤ r} ∧ dist p.1 p.2 ≤ r} := by
+                    exact IsClosed.inter ( h_compact.isClosed.preimage continuous_snd ) ( isClosed_le ( continuous_fst.dist continuous_snd ) continuous_const )
+                  exact IsCompact.of_isClosed_subset ( isCompact_univ.prod h_compact ) h_closed fun p hp => ⟨ Set.mem_univ _, hp.1 ⟩;
+                exact h_closed;
+              · exact continuous_fst;
+            convert h_closed using 1;
+            ext; simp [Set.mem_image];
+            exact ⟨ fun ⟨ z, hz1, hz2, hz3 ⟩ => ⟨ z, ⟨ hz1, hz2 ⟩, hz3 ⟩, fun ⟨ z, ⟨ hz1, hz2 ⟩, hz3 ⟩ => ⟨ z, hz1, hz2, hz3 ⟩ ⟩;
+          exact h_closed.measurableSet;
+        · norm_num [ Filter.EventuallyEq, Set.indicator ];
+    · refine' Measurable.ite _ measurable_const measurable_const;
+      have h_measurable : MeasurableSet {a : Fin 4 → T1 | ∃ z : T1, dist (a 0) z ≤ r ∧ dist (a 1) z ≤ r ∧ dist (a 2) z ≤ r} := by
+        have h_measurable : MeasurableSet {a : Fin 3 → T1 | ∃ z : T1, dist (a 0) z ≤ r ∧ dist (a 1) z ≤ r ∧ dist (a 2) z ≤ r} := by
+          have h_measurable : IsClosed {a : Fin 3 → T1 | ∃ z : T1, dist (a 0) z ≤ r ∧ dist (a 1) z ≤ r ∧ dist (a 2) z ≤ r} := by
+            have h_closed : IsClosed {p : (Fin 3 → T1) × T1 | dist (p.1 0) p.2 ≤ r ∧ dist (p.1 1) p.2 ≤ r ∧ dist (p.1 2) p.2 ≤ r} := by
+              exact IsClosed.inter ( isClosed_le ( Continuous.dist ( continuous_apply 0 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) ( IsClosed.inter ( isClosed_le ( Continuous.dist ( continuous_apply 1 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) ( isClosed_le ( Continuous.dist ( continuous_apply 2 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) );
+            have h_closed : IsClosed (Set.image (fun p : (Fin 3 → T1) × T1 => p.1) {p : (Fin 3 → T1) × T1 | dist (p.1 0) p.2 ≤ r ∧ dist (p.1 1) p.2 ≤ r ∧ dist (p.1 2) p.2 ≤ r}) := by
+              apply_rules [ IsCompact.isClosed, IsCompact.image ];
+              · exact IsCompact.of_isClosed_subset ( isCompact_univ ) h_closed ( Set.subset_univ _ );
+              · exact continuous_fst;
+            convert h_closed using 1;
+            ext; simp [Set.mem_image];
+          exact h_measurable.measurableSet;
+        convert h_measurable.preimage ( show Measurable ( fun a : Fin 4 → T1 => fun i : Fin 3 => a ( Fin.castSucc i ) ) from measurable_pi_lambda _ fun _ => measurable_pi_apply _ ) using 1;
+      have h_measurable : MeasurableSet {a : Fin 4 → T1 | ∃ z : T1, dist (a 0) z ≤ r ∧ dist (a 1) z ≤ r ∧ dist (a 3) z ≤ r} := by
+        convert h_measurable.preimage ( show Measurable ( fun a : Fin 4 → T1 => fun i => if i = 0 then a 0 else if i = 1 then a 1 else if i = 2 then a 3 else a 2 ) from ?_ ) using 1;
+        exact measurable_pi_lambda _ fun i => by fin_cases i <;> [ exact measurable_pi_apply 0; exact measurable_pi_apply 1; exact measurable_pi_apply 3; exact measurable_pi_apply 2 ] ;
+      exact MeasurableSet.inter ‹_› ‹_›;
+  -- By translation invariance, the integral over u0 is trivial (IsProbabilityMeasure gives volume 1), so:
+  have h_translation_invariance : ∀ u0 : T1, ∫⁻ u1 : T1, (volume {c : T1 | ∃ z : T1, dist u0 z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r}) ^ 2 = ∫⁻ u1 : T1, (volume {c : T1 | ∃ z : T1, dist (0 : T1) z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r}) ^ 2 := by
+    intro u0
+    have h_translation_invariance : ∀ u1 : T1, volume {c : T1 | ∃ z : T1, dist u0 z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r} = volume {c : T1 | ∃ z : T1, dist (0 : T1) z ≤ r ∧ dist (u1 - u0) z ≤ r ∧ dist c z ≤ r} := by
+      intro u1
+      have h_translation_invariance : ∀ c : T1, (∃ z : T1, dist u0 z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r) ↔ (∃ z : T1, dist 0 z ≤ r ∧ dist (u1 - u0) z ≤ r ∧ dist (c - u0) z ≤ r) := by
+        intro c
+        constructor
+        intro h
+        obtain ⟨z, hz⟩ := h
+        use z - u0
+        simp [hz];
+        rintro ⟨ z, hz₁, hz₂, hz₃ ⟩ ; use z + u0; simp_all +decide [ dist_eq_norm ] ;
+        exact ⟨ by convert hz₂ using 1; abel_nf, by convert hz₃ using 1; abel_nf ⟩;
+      rw [ show { c : T1 | ∃ z : T1, dist u0 z ≤ r ∧ dist u1 z ≤ r ∧ dist c z ≤ r } = ( fun c => c - u0 ) ⁻¹' { c : T1 | ∃ z : T1, dist 0 z ≤ r ∧ dist ( u1 - u0 ) z ≤ r ∧ dist c z ≤ r } by ext; aesop ];
+      convert MeasureTheory.measure_preimage_add_right _ u0 using 1;
+      rotate_left;
+      exact volume;
+      · infer_instance;
+      · rw [ ← MeasureTheory.measure_preimage_add_right ] ; norm_num;
+        swap;
+        exact u0;
+        norm_num [ add_assoc ];
+    simp +decide only [h_translation_invariance];
+    rw [ eq_comm, ← MeasureTheory.lintegral_sub_right_eq_self ];
+  have := lintegral_fill_fiber_sq_T1 r hr0 hr; aesop;
+
+/-! ### Fin 4 coordinate factorisation -/
+
+lemma volume_coordFactored4_eq_pow_zero (S : Set (Fin 4 → T1)) (hS : MeasurableSet S) :
+    volume ({pts : Fin 4 → (Fin 0 → T1) | ∀ i : Fin 0, (fun j : Fin 4 => pts j i) ∈ S} : Set (Fin 4 → Fin 0 → T1))
+    = (volume S) ^ 0 := by
+  simp +decide [MeasureTheory.MeasureSpace.volume]
+  erw [MeasureTheory.Measure.pi_univ]; norm_num
+
+lemma measurable_transpose4 (d : ℕ) :
+    Measurable (fun (f : Fin 4 → Fin d → T1) (i : Fin d) (j : Fin 4) => f j i) := by
+  fun_prop
+
+lemma volume_map_transpose4 (d : ℕ) :
+    Measure.map (fun (f : Fin 4 → Fin d → T1) (i : Fin d) (j : Fin 4) => f j i) volume
+    = (volume : Measure (Fin d → Fin 4 → T1)) := by
+  apply MeasureTheory.Measure.ext
+  intro s hs
+  by_contra h_contra
+  have h_prod_measure : ∀ (s : Set (Fin d → Fin 4 → T1)), MeasurableSet s → (Measure.pi fun _ : Fin d => Measure.pi fun _ : Fin 4 => MeasureSpace.volume) s = (Measure.pi (fun _ : Fin d × Fin 4 => MeasureSpace.volume)) (Set.preimage (fun f : Fin d × Fin 4 → T1 => fun i j => f (i, j)) s) := by
+    intro s hs
+    have h_prod_measure : (Measure.pi (fun _ : Fin d × Fin 4 => MeasureSpace.volume)) = Measure.map (fun f : Fin d → Fin 4 → T1 => fun p : Fin d × Fin 4 => f p.1 p.2) (Measure.pi (fun _ : Fin d => Measure.pi (fun _ : Fin 4 => MeasureSpace.volume))) := by
+      apply MeasureTheory.Measure.pi_eq;
+      intro s hs; erw [ MeasureTheory.Measure.map_apply ];
+      · rw [ show ( fun f p => f p.1 p.2 ) ⁻¹' Set.univ.pi s = Set.pi Set.univ fun i => Set.pi Set.univ fun j => s ( i, j ) from ?_ ];
+        · rw [ MeasureTheory.Measure.pi_pi ];
+          rw [ Finset.prod_congr rfl fun i _ => MeasureTheory.Measure.pi_pi _ _ ];
+          rw [ ← Finset.prod_product' ];
+          refine' Finset.prod_bij ( fun x _ => ( x.1, x.2 ) ) _ _ _ _ <;> simp +decide;
+        · ext; simp [Set.mem_preimage, Set.mem_pi];
+      · fun_prop;
+      · exact MeasurableSet.univ_pi hs;
+    rw [ h_prod_measure, MeasureTheory.Measure.map_apply ];
+    · congr! 1;
+    · fun_prop;
+    · exact hs.preimage ( measurable_pi_lambda _ fun _ => measurable_pi_lambda _ fun _ => measurable_pi_apply _ );
+  have h_prod_measure : (Measure.pi (fun _ : Fin d × Fin 4 => MeasureSpace.volume)) (Set.preimage (fun f : Fin d × Fin 4 → T1 => fun i j => f (i, j)) s) = (Measure.pi (fun _ : Fin 4 × Fin d => MeasureSpace.volume)) (Set.preimage (fun f : Fin 4 × Fin d → T1 => fun i j => f (j, i)) (Set.preimage (fun f : Fin d → Fin 4 → T1 => fun i j => f i j) s)) := by
+    have h_prod_measure : Measure.pi (fun _ : Fin 4 × Fin d => MeasureSpace.volume) = Measure.map (fun f : Fin d × Fin 4 → T1 => fun p : Fin 4 × Fin d => f (p.2, p.1)) (Measure.pi (fun _ : Fin d × Fin 4 => MeasureSpace.volume)) := by
+      refine' MeasureTheory.Measure.pi_eq _;
+      intro s hs; erw [ MeasureTheory.Measure.map_apply ];
+      · rw [ show ( fun f p => f ( p.2, p.1 ) ) ⁻¹' Set.univ.pi s = Set.univ.pi ( fun p => s ( p.2, p.1 ) ) from ?_, MeasureTheory.Measure.pi_pi ];
+        · conv_rhs => rw [ ← Equiv.prod_comp ( Equiv.prodComm _ _ ) ] ;
+          rfl;
+        · grind;
+      · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+      · exact MeasurableSet.univ_pi hs;
+    rw [ h_prod_measure, MeasureTheory.Measure.map_apply ];
+    · lia;
+    · exact measurable_pi_lambda _ fun _ => measurable_pi_apply _;
+    · exact hs.preimage ( measurable_pi_lambda _ fun _ => measurable_pi_lambda _ fun _ => measurable_pi_apply _ );
+  convert h_prod_measure using 1;
+  erw [ MeasureTheory.Measure.pi_eq ];
+  rotate_right;
+  exact MeasureTheory.Measure.map ( fun f : Fin 4 → Fin d → T1 => fun p => f p.2 p.1 ) ( MeasureTheory.Measure.pi fun _ : Fin 4 => MeasureTheory.Measure.pi fun _ : Fin d => MeasureTheory.MeasureSpace.volume );
+  · rw [ MeasureTheory.Measure.map_apply ];
+    · constructor <;> intro h <;> simp_all +decide [ Set.preimage ];
+      convert h_contra _;
+      rw [ MeasureTheory.Measure.map_apply ];
+      · convert h using 1;
+        convert ‹∀ s : Set ( Fin d → Fin 4 → T1 ), MeasurableSet s → ( Measure.pi fun x => Measure.pi fun x => volume ) s = ( Measure.pi fun x => volume ) { x | ( fun i j => x ( i, j ) ) ∈ s } › s hs using 1;
+        exact h_prod_measure.symm;
+      · exact measurable_pi_lambda _ fun _ => measurable_pi_lambda _ fun _ => measurable_pi_apply _ |> Measurable.comp <| measurable_pi_apply _;
+      · lia;
+    · fun_prop;
+    · exact hs.preimage ( measurable_pi_lambda _ fun _ => measurable_pi_lambda _ fun _ => measurable_pi_apply _ );
+  · intro s hs; erw [ MeasureTheory.Measure.map_apply ];
+    · rw [ show ( fun f p => f p.2 p.1 ) ⁻¹' Set.univ.pi s = Set.pi Set.univ fun i => Set.pi Set.univ fun j => s ( j, i ) from ?_ ];
+      · rw [ MeasureTheory.Measure.pi_pi ];
+        rw [ Finset.prod_congr rfl fun i _ => MeasureTheory.Measure.pi_pi _ _ ];
+        rw [ ← Finset.prod_product' ];
+        refine' Finset.prod_bij ( fun x _ => ( x.2, x.1 ) ) _ _ _ _ <;> simp +decide;
+      · ext; simp [Set.mem_preimage, Set.mem_pi];
+        exact ⟨ fun h i j => h j i, fun h i j => h j i ⟩;
+    · fun_prop;
+    · exact MeasurableSet.univ_pi hs
+
+lemma coordFactored4_eq_preimage_pi (d : ℕ) (S : Set (Fin 4 → T1)) :
+    ({pts : Fin 4 → (Fin d → T1) | ∀ i : Fin d, (fun j : Fin 4 => pts j i) ∈ S} : Set (Fin 4 → Fin d → T1))
+    = (fun (f : Fin 4 → Fin d → T1) (i : Fin d) (j : Fin 4) => f j i) ⁻¹' (Set.univ.pi (fun _ : Fin d => S)) := by
+  ext; aesop
+
+lemma volume_coordFactored4_eq_pow_succ (d : ℕ) (S : Set (Fin 4 → T1)) (hS : MeasurableSet S)
+    (ih : volume ({pts : Fin 4 → (Fin d → T1) | ∀ i : Fin d, (fun j : Fin 4 => pts j i) ∈ S} : Set (Fin 4 → Fin d → T1))
+          = (volume S) ^ d) :
+    volume ({pts : Fin 4 → (Fin (d + 1) → T1) | ∀ i : Fin (d + 1), (fun j : Fin 4 => pts j i) ∈ S} : Set (Fin 4 → Fin (d + 1) → T1))
+    = (volume S) ^ (d + 1) := by
+  rw [coordFactored4_eq_preimage_pi]
+  convert congr_arg (fun x : ENNReal => x) (MeasureTheory.Measure.pi_pi (fun _ => volume) fun (_ : Fin (d + 1)) => S) using 1
+  · convert congr_arg (fun x : MeasureTheory.Measure (Fin (d + 1) → Fin 4 → T1) => x (Set.univ.pi fun _ => S)) (volume_map_transpose4 (d + 1)) using 1
+    rw [MeasureTheory.Measure.map_apply]
+    · exact measurable_transpose4 _
+    · exact MeasurableSet.univ_pi fun _ => hS
+  · norm_num
+
+lemma volume_coordFactored4_eq_pow (d : ℕ) (S : Set (Fin 4 → T1)) (hS : MeasurableSet S) :
+    volume ({pts : Fin 4 → (Fin d → T1) | ∀ i : Fin d, (fun j : Fin 4 => pts j i) ∈ S} : Set (Fin 4 → Fin d → T1))
+    = (volume S) ^ d := by
+  induction' d with d ih
+  · convert volume_coordFactored4_eq_pow_zero S hS using 1
+  · exact volume_coordFactored4_eq_pow_succ d S hS ih
+
+/-
+The double-fill set on Torus d equals the coordinate-factored double-fill set (for r ≤ 1/4).
+-/
+lemma doubleFillSet_torus_eq (d : ℕ) (hd : 1 ≤ d) (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/4) :
+    ({pts : Fin 4 → (Fin d → T1) |
+      (∃ z : Fin d → T1, dist (pts 0) z ≤ r ∧ dist (pts 1) z ≤ r ∧ dist (pts 2) z ≤ r) ∧
+      (∃ z : Fin d → T1, dist (pts 0) z ≤ r ∧ dist (pts 1) z ≤ r ∧ dist (pts 3) z ≤ r)} : Set (Fin 4 → Fin d → T1))
+    = {pts : Fin 4 → (Fin d → T1) | ∀ i : Fin d, (fun j : Fin 4 => pts j i) ∈ doubleFillSet r} := by
+  ext pts;
+  constructor <;> intro h <;> dsimp [doubleFillSet] at *;
+  · intro i
+    obtain ⟨z1, hz1⟩ := h.left
+    obtain ⟨z2, hz2⟩ := h.right;
+    refine' ⟨ ⟨ z1 i, _, _, _ ⟩, ⟨ z2 i, _, _, _ ⟩ ⟩ <;> simp_all +decide [ dist_pi_le_iff ];
+  · choose z1 hz1 z2 hz2 using h;
+    choose z3 hz3 using z1;
+    refine' ⟨ ⟨ z3, _, _, _ ⟩, ⟨ hz1, _, _, _ ⟩ ⟩ <;> simp_all +decide [ dist_pi_le_iff ]
+
+lemma doubleFillSet_measurableSet (r : ℝ) : MeasurableSet (doubleFillSet r) := by
+  refine' MeasurableSet.inter _ _;
+  · -- The set is closed under the continuous map that takes u to the distances from u 0, u 1, and u 2 to z. Therefore, the set is closed, and hence measurable.
+    have h_closed : IsClosed {u : Fin 4 → T1 | ∃ z : T1, dist (u 0) z ≤ r ∧ dist (u 1) z ≤ r ∧ dist (u 2) z ≤ r} := by
+      refine' IsCompact.isClosed _;
+      have h_closed : IsCompact {p : (Fin 4 → T1) × T1 | dist (p.1 0) p.2 ≤ r ∧ dist (p.1 1) p.2 ≤ r ∧ dist (p.1 2) p.2 ≤ r} := by
+        refine' IsCompact.of_isClosed_subset ( isCompact_univ.prod ( isCompact_univ ) ) _ _;
+        · exact IsClosed.inter ( isClosed_le ( Continuous.dist ( continuous_apply _ |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) ( IsClosed.inter ( isClosed_le ( Continuous.dist ( continuous_apply _ |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) ( isClosed_le ( Continuous.dist ( continuous_apply _ |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) );
+        · exact fun p hp => ⟨ Set.mem_univ _, Set.mem_univ _ ⟩;
+      convert h_closed.image ( show Continuous fun p : ( Fin 4 → T1 ) × T1 => p.1 from continuous_fst ) using 1 ; aesop;
+    exact h_closed.measurableSet;
+  · -- The set of points where there exists a z such that the distances to three fixed points are all less than or equal to r is closed.
+    have h_closed : IsClosed {u : Fin 4 → T1 | ∃ z : T1, dist (u 0) z ≤ r ∧ dist (u 1) z ≤ r ∧ dist (u 3) z ≤ r} := by
+      refine' IsCompact.isClosed _;
+      have h_closed : IsCompact {p : (Fin 4 → T1) × T1 | dist (p.1 0) p.2 ≤ r ∧ dist (p.1 1) p.2 ≤ r ∧ dist (p.1 3) p.2 ≤ r} := by
+        refine' IsClosed.isCompact _;
+        exact IsClosed.inter ( isClosed_le ( Continuous.dist ( continuous_apply 0 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) ( IsClosed.inter ( isClosed_le ( Continuous.dist ( continuous_apply 1 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) ( isClosed_le ( Continuous.dist ( continuous_apply 3 |> Continuous.comp <| continuous_fst ) continuous_snd ) continuous_const ) );
+      convert h_closed.image ( continuous_fst ) using 1;
+      ext; aesop;
+    exact h_closed.measurableSet
