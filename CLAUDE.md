@@ -28,7 +28,11 @@ Strategy 1 (unsigned variance-gap) was abandoned — `E[V_f](p,d) → L > 0` as 
 
 ```bash
 lake build                                               # build whole project
-lake build SimplicialLatentGeometry.SimplicialDetection  # elaborate main file
+lake build SimplicialLatentGeometry.SimplicialDetection  # elaborate main file (~5 min; required before commit)
+lake build SimplicialLatentGeometry.TorusIntegrals       # fast check for new TorusIntegrals content only (~60 s)
+
+# Avoid double builds — tee captures output once:
+# lake build SimplicialLatentGeometry.SimplicialDetection 2>&1 | tee /tmp/lean_build.log | grep -E "^error:|Build completed"
 
 python ../stochastic-proofs-handbook/scripts/status.py                              # sorry count + job status
 python ../stochastic-proofs-handbook/scripts/submit.py my_theorems/proof_strategy.md "Prove <lemma>" --dry-run
