@@ -1008,8 +1008,9 @@ is absent in the graph setting (there are no fill bits), which is why the optima
 of~\cite{BangachevBresler2024} does not transfer. Numerically at $(n,p,d) = (1000,0.01,3)$:
 $\mathrm{SNR}(\tauff)/\mathrm{SNR}(\tauf) \approx 1.64$; at $d = 5$ the ratio is $\approx 23$.
 
-\textbf{Lean status.} The key new integral $(112r^3/3)^d = E[F_t \cdot F_{t'}]$ for adjacent
-$t,t'$ is currently being verified in Lean~4 (Aristotle job in progress). The combinatorial
+\textbf{Lean status.} The key integral $(112r^3/3)^d = \EE_{\Cech}[F_t \cdot F_{t'}]$ for adjacent
+$t,t'$ is formally verified in Lean~4 (\texttt{doubleFill\_joint\_prob}, May~2026) via Fubini
+and coordinate factorisation over the $d$ torus components. The combinatorial
 identities~\eqref{eq:tauff-mean}--\eqref{eq:tauff-var} follow from independence of non-adjacent
 fill pairs under 2PC and Fubini conditioning for the \v{C}ech mean.
 
