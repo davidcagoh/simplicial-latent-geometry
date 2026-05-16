@@ -105,6 +105,29 @@ lemma chebyshev_ratio_tendsto_zero (g : ℕ → ℝ)
     · positivity;
   · exact tendsto_const_nhds.div_atTop ( Filter.tendsto_pow_atTop ( by norm_num ) |> Filter.Tendsto.comp <| hNG )
 
+/-- `C(n,3) · g² → ∞` whenever `n^{3/2} · g → ∞`. Pure-arithmetic helper, abstract over `g`.
+    The concrete L∞ instance plugs in `g k = geometricCov p (dSeq k)`. -/
+lemma choose3_g_sq_tendsto_atTop_abstract
+    (g : ℕ → ℝ) (nSeq : ℕ → ℕ)
+    (hn : Filter.Tendsto nSeq Filter.atTop Filter.atTop)
+    (hSNR : Filter.Tendsto
+      (fun k => (nSeq k : ℝ) ^ (3/2 : ℝ) * g k)
+      Filter.atTop Filter.atTop) :
+    Filter.Tendsto
+      (fun k => (Nat.choose (nSeq k) 3 : ℝ) * (g k) ^ 2)
+      Filter.atTop Filter.atTop := by
+  have h_choose_bound : ∀ k, nSeq k ≥ 6 → (Nat.choose (nSeq k) 3 : ℝ) ≥ (nSeq k ^ 3 : ℝ) / 162 := by
+    intro k hk; rw [ Nat.cast_choose ] <;> try linarith;
+    rcases n : nSeq k with ( _ | _ | _ | n ) <;> simp_all +decide [ Nat.factorial ] ; ring_nf ; norm_num at *;
+    norm_num [ Nat.factorial_ne_zero ] ; nlinarith [ ( by norm_cast : ( 3 : ℝ ) ≤ ↑‹ℕ› ) ] ;
+  have h_bound_below : ∀ᶠ k in Filter.atTop, (Nat.choose (nSeq k) 3 : ℝ) * (g k) ^ 2 ≥ (nSeq k ^ 3 : ℝ) * (g k) ^ 2 / 162 := by
+    filter_upwards [ hn.eventually_ge_atTop 6 ] with k hk using by nlinarith [ h_choose_bound k hk ] ;
+  have h_div_inf : Filter.Tendsto (fun k => (nSeq k ^ 3 : ℝ) * (g k) ^ 2 / 162) Filter.atTop Filter.atTop := by
+    have h_div_inf : Filter.Tendsto (fun k => ((nSeq k ^ (3 / 2 : ℝ) * g k) ^ 2) / 162) Filter.atTop Filter.atTop := by
+      exact Filter.Tendsto.atTop_div_const ( by norm_num ) ( Filter.tendsto_pow_atTop ( by norm_num ) |> Filter.Tendsto.comp <| hSNR );
+    convert h_div_inf using 2 ; ring ; norm_num only [ ← Real.rpow_natCast, ← Real.rpow_mul ( Nat.cast_nonneg _ ) ] ; ring;
+  exact Filter.tendsto_atTop_mono' Filter.atTop h_bound_below h_div_inf
+
 /-! ## 2PC measure: total mass and probability-measure instance
 
 These are properties of the universal 2PC null model, independent of any geometric
@@ -158,3 +181,74 @@ lemma twoParamMeasure_isProbabilityMeasure (n : ℕ) (p q : ℝ)
 lemma threshold_event_measurableSet (n : ℕ) (p q lam : ℝ) :
     MeasurableSet {s : TwoParamSample n | doublySignedFilledCount p q s ≥ lam} :=
   trivial
+
+/-! ## Abstract Chebyshev tendsto
+
+Geometry-agnostic version of `chebyshev_2PC_prob_tendsto_zero`: given a sequence of
+per-`k` Chebyshev bounds on the 2PC measure and an SNR hypothesis on `g`, conclude that
+the threshold exceedance probability tends to zero. Per-geometry instances supply the
+per-`k` Chebyshev bound (typically from `chebyshev_single_bound` plus that geometry's
+filling-probability range) and `g k = geomCov` for the geometry.
+-/
+
+/-- **Abstract Chebyshev tendsto.** If, for each `k`, the 2PC threshold-exceedance
+    probability is bounded by the Chebyshev variance bound `Var/lam²`, and
+    `n^{3/2} · g → ∞`, then the exceedance probability at threshold `C(n,3) · g / 2`
+    tends to zero. Geometry-free: `g` and `q` are arbitrary sequences. -/
+lemma chebyshev_prob_tendsto_zero_abstract
+    (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
+    (nSeq : ℕ → ℕ) (g q : ℕ → ℝ)
+    (hq0 : ∀ k, 0 ≤ q k) (hq1 : ∀ k, q k ≤ 1)
+    (hn : Filter.Tendsto nSeq Filter.atTop Filter.atTop)
+    (hSNR : Filter.Tendsto
+      (fun k => (nSeq k : ℝ) ^ (3/2 : ℝ) * g k)
+      Filter.atTop Filter.atTop)
+    (hChebyshev : ∀ k, ∀ lam : ℝ, 0 < lam →
+      (twoParamMeasure (nSeq k) p (q k)
+        {s | doublySignedFilledCount p (q k) s ≥ lam}).toReal ≤
+      (Nat.choose (nSeq k) 3 : ℝ) * p ^ 3 * (1 - p) ^ 3 * (q k) * (1 - q k) / lam ^ 2) :
+    Filter.Tendsto
+      (fun k => (twoParamMeasure (nSeq k) p (q k)
+        {s | doublySignedFilledCount p (q k) s ≥
+          (Nat.choose (nSeq k) 3 : ℝ) * g k / 2}).toReal)
+      Filter.atTop (nhds 0) := by
+  -- Strategy: bound by Chebyshev with lam = C(n,3)·g/2, then majorise the resulting
+  -- ratio by  p³(1-p)³ / (C(n,3) · g²)  (using q(1-q) ≤ 1/4), which → 0 by
+  -- choose3_g_sq_tendsto_atTop_abstract.
+  have hC3_pos : ∀ᶠ k in Filter.atTop, (0 : ℝ) < (Nat.choose (nSeq k) 3 : ℝ) := by
+    filter_upwards [hn.eventually_gt_atTop 3] with k hk
+    exact Nat.cast_pos.mpr (Nat.choose_pos (by linarith))
+  have hN_pos : ∀ᶠ k in Filter.atTop, (0 : ℝ) < (nSeq k : ℝ) ^ (3 / 2 : ℝ) := by
+    filter_upwards [hn.eventually_gt_atTop 0] with k hk
+    exact Real.rpow_pos_of_pos (by exact_mod_cast hk) _
+  have hg_pos : ∀ᶠ k in Filter.atTop, (0 : ℝ) < g k := by
+    filter_upwards [hSNR.eventually_gt_atTop 0, hN_pos] with k h₁ h₂
+    have : 0 < (nSeq k : ℝ) ^ (3 / 2 : ℝ) * g k := h₁
+    exact (mul_pos_iff_of_pos_left h₂).mp this
+  refine' squeeze_zero_norm' _ _
+  use fun k => p ^ 3 * (1 - p) ^ 3 / ((Nat.choose (nSeq k) 3 : ℝ) * (g k) ^ 2)
+  · filter_upwards [hC3_pos, hg_pos] with k hC3 hg
+    rw [Real.norm_of_nonneg ENNReal.toReal_nonneg]
+    have hlam_pos : (0 : ℝ) < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2 := by positivity
+    refine (hChebyshev k _ hlam_pos).trans ?_
+    have hsq : ((Nat.choose (nSeq k) 3 : ℝ) * g k / 2) ^ 2 =
+        (Nat.choose (nSeq k) 3 : ℝ) ^ 2 * (g k) ^ 2 / 4 := by ring
+    rw [hsq]
+    have h1mp_pos : 0 < 1 - p := by linarith
+    have hp_pow_pos : 0 < p ^ 3 * (1 - p) ^ 3 :=
+      mul_pos (pow_pos hp0 3) (pow_pos h1mp_pos 3)
+    have hq_bound : (q k) * (1 - q k) ≤ 1 / 4 := by
+      nlinarith [sq_nonneg (q k - 1/2), hq0 k, hq1 k]
+    have hg2_pos : 0 < (g k) ^ 2 := pow_pos hg 2
+    have hC3sq_pos : 0 < (Nat.choose (nSeq k) 3 : ℝ) ^ 2 := pow_pos hC3 2
+    have h_common : 0 < p ^ 3 * (1 - p) ^ 3 * (Nat.choose (nSeq k) 3 : ℝ) ^ 2 * (g k) ^ 2 :=
+      mul_pos (mul_pos hp_pow_pos hC3sq_pos) hg2_pos
+    rw [div_le_div_iff₀ (by positivity) (by positivity)]
+    nlinarith [hp_pow_pos, hq_bound, hg2_pos, hC3sq_pos, h_common,
+      sq (Nat.choose (nSeq k) 3 : ℝ), mul_self_nonneg (g k)]
+  · -- numerator/denominator → 0: numerator bounded, denominator → ∞.
+    have h_denom : Filter.Tendsto
+        (fun k => (Nat.choose (nSeq k) 3 : ℝ) * (g k) ^ 2)
+        Filter.atTop Filter.atTop :=
+      choose3_g_sq_tendsto_atTop_abstract g nSeq hn hSNR
+    exact tendsto_const_nhds.div_atTop h_denom
