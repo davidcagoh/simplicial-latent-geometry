@@ -2868,10 +2868,16 @@ lemma chebyshev_2PC_prob_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
         {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s ≥
           (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2}).toReal)
       Filter.atTop (nhds 0) := by
-  -- OQ-18: original proof routes through `cechObservation`-style measurability + the
-  -- existential-form `hasFill`. Several `convert measurableSet_hasFill ...` steps fail
-  -- under the new clique form. Stub pending refactor.
-  sorry
+  -- A3.5: concrete L∞ corollary of `chebyshev_prob_tendsto_zero_abstract`. The abstract
+  -- lemma takes a per-k Chebyshev bound; we supply it from `chebyshev_single_bound`
+  -- specialized at `q k := fillingProb p (dSeq k)`.
+  exact chebyshev_prob_tendsto_zero_abstract p hp0 hp1 nSeq
+    (fun k => geometricCov p (dSeq k)) (fun k => fillingProb p (dSeq k))
+    (fun k => fillingProb_nonneg p (dSeq k))
+    (fun k => fillingProb_le_one p (dSeq k))
+    hn hSNR
+    (fun k lam hlam => chebyshev_single_bound (nSeq k) p (fillingProb p (dSeq k)) lam
+      hp0.le hp1.le (fillingProb_nonneg p (dSeq k)) (fillingProb_le_one p (dSeq k)) hlam)
 
 /-
 OLD PROOF BODY (Čech-nerve form):
