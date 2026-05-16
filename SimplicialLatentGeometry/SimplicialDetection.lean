@@ -1,4 +1,5 @@
 import Mathlib
+import SimplicialLatentGeometry.Core.Statistic
 import SimplicialLatentGeometry.DisjointTriangles
 import SimplicialLatentGeometry.TorusIntegrals
 
@@ -15,15 +16,7 @@ on the flat torus 𝕋^d using the signed filled-triangle statistic?
 
 /-! ## Definitions -/
 
-/-- **Definition 1 (2-Parameter Complex).** A sample from 2PC(n, p, q) consists of:
-    - edge indicators `edge : Fin n → Fin n → Bool`, each i.i.d. Bernoulli(p)
-      (convention: only `edge i j` with `i < j` carries information; assumed symmetric)
-    - fill indicators `fill : {s : Finset (Fin n) // s.card = 3} → Bool`, each i.i.d. Bernoulli(q)
-    all mutually independent. This structure captures a single realisation; the random model
-    is a probability measure on `TwoParamSample n`. -/
-structure TwoParamSample (n : ℕ) where
-  edge : Fin n → Fin n → Bool
-  fill : {s : Finset (Fin n) // s.card = 3} → Bool
+-- `TwoParamSample` moved to `Core.Statistic` (Phase A1 core-extraction, OQ-18).
 
 /-- The flat d-dimensional torus T^d = (ℝ/ℤ)^d with unit side length,
     equipped with the product metric inherited from AddCircle (1 : ℝ). -/
@@ -130,8 +123,8 @@ noncomputable def fillingProb (p : ℝ) (d : ℕ) : ℝ :=
 
 /-! ## Moment Setup -/
 
-/-- Discrete sigma-algebra on TwoParamSample (all sets measurable). -/
-instance (n : ℕ) : MeasurableSpace (TwoParamSample n) := ⊤
+-- `MeasurableSpace (TwoParamSample n)`, `triangleEdges`, `filledTriangleCount`, and
+-- `twoParamMeasure` moved to `Core.Statistic` (Phase A1 core-extraction, OQ-18).
 
 /-- Sigma-algebra on CechSample induced by the points projection.
     This is the coarsest sigma-algebra making `CechSample.points` measurable,
@@ -139,34 +132,11 @@ instance (n : ℕ) : MeasurableSpace (TwoParamSample n) := ⊤
 instance (n d : ℕ) : MeasurableSpace (CechSample n d) :=
   MeasurableSpace.comap CechSample.points inferInstance
 
-/-- The three edges of a triangle as ordered pairs (i, j) with i < j. -/
-def triangleEdges {n : ℕ} (t : {σ : Finset (Fin n) // σ.card = 3}) :
-    Finset (Fin n × Fin n) :=
-  (t.val ×ˢ t.val).filter fun p => p.1 < p.2
-
-/-- Filled triangle count Δ_f in a 2PC sample: sum over triangles of
-    (fill indicator) × (product of edge indicators for the three edges). -/
-noncomputable def filledTriangleCount {n : ℕ} (s : TwoParamSample n) : ℝ :=
-  ∑ t : {σ : Finset (Fin n) // σ.card = 3},
-    (if s.fill t then (1 : ℝ) else 0) *
-    ∏ e ∈ triangleEdges t, (if s.edge e.1 e.2 then 1 else 0)
-
 open Classical in
 /-- Filled triangle count in a Čech sample: triangles whose r-balls have a common point. -/
 noncomputable def cechFilledCount {n d : ℕ} (s : CechSample n d) (r : ℝ) : ℝ :=
   ∑ t : {σ : Finset (Fin n) // σ.card = 3},
     if s.hasFill r t then (1 : ℝ) else 0
-
-/-- 2PC(n,p,q) probability measure: edges i.i.d. Bernoulli(p), fills i.i.d. Bernoulli(q).
-    Defined as counting measure weighted by the product of Bernoulli probabilities for each
-    edge indicator and fill indicator. -/
-noncomputable def twoParamMeasure (n : ℕ) (p q : ℝ) :
-    MeasureTheory.Measure (TwoParamSample n) :=
-  MeasureTheory.Measure.count.withDensity fun s =>
-    (∏ i : Fin n, ∏ j : Fin n,
-      if s.edge i j then ENNReal.ofReal p else ENNReal.ofReal (1 - p)) *
-    (∏ t : {σ : Finset (Fin n) // σ.card = 3},
-      if s.fill t then ENNReal.ofReal q else ENNReal.ofReal (1 - q))
 
 /-- Čech(n,r,d) probability measure: n i.i.d. uniform points on the torus T^d.
     Defined as the pullback (comap) of the product Haar measure through the
@@ -631,15 +601,8 @@ lemma snr_diverges (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
 
 /-! ### Strategy 2: Doubly-Signed Statistic -/
 
-/-- The doubly-signed filled triangle statistic τ_f.
-    Each triangle contributes ∏_{e ∈ edges} (A_e - p) · (F - q).
-    Under 2PC, each factor has mean 0 and is independent, so E[τ_f] = 0
-    and Var[τ_f] = C(n,3)·p³(1-p)³·q(1-q) (diagonal only, O(n³)). -/
-noncomputable def doublySignedFilledCount {n : ℕ} (p q : ℝ) (s : TwoParamSample n) : ℝ :=
-  ∑ t : {σ : Finset (Fin n) // σ.card = 3},
-    (∏ e ∈ triangleEdges t,
-      (if s.edge e.1 e.2 then (1 : ℝ) - p else -p)) *
-    (if s.fill t then (1 : ℝ) - q else -q)
+-- `doublySignedFilledCount` (τ_f on 2PC) moved to `Core.Statistic`
+-- (Phase A1 core-extraction, OQ-18).
 
 open Classical in
 /-- Doubly-signed filled triangle count in a Čech sample. -/
