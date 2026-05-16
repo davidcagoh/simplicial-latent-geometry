@@ -252,3 +252,106 @@ lemma chebyshev_prob_tendsto_zero_abstract
         Filter.atTop Filter.atTop :=
       choose3_g_sq_tendsto_atTop_abstract g nSeq hn hSNR
     exact tendsto_const_nhds.div_atTop h_denom
+
+/-! ## Abstract Paley–Zygmund tendsto
+
+Geometry-agnostic version of `paleyZygmund_cech_prob_tendsto_one`: given a sequence of
+probability measures `ν k`, a real-valued statistic `T k`, and a per-`k` upper bound on the
+lower-tail probability of `T k` (the form produced by Chebyshev applied to the second-moment
+bound), conclude that the upper-tail probability at threshold `C(n,3) · g / 2` tends to one.
+
+Per-geometry instances supply the per-`k` complement bound (typically from a
+`*_second_moment_bound` lemma + Chebyshev) and `g k = geomCov` for that geometry.
+-/
+
+/-- **Abstract Paley–Zygmund tendsto.** If, for each `k`, the probability under `ν k` that
+    `T k` falls below `C(n,3)·g/2` is bounded by the standard Chebyshev complement ratio
+    `4·(C(n,3) + 12·C(n,4)) / (C(n,3)·g)²`, and both `n^{3/2}·g → ∞` and `n·g → ∞`, then
+    the upper-tail probability tends to one. Geometry-free: `g` is an arbitrary real
+    sequence; `ν k` is any probability measure on `Ω k`. -/
+lemma paleyZygmund_prob_tendsto_one_abstract
+    {Ω : ℕ → Type*} [inst : ∀ k, MeasurableSpace (Ω k)]
+    (ν : ∀ k, MeasureTheory.Measure (Ω k))
+    [hν : ∀ k, MeasureTheory.IsProbabilityMeasure (ν k)]
+    (T : ∀ k, Ω k → ℝ)
+    (nSeq : ℕ → ℕ) (g : ℕ → ℝ)
+    (hn : Filter.Tendsto nSeq Filter.atTop Filter.atTop)
+    (hSNR : Filter.Tendsto
+      (fun k => (nSeq k : ℝ) ^ (3/2 : ℝ) * g k)
+      Filter.atTop Filter.atTop)
+    (hNG : Filter.Tendsto
+      (fun k => (nSeq k : ℝ) * g k)
+      Filter.atTop Filter.atTop)
+    (hThrMeas : ∀ k, MeasurableSet
+      {x : Ω k | T k x ≥ (Nat.choose (nSeq k) 3 : ℝ) * g k / 2})
+    (hComplBound : ∀ᶠ k in Filter.atTop,
+      (ν k {x : Ω k | T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2}).toReal ≤
+      4 * ((Nat.choose (nSeq k) 3 : ℝ) + 12 * (Nat.choose (nSeq k) 4 : ℝ)) /
+        ((Nat.choose (nSeq k) 3 : ℝ) * g k) ^ 2) :
+    Filter.Tendsto
+      (fun k => (ν k {x : Ω k | T k x ≥ (Nat.choose (nSeq k) 3 : ℝ) * g k / 2}).toReal)
+      Filter.atTop (nhds 1) := by
+  -- Strategy: complement → 0 via Chebyshev ratio + the supplied bound;
+  -- then upper tail = 1 − complement → 1.
+  have h_compl_lt :
+      Filter.Tendsto
+        (fun k => (ν k {x : Ω k | T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2}).toReal)
+        Filter.atTop (nhds 0) := by
+    refine' squeeze_zero_norm' _ _
+    use fun k => 4 * ((Nat.choose (nSeq k) 3 : ℝ) + 12 * (Nat.choose (nSeq k) 4 : ℝ)) /
+        ((Nat.choose (nSeq k) 3 : ℝ) * g k) ^ 2
+    · filter_upwards [hComplBound] with k hk
+      rw [Real.norm_of_nonneg ENNReal.toReal_nonneg]
+      exact hk
+    · simpa using chebyshev_ratio_tendsto_zero g nSeq hn hSNR hNG
+  -- Total probability decomposition: ν({<}) + ν({≥}) = 1 for each k.
+  have h_total : ∀ k,
+      (ν k {x : Ω k | T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2}).toReal +
+      (ν k {x : Ω k | T k x ≥ (Nat.choose (nSeq k) 3 : ℝ) * g k / 2}).toReal = 1 := by
+    intro k
+    have hLT : MeasurableSet {x : Ω k | T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2} := by
+      -- Complement of the ≥ set is measurable.
+      have hcompl : {x : Ω k | T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2} =
+          {x : Ω k | T k x ≥ (Nat.choose (nSeq k) 3 : ℝ) * g k / 2}ᶜ := by
+        ext x; simp [not_le]
+      rw [hcompl]; exact (hThrMeas k).compl
+    have h_union :
+        {x : Ω k | T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2} ∪
+        {x : Ω k | T k x ≥ (Nat.choose (nSeq k) 3 : ℝ) * g k / 2} = Set.univ := by
+      ext x; by_cases hx : T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2 <;> simp [hx]
+      linarith
+    have h_disj :
+        Disjoint
+          {x : Ω k | T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2}
+          {x : Ω k | T k x ≥ (Nat.choose (nSeq k) 3 : ℝ) * g k / 2} := by
+      rw [Set.disjoint_left]
+      intro x hx hx'
+      have h1 : T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2 := hx
+      have h2 : T k x ≥ (Nat.choose (nSeq k) 3 : ℝ) * g k / 2 := hx'
+      linarith
+    have h_meas_sum :
+        ν k ({x | T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2} ∪
+             {x | T k x ≥ (Nat.choose (nSeq k) 3 : ℝ) * g k / 2}) =
+          ν k {x | T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2} +
+          ν k {x | T k x ≥ (Nat.choose (nSeq k) 3 : ℝ) * g k / 2} :=
+      MeasureTheory.measure_union h_disj (hThrMeas k)
+    have h_univ : ν k Set.univ = 1 := MeasureTheory.measure_univ
+    have h_ne_top₁ :
+        ν k {x | T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2} ≠ ⊤ :=
+      MeasureTheory.measure_ne_top _ _
+    have h_ne_top₂ :
+        ν k {x | T k x ≥ (Nat.choose (nSeq k) 3 : ℝ) * g k / 2} ≠ ⊤ :=
+      MeasureTheory.measure_ne_top _ _
+    have h_real := congrArg ENNReal.toReal h_meas_sum
+    rw [ENNReal.toReal_add h_ne_top₁ h_ne_top₂, h_union, h_univ] at h_real
+    -- h_real : 1 = ν({<}).toReal + ν({≥}).toReal
+    simp at h_real
+    linarith
+  -- Conclude: upper-tail = 1 − complement → 1 − 0 = 1.
+  have h_one_sub :
+      Filter.Tendsto
+        (fun k => 1 - (ν k {x : Ω k | T k x < (Nat.choose (nSeq k) 3 : ℝ) * g k / 2}).toReal)
+        Filter.atTop (nhds 1) := by
+    simpa using (tendsto_const_nhds (x := (1 : ℝ))).sub h_compl_lt
+  refine h_one_sub.congr ?_
+  intro k; linarith [h_total k]

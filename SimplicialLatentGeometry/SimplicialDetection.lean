@@ -4221,6 +4221,12 @@ the extra hypothesis `hNG : n·g → ∞`. Note that `hSNR` is still used to inv
 Under the Cech pushforward, the probability that the doubly-signed statistic
 exceeds threshold λ tends to 1.
 -/
+/-- **OQ-18 / Phase A3.4.** L∞ Rips specialization of the abstract Paley–Zygmund
+    tendsto-one. The body delegates to `paleyZygmund_prob_tendsto_one_abstract` with the
+    Čech pushforward as `ν`, `doublySignedFilledCount` as the statistic, and
+    `geometricCov` as the covariance scale; the per-`k` complement bound comes from
+    `cech_complement_prob_bound`, which only fires once `geometricCov > 0` (eventually
+    true given `hNG`). -/
 lemma paleyZygmund_cech_prob_tendsto_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
     (nSeq dSeq : ℕ → ℕ)
     (hn : Filter.Tendsto nSeq Filter.atTop Filter.atTop)
@@ -4236,23 +4242,35 @@ lemma paleyZygmund_cech_prob_tendsto_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
         {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s ≥
           (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2}).toReal)
       Filter.atTop (nhds 1) := by
-  have h_complement : ∀ᶠ k in Filter.atTop, 0 < geometricCov p (dSeq k) := by
-    filter_upwards [ hNG.eventually_gt_atTop 0 ] with k hk using by nlinarith [ show ( nSeq k : ℝ ) ≥ 0 by positivity ] ;
-  have h_complement : ∀ᶠ k in Filter.atTop, 0 < (Nat.choose (nSeq k) 3 : ℝ) := by
-    filter_upwards [ hn.eventually_gt_atTop 3 ] with k hk using Nat.cast_pos.mpr <| Nat.choose_pos <| by linarith;
-  have h_complement : Filter.Tendsto (fun k => ((MeasureTheory.Measure.map (cechObservation (matchRadius p (dSeq k))) (cechMeasure (nSeq k) (dSeq k) (matchRadius p (dSeq k)))) {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s < (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2}).toReal) Filter.atTop (nhds 0) := by
-    refine' squeeze_zero_norm' _ _;
-    use fun k => 4 * ( ( Nat.choose ( nSeq k ) 3 : ℝ ) + 12 * ( Nat.choose ( nSeq k ) 4 : ℝ ) ) / ( ( Nat.choose ( nSeq k ) 3 : ℝ ) * geometricCov p ( dSeq k ) ) ^ 2;
-    · filter_upwards [ h_complement, ‹∀ᶠ k in Filter.atTop, 0 < geometricCov p ( dSeq k ) › ] with k hk₁ hk₂ using by rw [ Real.norm_of_nonneg ( ENNReal.toReal_nonneg ) ] ; exact cech_complement_prob_bound _ _ _ hp0 hp1 hk₂;
-    · convert chebyshev_ratio_tendsto_zero (fun k => geometricCov p (dSeq k)) nSeq hn hSNR hNG using 1;
-  have h_complement : ∀ k, ((MeasureTheory.Measure.map (cechObservation (matchRadius p (dSeq k))) (cechMeasure (nSeq k) (dSeq k) (matchRadius p (dSeq k)))) {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s < (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2}).toReal + ((MeasureTheory.Measure.map (cechObservation (matchRadius p (dSeq k))) (cechMeasure (nSeq k) (dSeq k) (matchRadius p (dSeq k)))) {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s ≥ (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2}).toReal = 1 := by
-    intro k; rw [ ← ENNReal.toReal_add ] ; rw [ ← MeasureTheory.measure_union ] ;
-    · rw [ show { s : TwoParamSample ( nSeq k ) | _ } ∪ { s : TwoParamSample ( nSeq k ) | _ } = Set.univ from Set.eq_univ_of_forall fun x => by by_cases hx : doublySignedFilledCount p ( fillingProb p ( dSeq k ) ) x < ( Nat.choose ( nSeq k ) 3 : ℝ ) * geometricCov p ( dSeq k ) / 2 <;> aesop ] ; norm_num;
-    · grind +qlia;
-    · exact measurableSet_le measurable_const ( by measurability );
-    · exact MeasureTheory.measure_ne_top _ _;
-    · exact MeasureTheory.measure_ne_top _ _;
-  simpa using ‹Filter.Tendsto ( fun k => ( MeasureTheory.Measure.map ( cechObservation ( matchRadius p ( dSeq k ) ) ) ( cechMeasure ( nSeq k ) ( dSeq k ) ( matchRadius p ( dSeq k ) ) ) { s | doublySignedFilledCount p ( fillingProb p ( dSeq k ) ) s < ↑ ( ( nSeq k ).choose 3 ) * geometricCov p ( dSeq k ) / 2 } ).toReal ) Filter.atTop ( nhds 0 ) ›.const_sub 1 |> Filter.Tendsto.congr ( by intros; linarith [ h_complement ‹_› ] )
+  -- Eventually `geometricCov > 0` along the SNR hypothesis.
+  have h_gpos : ∀ᶠ k in Filter.atTop, 0 < geometricCov p (dSeq k) := by
+    filter_upwards [hNG.eventually_gt_atTop 0] with k hk
+    nlinarith [show (nSeq k : ℝ) ≥ 0 by positivity]
+  -- Eventual complement bound via `cech_complement_prob_bound`.
+  have h_compl :
+      ∀ᶠ k in Filter.atTop,
+        ((MeasureTheory.Measure.map (cechObservation (matchRadius p (dSeq k)))
+          (cechMeasure (nSeq k) (dSeq k) (matchRadius p (dSeq k))))
+          {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s <
+            (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2}).toReal ≤
+        4 * ((Nat.choose (nSeq k) 3 : ℝ) + 12 * (Nat.choose (nSeq k) 4 : ℝ)) /
+          ((Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k)) ^ 2 := by
+    filter_upwards [h_gpos] with k hk
+    exact cech_complement_prob_bound _ _ _ hp0 hp1 hk
+  -- Threshold-event measurability under the discrete σ-algebra.
+  have h_thr : ∀ k, MeasurableSet
+      {s : TwoParamSample (nSeq k) |
+        doublySignedFilledCount p (fillingProb p (dSeq k)) s ≥
+          (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2} :=
+    fun k => threshold_event_measurableSet _ _ _ _
+  -- Delegate to the abstract Paley–Zygmund.
+  exact paleyZygmund_prob_tendsto_one_abstract
+    (Ω := fun k => TwoParamSample (nSeq k))
+    (ν := fun k => (cechMeasure (nSeq k) (dSeq k) (matchRadius p (dSeq k))).map
+      (cechObservation (matchRadius p (dSeq k))))
+    (T := fun k s => doublySignedFilledCount p (fillingProb p (dSeq k)) s)
+    nSeq (fun k => geometricCov p (dSeq k))
+    hn hSNR hNG h_thr h_compl
 
 -- `threshold_event_measurableSet` moved to `Core/Detection.lean` (phase A3.1).
 
