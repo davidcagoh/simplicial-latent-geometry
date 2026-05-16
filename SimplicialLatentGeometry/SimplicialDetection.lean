@@ -190,49 +190,7 @@ lemma moments_twoParam (n : ℕ) (p q : ℝ) (hp : 0 ≤ p) (hp1 : p ≤ 1)
     **Modification from original:** added the covariance term
     `12 * C(n,4) * p^5 * q^2 * (1-p)` which was missing in the original statement. -/
 
-/-
-PROVIDED SOLUTION
-twoParamMeasure is count.withDensity f where f(s) = ∏ Bernoulli weights. The total mass is (count.withDensity f)(univ) = ∫ f d(count) = ∑ f(s) over all s. Since f is a product of independent Bernoulli weights, and each factor sums to 1 over {true, false} (p + (1-p) = 1 and q + (1-q) = 1), the total sum factors into a product of sums, each equal to 1. Hence total mass = 1.
-
-More specifically: use Measure.withDensity_apply, then lintegral_count to get the tsum, then factor the tsum as a product using the product structure of TwoParamSample, then use that ∑_b (if b then p else 1-p) = p + (1-p) = 1 for each factor.
--/
-set_option maxHeartbeats 800000 in
-open MeasureTheory ProbabilityTheory in
-/-- The total mass of `twoParamMeasure` is 1 (it is a probability measure). -/
-lemma twoParamMeasure_totalMass (n : ℕ) (p q : ℝ) (hp : 0 ≤ p) (hp1 : p ≤ 1)
-    (hq : 0 ≤ q) (hq1 : q ≤ 1) :
-    (twoParamMeasure n p q) Set.univ = 1 := by
-      unfold twoParamMeasure; simp [MeasureTheory.Measure.sum_apply]; (
-      -- The total probability is the sum over all edge and fill configurations, each weighted by their respective probabilities.
-      have h_total : ∑' (e : Fin n → Fin n → Bool), ∑' (f : {σ : Finset (Fin n) // σ.card = 3} → Bool), (∏ i : Fin n, ∏ j : Fin n, (if e i j then ENNReal.ofReal p else ENNReal.ofReal (1 - p))) * (∏ t : {σ : Finset (Fin n) // σ.card = 3}, (if f t then ENNReal.ofReal q else ENNReal.ofReal (1 - q))) = 1 := by
-        have h_total : ∑' (e : Fin n → Fin n → Bool), (∏ i : Fin n, ∏ j : Fin n, (if e i j then ENNReal.ofReal p else ENNReal.ofReal (1 - p))) = 1 ∧ ∑' (f : {σ : Finset (Fin n) // σ.card = 3} → Bool), (∏ t : {σ : Finset (Fin n) // σ.card = 3}, (if f t then ENNReal.ofReal q else ENNReal.ofReal (1 - q))) = 1 := by
-          constructor <;> rw [ tsum_fintype ];
-          · -- The sum of the probabilities of all possible edge configurations is equal to the product of the sums of the probabilities of each edge.
-            have h_sum_edges : ∑ b : Fin n → Fin n → Bool, (∏ i : Fin n, ∏ j : Fin n, if b i j then ENNReal.ofReal p else ENNReal.ofReal (1 - p)) = (∏ i : Fin n, ∏ j : Fin n, (∑ b : Bool, if b then ENNReal.ofReal p else ENNReal.ofReal (1 - p))) := by
-              rw [ Finset.prod_sum ];
-              rw [ Finset.prod_sum ];
-              refine' Finset.sum_bij ( fun b _ => fun i _ j _ => b i j ) _ _ _ _ <;> simp +decide;
-              · simp +decide [ funext_iff ];
-              · exact fun b => ⟨ fun i j => b i ( Finset.mem_univ i ) j ( Finset.mem_univ j ), rfl ⟩;
-            simp_all +decide [ Finset.prod_ite ];
-            rw [ ← ENNReal.ofReal_add ] <;> norm_num [ hp, hp1 ];
-          · -- The sum of the products of the probabilities over all possible samples is equal to 1 because it is the expansion of $(q + (1-q))^n$.
-            have h_sum : (∑ b : {s : Finset (Fin n) // s.card = 3} → Bool, (∏ t : {s : Finset (Fin n) // s.card = 3}, if b t then ENNReal.ofReal q else ENNReal.ofReal (1 - q))) = (∏ t : {s : Finset (Fin n) // s.card = 3}, (ENNReal.ofReal q + ENNReal.ofReal (1 - q))) := by
-              rw [ Finset.prod_add ];
-              refine' Finset.sum_bij ( fun b _ => Finset.univ.filter fun t => b t = true ) _ _ _ _ <;> simp +decide [ Finset.prod_ite ];
-              · simp +contextual [ funext_iff, Finset.ext_iff ];
-              · exact fun b => ⟨ fun t => t ∈ b, by ext; simp +decide ⟩;
-              · simp +decide [ Finset.filter_not, Finset.card_sdiff ];
-                intro a; rw [ show ( Finset.univ.filter fun x => a x = false ) = Finset.univ \ ( Finset.univ.filter fun x => a x = true ) by ext; aesop, Finset.card_sdiff ] ; aesop;
-            rw [ h_sum, ← ENNReal.ofReal_add ] <;> norm_num [ hq, hq1 ];
-        simp +decide [ ← Finset.mul_sum _ _ _, ← Finset.sum_mul, h_total ];
-        rw [ tsum_fintype, tsum_fintype ] at * ; aesop;
-      rw [ ← h_total, MeasureTheory.lintegral_count ];
-      rw [ ← Equiv.tsum_eq ( Equiv.ofBijective ( fun e : ( Fin n → Fin n → Bool ) × ( { σ : Finset ( Fin n ) // σ.card = 3 } → Bool ) => ⟨ e.1, e.2 ⟩ : ( Fin n → Fin n → Bool ) × ( { σ : Finset ( Fin n ) // σ.card = 3 } → Bool ) → TwoParamSample n ) ⟨ fun e => by
-        grind +ring, fun e => by
-        exact ⟨ ⟨ e.edge, e.fill ⟩, rfl ⟩ ⟩ ) ] ; simp +decide [ tsum_mul_left, tsum_mul_right ] ; ring
-      generalize_proofs at *; (
-      rw [ ← Finset.sum_product' ] ; aesop;));
+-- `twoParamMeasure_totalMass` moved to `Core/Detection.lean` (phase A3.1).
 
 /-
 PROVIDED SOLUTION
@@ -2747,17 +2705,7 @@ OLD PROOF BODY:
   exact h_preimage))
 -/
 
-/-
-PROBLEM
-twoParamMeasure is a probability measure.
-
-PROVIDED SOLUTION
-Construct the instance using twoParamMeasure_totalMass which gives (twoParamMeasure n p q) Set.univ = 1. Use ⟨twoParamMeasure_totalMass n p q hp hp1 hq hq1⟩.
--/
-lemma twoParamMeasure_isProbabilityMeasure (n : ℕ) (p q : ℝ)
-    (hp : 0 ≤ p) (hp1 : p ≤ 1) (hq : 0 ≤ q) (hq1 : q ≤ 1) :
-    MeasureTheory.IsProbabilityMeasure (twoParamMeasure n p q) := by
-  exact ⟨twoParamMeasure_totalMass n p q hp hp1 hq hq1⟩
+-- `twoParamMeasure_isProbabilityMeasure` moved to `Core/Detection.lean` (phase A3.1).
 
 -- The following three lemmas are moved up from below so that the Chebyshev /
 -- Paley–Zygmund proofs that follow can cite them without forward reference.
@@ -4300,17 +4248,7 @@ lemma paleyZygmund_cech_prob_tendsto_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
     · exact MeasureTheory.measure_ne_top _ _;
   simpa using ‹Filter.Tendsto ( fun k => ( MeasureTheory.Measure.map ( cechObservation ( matchRadius p ( dSeq k ) ) ) ( cechMeasure ( nSeq k ) ( dSeq k ) ( matchRadius p ( dSeq k ) ) ) { s | doublySignedFilledCount p ( fillingProb p ( dSeq k ) ) s < ↑ ( ( nSeq k ).choose 3 ) * geometricCov p ( dSeq k ) / 2 } ).toReal ) Filter.atTop ( nhds 0 ) ›.const_sub 1 |> Filter.Tendsto.congr ( by intros; linarith [ h_complement ‹_› ] )
 
-/-
-PROBLEM
-The threshold event set is measurable (since MeasurableSpace on TwoParamSample is ⊤).
-
-PROVIDED SOLUTION
-The MeasurableSpace on TwoParamSample n is ⊤ (the discrete sigma algebra). Every set is measurable in the discrete sigma algebra. So MeasurableSet S is trivially true. Use trivial or exact MeasurableSpace.measurableSet_top.out or just show this follows from the instance definition.
--/
-lemma threshold_event_measurableSet (n : ℕ) (p q lam : ℝ) :
-    MeasurableSet {s : TwoParamSample n | doublySignedFilledCount p q s ≥ lam} := by
-  -- MeasurableSpace (TwoParamSample n) = ⊤, so every set is measurable
-  trivial
+-- `threshold_event_measurableSet` moved to `Core/Detection.lean` (phase A3.1).
 
 /-
 PROBLEM

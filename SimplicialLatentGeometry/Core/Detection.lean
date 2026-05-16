@@ -104,3 +104,57 @@ lemma chebyshev_ratio_tendsto_zero (g : ℕ → ℝ)
     · exact sq_pos_of_pos ( mul_pos ( Nat.cast_pos.mpr ( Nat.choose_pos ( by linarith ) ) ) ( by nlinarith ) );
     · positivity;
   · exact tendsto_const_nhds.div_atTop ( Filter.tendsto_pow_atTop ( by norm_num ) |> Filter.Tendsto.comp <| hNG )
+
+/-! ## 2PC measure: total mass and probability-measure instance
+
+These are properties of the universal 2PC null model, independent of any geometric
+alternative. Extracted from `SimplicialDetection.lean` in phase A3.1.
+-/
+
+set_option maxHeartbeats 800000 in
+open MeasureTheory ProbabilityTheory in
+/-- The total mass of `twoParamMeasure` is 1 (it is a probability measure). -/
+lemma twoParamMeasure_totalMass (n : ℕ) (p q : ℝ) (hp : 0 ≤ p) (hp1 : p ≤ 1)
+    (hq : 0 ≤ q) (hq1 : q ≤ 1) :
+    (twoParamMeasure n p q) Set.univ = 1 := by
+      unfold twoParamMeasure; simp [MeasureTheory.Measure.sum_apply]; (
+      have h_total : ∑' (e : Fin n → Fin n → Bool), ∑' (f : {σ : Finset (Fin n) // σ.card = 3} → Bool), (∏ i : Fin n, ∏ j : Fin n, (if e i j then ENNReal.ofReal p else ENNReal.ofReal (1 - p))) * (∏ t : {σ : Finset (Fin n) // σ.card = 3}, (if f t then ENNReal.ofReal q else ENNReal.ofReal (1 - q))) = 1 := by
+        have h_total : ∑' (e : Fin n → Fin n → Bool), (∏ i : Fin n, ∏ j : Fin n, (if e i j then ENNReal.ofReal p else ENNReal.ofReal (1 - p))) = 1 ∧ ∑' (f : {σ : Finset (Fin n) // σ.card = 3} → Bool), (∏ t : {σ : Finset (Fin n) // σ.card = 3}, (if f t then ENNReal.ofReal q else ENNReal.ofReal (1 - q))) = 1 := by
+          constructor <;> rw [ tsum_fintype ];
+          · have h_sum_edges : ∑ b : Fin n → Fin n → Bool, (∏ i : Fin n, ∏ j : Fin n, if b i j then ENNReal.ofReal p else ENNReal.ofReal (1 - p)) = (∏ i : Fin n, ∏ j : Fin n, (∑ b : Bool, if b then ENNReal.ofReal p else ENNReal.ofReal (1 - p))) := by
+              rw [ Finset.prod_sum ];
+              rw [ Finset.prod_sum ];
+              refine' Finset.sum_bij ( fun b _ => fun i _ j _ => b i j ) _ _ _ _ <;> simp +decide;
+              · simp +decide [ funext_iff ];
+              · exact fun b => ⟨ fun i j => b i ( Finset.mem_univ i ) j ( Finset.mem_univ j ), rfl ⟩;
+            simp_all +decide [ Finset.prod_ite ];
+            rw [ ← ENNReal.ofReal_add ] <;> norm_num [ hp, hp1 ];
+          · have h_sum : (∑ b : {s : Finset (Fin n) // s.card = 3} → Bool, (∏ t : {s : Finset (Fin n) // s.card = 3}, if b t then ENNReal.ofReal q else ENNReal.ofReal (1 - q))) = (∏ t : {s : Finset (Fin n) // s.card = 3}, (ENNReal.ofReal q + ENNReal.ofReal (1 - q))) := by
+              rw [ Finset.prod_add ];
+              refine' Finset.sum_bij ( fun b _ => Finset.univ.filter fun t => b t = true ) _ _ _ _ <;> simp +decide [ Finset.prod_ite ];
+              · simp +contextual [ funext_iff, Finset.ext_iff ];
+              · exact fun b => ⟨ fun t => t ∈ b, by ext; simp +decide ⟩;
+              · simp +decide [ Finset.filter_not, Finset.card_sdiff ];
+                intro a; rw [ show ( Finset.univ.filter fun x => a x = false ) = Finset.univ \ ( Finset.univ.filter fun x => a x = true ) by ext; aesop, Finset.card_sdiff ] ; aesop;
+            rw [ h_sum, ← ENNReal.ofReal_add ] <;> norm_num [ hq, hq1 ];
+        simp +decide [ ← Finset.mul_sum _ _ _, ← Finset.sum_mul, h_total ];
+        rw [ tsum_fintype, tsum_fintype ] at * ; aesop;
+      rw [ ← h_total, MeasureTheory.lintegral_count ];
+      rw [ ← Equiv.tsum_eq ( Equiv.ofBijective ( fun e : ( Fin n → Fin n → Bool ) × ( { σ : Finset ( Fin n ) // σ.card = 3 } → Bool ) => ⟨ e.1, e.2 ⟩ : ( Fin n → Fin n → Bool ) × ( { σ : Finset ( Fin n ) // σ.card = 3 } → Bool ) → TwoParamSample n ) ⟨ fun e => by
+        grind +ring, fun e => by
+        exact ⟨ ⟨ e.edge, e.fill ⟩, rfl ⟩ ⟩ ) ] ; simp +decide [ tsum_mul_left, tsum_mul_right ] ; ring
+      generalize_proofs at *; (
+      rw [ ← Finset.sum_product' ] ; aesop;));
+
+/-- `twoParamMeasure n p q` is a probability measure when `p, q ∈ [0,1]`. -/
+lemma twoParamMeasure_isProbabilityMeasure (n : ℕ) (p q : ℝ)
+    (hp : 0 ≤ p) (hp1 : p ≤ 1) (hq : 0 ≤ q) (hq1 : q ≤ 1) :
+    MeasureTheory.IsProbabilityMeasure (twoParamMeasure n p q) :=
+  ⟨twoParamMeasure_totalMass n p q hp hp1 hq hq1⟩
+
+/-! ## Trivial measurability under the discrete σ-algebra on `TwoParamSample` -/
+
+/-- Threshold events on the 2PC sample are measurable (discrete σ-algebra). -/
+lemma threshold_event_measurableSet (n : ℕ) (p q lam : ℝ) :
+    MeasurableSet {s : TwoParamSample n | doublySignedFilledCount p q s ≥ lam} :=
+  trivial
