@@ -551,36 +551,10 @@ instance cechMeasure_isProbabilityMeasure (n d : ℕ) (r : ℝ) :
     sigma-algebra (Čech fill sets are closed hence Borel), finite measure from probability instance. -/
 lemma cechFilledCount_integrable (n d : ℕ) (r : ℝ) :
     MeasureTheory.Integrable (fun s => cechFilledCount s r) (cechMeasure n d r) := by
-  have h_bounded : ∀ s : CechSample n d, |cechFilledCount s r| ≤ Nat.choose n 3 := by
-    intro s
-    simp [cechFilledCount];
-    exact le_trans (Finset.card_le_univ _) (by aesop);
-  refine' MeasureTheory.Integrable.mono' (MeasureTheory.integrable_const _) _ _;
-  exact ↑(n.choose 3);
-  · refine' Measurable.aestronglyMeasurable _;
-    refine' Finset.measurable_sum _ fun t ht => _;
-    have h_measurable_set : MeasurableSet {s : CechSample n d | s.hasFill r t} := by
-      have h_measurable_set : MeasurableSet {s : Fin n → Torus d | ∃ z : Torus d, ∀ i ∈ t.val, dist (s i) z ≤ r} := by
-        have h_closed : IsClosed {s : Fin n → Torus d | ∃ z : Torus d, ∀ i ∈ t.val, dist (s i) z ≤ r} := by
-          have h_closed : IsClosed {p : (Fin n → Torus d) × Torus d | ∀ i ∈ t.val, dist (p.1 i) p.2 ≤ r} := by
-            simp +decide only [Set.setOf_forall];
-            exact isClosed_iInter fun i => isClosed_iInter fun hi => isClosed_le
-              (Continuous.dist (continuous_apply i |> Continuous.comp <| continuous_fst) continuous_snd) continuous_const
-          have h_closed : IsClosed (Set.image (fun p : (Fin n → Torus d) × Torus d => p.1)
-              {p : (Fin n → Torus d) × Torus d | ∀ i ∈ t.val, dist (p.1 i) p.2 ≤ r}) := by
-            apply_rules [IsCompact.isClosed, IsCompact.image];
-            · refine' IsCompact.of_isClosed_subset _ h_closed _;
-              exact Set.univ ×ˢ Set.univ
-              all_goals generalize_proofs at *;
-              · exact isCompact_univ.prod isCompact_univ;
-              · exact fun p hp => ⟨Set.mem_univ _, Set.mem_univ _⟩;
-            · exact continuous_fst
-          generalize_proofs at *; (convert h_closed using 1; ext; aesop);
-        exact h_closed.measurableSet;
-      convert h_measurable_set.preimage (show Measurable (fun s : CechSample n d => s.points) from ?_) using 1;
-      exact?;
-    exact Measurable.ite h_measurable_set measurable_const measurable_const;
-  · exact Filter.Eventually.of_forall h_bounded
+  -- OQ-18 Rips refactor: under clique `hasFill`, this is a finite intersection of
+  -- `{dist ≤ r}` sets pulled back through `CechSample.points`. The original existential-
+  -- form proof is no longer the right shape. Stubbed pending refactor.
+  sorry
 
 /-! ### Helper lemmas for snr_diverges -/
 
@@ -1362,23 +1336,38 @@ lemma integrand_fill_rewrite (d : ℕ) (r : ℝ) (p : ℝ) (hr0 : 0 ≤ r)
 
 set_option maxHeartbeats 800000 in
 open Classical MeasureTheory in
-/-- The centered third moment times fill: ∫ (A₁₂-p)(A₁₃-p)(A₂₃-p)·F = γ - 3p³ + 3p²μ - p³q.
-    Uses integrand_fill_rewrite for the pointwise identity, then linearity of the integral
-    with gamma_pow_eq, wedge_integral, mu_e_pow_eq, fillingProb. -/
+/-- **OQ-18 Rips refactor — Aristotle target.** Centered triple-edge moment times fill
+    indicator. Under Rips, F = A₁₂·A₁₃·A₂₃, and the indicator identity X_e·A_e = (1-p)·A_e
+    (since A_e ∈ {0,1}) gives
+      ∫ (A₁₂-p)(A₁₃-p)(A₂₃-p) · F = (1-p)³ · q
+    where q = fillingProb p d = (3r²)^d on r ≤ 1/4.
+
+    Original statement (Čech existential nerve form, no longer correct): the indicator was
+    `∃ z, ...` and the RHS was `(3r²)^d − 3p³ + 3p²·(7r²)^d − p³·q`. Under Rips, the indicator
+    becomes the triangle product and the identity simplifies dramatically.
+
+    See `my_theorems/oq18_math_audit.md` §"Centered edge identity" for the derivation. -/
 lemma centered_edge_moment_fill (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
     (hr : matchRadius p d ≤ 1/4) :
     (∫ pts : Fin 3 → Torus d,
       ((if dist (pts 0) (pts 1) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
       ((if dist (pts 0) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
       ((if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) - p) *
-      (if ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
-                          dist (pts 1) z ≤ matchRadius p d ∧
-                          dist (pts 2) z ≤ matchRadius p d
-       then (1:ℝ) else 0)
+      ((if dist (pts 0) (pts 1) ≤ matchRadius p d then (1:ℝ) else 0) *
+       (if dist (pts 0) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0) *
+       (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0))
       ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
-    = (3 * (matchRadius p d) ^ 2) ^ d - 3 * p ^ 3
-      + 3 * p ^ 2 * (7 * (matchRadius p d) ^ 2) ^ d
-      - p ^ 3 * fillingProb p d := by
+    = (1 - p) ^ 3 * fillingProb p d := by
+  -- OQ-18 Rips refactor — Aristotle target. See docstring above and
+  -- `my_theorems/oq18_math_audit.md`. Proof: pointwise identity X_e · A_e = (1-p) · A_e
+  -- (since A_e is a 0/1 indicator), so the integrand reduces to (1-p)^3 · A_{12}·A_{13}·A_{23},
+  -- whose integral is (1-p)^3 · fillingProb.
+  sorry
+
+-- BEGIN dead-code old centered_edge_moment_fill proof body (commented out for Rips refactor)
+example : True := by trivial
+/-
+OLD PROOF BODY (preserved for reference, no longer well-typed under Rips clique form):
   rw [ MeasureTheory.integral_congr_ae ];
   any_goals filter_upwards [ ] with pts; exact integrand_fill_rewrite d ( matchRadius p d ) p ( by unfold matchRadius; positivity ) pts;
   rw [ MeasureTheory.integral_sub, MeasureTheory.integral_add ];
@@ -1661,24 +1650,37 @@ lemma centered_edge_moment_fill (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) 
       · convert h ⟨ { 0, 1, 2 }, by decide ⟩ using 1;
         simp +decide [ Fin.forall_fin_succ ];
     · exact Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+-/
 
 set_option maxHeartbeats 800000 in
 open Classical MeasureTheory in
-/-- **Corrected Sim-A5 / Job 2, Lemma 4.**
-    The correct 8-term collapse formula for `geometricCov` in the deep regime.
-    The difference from the original (commented out above) is that the last term
-    is `- 1` instead of `- fillingProb p d`.
+/-- **OQ-18 Rips refactor — Aristotle target.** Closed form for `geometricCov` under Rips:
+      geomCov(p,d) = q · ((1-p)^3 + p^3) − q^2
+    where q = fillingProb p d. Equivalently `geomCov = q · ((1-p)^3 + p^3 − q)`.
 
-    Proof: Expand (A₁₂-p)(A₁₃-p)(A₂₃-p)(F-q) into 8 groups by edge-set S:
-    * S=∅: E[1·(F-q)] = 0
-    * S=single edge (×3): p²·(E[A₁₂·F] - q·E[A₁₂]) = p²·((7r²)^d - q·p)
-    * S=wedge (×3): -p·(1-q)·E[A₁₂·A₁₃] = -p·(1-q)·p²  (since wedge⟹fill)
-    * S=triangle: (1-q)·E[A₁₂A₁₃A₂₃] = (1-q)·(3r²)^d  (since triangle⟹fill)
-    Total = (1-q)(3r²)^d - 3p³(1-q) + 3p²((7r²)^d - qp)
-          = (1-q)(3r²)^d - 3p³ + 3p²(7r²)^d
-    Using p²(7r²)^d = p³(7r/2)^d (from matchRadius_spec):
-          = (1-q)(3r²)^d + 3p³((7r/2)^d - 1)  -/
+    Derivation (see `my_theorems/oq18_math_audit.md`):
+    * F = A₁₂·A₁₃·A₂₃ (Rips clique).
+    * geomCov = E[X₁₂ X₁₃ X₂₃ (F − q)] = E[X₁₂ X₁₃ X₂₃ F] − q · E[X₁₂ X₁₃ X₂₃].
+    * E[X₁₂ X₁₃ X₂₃ F] = (1−p)^3 · q (via the indicator identity X_e · A_e = (1−p)·A_e).
+    * E[X₁₂ X₁₃ X₂₃] = q − p^3 (from the edge/wedge/triangle expansion; wedges have prob p^2
+      by translation invariance + conditional independence).
+    * Combining: geomCov = (1−p)^3 q − q(q − p^3) = q((1−p)^3 + p^3) − q^2.
+
+    Original Čech-nerve form (commented out below) had RHS = (1−q)·γ^d + 3p³·((7r/2)^d − 1)
+    where γ = 3r². Under Rips, the simpler closed form above holds. The asymptotic regime
+    (d → ∞, p fixed) gives q = (3/4)^d · p^2 and hence geomCov ~ (3/4)^d · p^2 · ((1−p)^3 + p^3),
+    replacing the sharp algebraic collapse at d*(p) with smooth exponential decay. -/
 theorem geometricCov_eq_deep (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
+    (hr : matchRadius p d ≤ 1/4) :
+    geometricCov p d
+    = fillingProb p d * ((1 - p) ^ 3 + p ^ 3) - fillingProb p d ^ 2 := by
+  -- Proof sketch: algebraic combination of `centered_edge_moment` and
+  -- `centered_edge_moment_fill` (new Rips form), as above. Pending Aristotle.
+  sorry
+
+/-
+OLD PROOF BODY (Čech-nerve form, preserved for reference; no longer typechecks under Rips):
+theorem geometricCov_eq_deep_OLD (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
     (hr : matchRadius p d ≤ 1/4) :
     geometricCov p d
     = (1 - fillingProb p d) * (3 * (matchRadius p d) ^ 2) ^ d
@@ -1753,18 +1755,20 @@ theorem geometricCov_eq_deep (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd
     rw [h_gcov, h_cemf, h_cem]
   rw [h1]
   nlinarith
+-/
 
 /-- **Sim-A5 / Job 2, Lemma 5 (decay-rate upper bound).**
-    Follows from `geometricCov_eq_deep` (corrected): since
-    `geometricCov = (1-q)·γ^d + 3p³·((7r/2)^d - 1)` and `3p³ > 0`,
-    dropping the `-3p³` gives the upper bound. -/
+    Under Rips, `geometricCov = q · ((1-p)^3 + p^3) − q^2 ≤ q · ((1-p)^3 + p^3)`
+    since `q^2 ≥ 0`. With `q = (3r²)^d`, this gives an explicit exponential decay bound.
+
+    Original Čech-form RHS (commented out): `(1−q)·(3r²)^d + 3p³·(7r/2)^d`. Under Rips,
+    the new RHS is `q · ((1-p)^3 + p^3)` which is the dominant term of the new closed form. -/
 theorem geometricCov_decay_rate_le (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
     (hr : matchRadius p d ≤ 1/4) :
     geometricCov p d
-      ≤ (1 - fillingProb p d) * (3 * (matchRadius p d) ^ 2) ^ d
-        + 3 * p ^ 3 * (7 * matchRadius p d / 2) ^ d := by
+      ≤ fillingProb p d * ((1 - p) ^ 3 + p ^ 3) := by
   have h := geometricCov_eq_deep p d hp0 hp1 hd hr
-  linarith [pow_pos hp0 3]
+  nlinarith [sq_nonneg (fillingProb p d)]
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- OQ-16 / Track B stubs — sparse regime lower bound
@@ -1784,13 +1788,20 @@ theorem geometricCov_decay_rate_le (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 
       base in [0,1]), (7r/2)^d ≤ 1^d = 1. So (7r/2)^d − 1 ≤ 0.
     Step 3: Since p > 0, we have 3p³ > 0 (use `pow_pos`). Therefore
       3p³ · ((7r/2)^d − 1) ≥ 3p³ · (0 − 1) = −3p³.
-    Step 4: Conclude geomCov ≥ (1−q)·γ^d − 3p³ by `linarith`. -/
+    Step 4: Conclude geomCov ≥ (1−q)·γ^d − 3p³ by `linarith`.
+
+    **OQ-18 Rips refactor (2026-05-16).** Under Rips, the closed form is
+    `geomCov = q ((1-p)^3 + p^3) − q^2` (see new `geometricCov_eq_deep`). The original
+    Čech-form lower bound below is no longer derivable from that. Stubbed pending refactor;
+    downstream `geometricCov_lower_bound_explicit` inherits the stub. -/
 lemma geometricCov_lower_bound (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
     (hr : matchRadius p d ≤ 1/4) :
     (1 - fillingProb p d) * (3 * matchRadius p d ^ 2) ^ d - 3 * p ^ 3
       ≤ geometricCov p d := by
-  rw [ geometricCov_eq_deep p d hp0 hp1 hd hr ];
-  nlinarith [ show 0 ≤ 3 * p ^ 3 by positivity, show ( 7 * matchRadius p d / 2 ) ^ d ≥ 0 by exact pow_nonneg ( by unfold matchRadius; split_ifs <;> positivity ) _ ]
+  -- OQ-18: statement is from the Čech-nerve era. Under Rips, the geomCov closed form is
+  -- different (q((1-p)^3+p^3) − q^2). Re-derivation of a lower bound in the Čech-form
+  -- statement is pending. Sorrying as placeholder.
+  sorry
 
 /-- **Track B, Lemma 2 (geomCov lower bound, explicit p form).**
     In the deep regime r ≤ 1/4, and using the matchRadius identity (2r)^d = p,
@@ -2249,6 +2260,15 @@ lemma cechDoublySigned_triangle_integral (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp
       (if s.hasEdge r e.1 e.2 then (1 : ℝ) - p else -p)) *
     (if s.hasFill r t then (1 : ℝ) - q else -q)) ∂cechMeasure n d r =
       geometricCov p d := by
+  -- OQ-18 Rips refactor: `hasFill` is now the clique predicate (not existential), and
+  -- `geometricCov` still references the existential fill via the integrand below. Bridging
+  -- requires `wedge_implies_fill` (the two are equivalent because the wedge case forces the
+  -- triangle case, and triangle ⇒ existential is trivial). Original proof references the
+  -- existential form throughout; stubbed pending refactor.
+  sorry
+
+/-
+OLD PROOF BODY (Čech-nerve form, no longer typechecks):
   obtain ⟨σ, hσ⟩ : ∃ σ : Fin 3 → Fin n, StrictMono σ ∧ t.val = Finset.image σ Finset.univ := by
     have h_order : ∃ σ : Fin 3 → Fin n, StrictMono σ ∧ ∀ i, σ i ∈ t.val := by
       exact ⟨ fun i => t.val.orderEmbOfFin t.2 i, by simp +decide [ StrictMono ], fun i => Finset.orderEmbOfFin_mem _ _ _ ⟩;
@@ -2302,6 +2322,7 @@ lemma cechDoublySigned_triangle_integral (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp
   · refine' MeasureTheory.integral_congr_ae _;
     filter_upwards [ ] with s;
     rw [ show ( Finset.univ.filter fun e : Fin 3 × Fin 3 => e.1 < e.2 ) = { ( 0, 1 ), ( 0, 2 ), ( 1, 2 ) } by decide ] ; simp +decide [ Fin.forall_fin_succ ] ; ring
+-/
 
 /-
 PROVIDED SOLUTION
@@ -2317,6 +2338,12 @@ lemma cechDoublySigned_summand_integrable (n d : ℕ) (p q r : ℝ)
         (if s.hasEdge r e.1 e.2 then (1 : ℝ) - p else -p)) *
         (if s.hasFill r t then (1 : ℝ) - q else -q))
       (cechMeasure n d r) := by
+  -- OQ-18: under clique `hasFill`, measurability is via finite intersection. The original
+  -- proof references `exact?` which doesn't close under the new sigma-algebra setup. Stub.
+  sorry
+
+/-
+OLD PROOF BODY:
   refine' MeasureTheory.Integrable.mono' _ _ _;
   refine' fun s => ( ∏ e ∈ triangleEdges t, ( |1 - p| + |p| ) ) * ( |1 - q| + |q| );
   · apply_rules [ MeasureTheory.integrable_const ];
@@ -2365,6 +2392,7 @@ lemma cechDoublySigned_summand_integrable (n d : ℕ) (p q r : ℝ)
     gcongr;
     · exact le_trans ( by rw [ Real.norm_eq_abs, Finset.abs_prod ] ) ( Finset.prod_le_prod ( fun _ _ => abs_nonneg _ ) fun _ _ => by split_ifs <;> norm_num );
     · split_ifs <;> norm_num [ abs_le ]
+-/
 
 /-
 PROVIDED SOLUTION
@@ -2520,58 +2548,27 @@ private lemma fill_eventually_always' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
 
 open MeasureTheory in
 open Classical in
+/-- **OQ-18 Rips refactor — STATEMENT FALSE under Rips.** Under the new clique-form
+    `fillingProb p d = (3r²)^d` with `r = p^{1/d}/2 → 1/2`, `q → 0` not `1`. The correct
+    statement is `fillingProb_tendsto_zero` (see new lemma below). This stub is kept
+    because downstream `geometricCov_eventually_zero` still cites it. -/
 private lemma fillingProb_eventually_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     ∀ᶠ d : ℕ in Filter.atTop, fillingProb p d = 1 := by
-  filter_upwards [fill_eventually_always' p hp0 hp1] with d hfill
-  show fillingProb p d = 1
-  unfold fillingProb; simp only
-  have h_indicator_eq_one : (fun pts : Fin 3 → Torus d =>
-      if ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
-                          dist (pts 1) z ≤ matchRadius p d ∧
-                          dist (pts 2) z ≤ matchRadius p d
-      then (1 : ℝ) else 0) = fun _ => 1 := by
-    ext pts
-    simp only [ite_eq_left_iff, one_ne_zero]
-    intro hno
-    exact absurd (hfill pts) hno
-  rw [h_indicator_eq_one]
-  simp only [MeasureTheory.integral_const, smul_eq_mul, mul_one]
-  rw [MeasureTheory.Measure.real]
-  have h1 : (MeasureTheory.Measure.pi fun _ : Fin 3 =>
-    (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) Set.univ = 1 := by
-    erw [MeasureTheory.Measure.pi_univ]
-    simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
-    erw [MeasureTheory.Measure.pi_univ]
-    simp [AddCircle.measure_univ]
-  rw [h1]; simp
+  sorry
 
-open MeasureTheory in
-open Classical in
+/-- **OQ-18 Rips refactor — STATEMENT FALSE under Rips.** Under Rips on sup-norm torus
+    with matched p, `q = (3r²)^d → 0` as `d → ∞`, not `1`. The correct asymptotic is
+    `fillingProb_tendsto_zero`. -/
 lemma fillingProb_tendsto_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => fillingProb p d) Filter.atTop (nhds 1) := by
-  apply tendsto_nhds_of_eventually_eq
-  filter_upwards [fill_eventually_always' p hp0 hp1] with d hfill
-  show fillingProb p d = 1
-  unfold fillingProb; simp only
-  have h_indicator_eq_one : (fun pts : Fin 3 → Torus d =>
-      if ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
-                          dist (pts 1) z ≤ matchRadius p d ∧
-                          dist (pts 2) z ≤ matchRadius p d
-      then (1 : ℝ) else 0) = fun _ => 1 := by
-    ext pts
-    simp only [ite_eq_left_iff, one_ne_zero]
-    intro hno
-    exact absurd (hfill pts) hno
-  rw [h_indicator_eq_one]
-  simp only [MeasureTheory.integral_const, smul_eq_mul, mul_one]
-  rw [MeasureTheory.Measure.real]
-  have h1 : (MeasureTheory.Measure.pi fun _ : Fin 3 =>
-    (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) Set.univ = 1 := by
-    erw [MeasureTheory.Measure.pi_univ]
-    simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
-    erw [MeasureTheory.Measure.pi_univ]
-    simp [AddCircle.measure_univ]
-  rw [h1]; simp
+  sorry
+
+/-- **OQ-18 Rips refactor — new asymptotic.** Under Rips, with matched p ∈ (0,1) fixed,
+    `fillingProb p d = (3 r(p,d)²)^d → 0` as `d → ∞` because `r → 1/2` and so
+    `3 r² → 3/4 < 1`. Replaces the Čech-era `fillingProb_tendsto_one`. -/
+lemma fillingProb_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    Filter.Tendsto (fun d : ℕ => fillingProb p d) Filter.atTop (nhds 0) := by
+  sorry
 
 /-
 PROVIDED SOLUTION (updated for corrected matchRadius = p^(1/d)/2):
@@ -2750,8 +2747,10 @@ lemma doublySignedFilledCount_cechObservation {n d : ℕ} (p q r : ℝ)
     (s : CechSample n d) :
     doublySignedFilledCount p q (cechObservation r s) =
     cechDoublySignedCount p q s r := by
-  unfold doublySignedFilledCount cechDoublySignedCount cechObservation; simp +decide [ Finset.prod_filter ] ;
-  grind +ring
+  -- OQ-18: `cechObservation` likely still encodes the old existential fill; under Rips
+  -- the equivalence between `s.hasFill` (clique) and the existential needs to be threaded.
+  -- Stub pending refactor.
+  sorry
 
 /-
 PROBLEM
@@ -2771,7 +2770,12 @@ Or even simpler: try apply MeasureTheory.Measure.isProbabilityMeasure_map; apply
 instance cechPushforward_isProbabilityMeasure (n d : ℕ) (r : ℝ) :
     MeasureTheory.IsProbabilityMeasure
       ((cechMeasure n d r).map (cechObservation r)) := by
-  -- Since the comap of the volume measure is a probability measure, and the points function is measurable, the map of the measure under the points function is also a probability measure.
+  -- OQ-18: original proof had `exact?` and existential-form `hasFill` measurability.
+  -- Stub pending refactor.
+  sorry
+
+/-
+OLD PROOF BODY:
   have h_comap_prob : MeasureTheory.IsProbabilityMeasure (cechMeasure n d r) := by
     exact?
   generalize_proofs at *; (
@@ -2837,6 +2841,7 @@ instance cechPushforward_isProbabilityMeasure (n d : ℕ) (r : ℝ) :
     generalize_proofs at *; (
     exact measurable_iff_comap_le.mpr le_rfl))
   exact h_preimage))
+-/
 
 /-
 PROBLEM
@@ -3011,6 +3016,13 @@ lemma chebyshev_2PC_prob_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
         {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s ≥
           (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2}).toReal)
       Filter.atTop (nhds 0) := by
+  -- OQ-18: original proof routes through `cechObservation`-style measurability + the
+  -- existential-form `hasFill`. Several `convert measurableSet_hasFill ...` steps fail
+  -- under the new clique form. Stub pending refactor.
+  sorry
+
+/-
+OLD PROOF BODY (Čech-nerve form):
   -- By the squeeze theorem, it suffices to show that the upper bound tends to zero.
   suffices h_squeeze : ∀ᶠ k in Filter.atTop, ((twoParamMeasure (nSeq k) p (fillingProb p (dSeq k))) {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s ≥ (Nat.choose (nSeq k) 3) * geometricCov p (dSeq k) / 2}).toReal ≤ (p ^ 3 * (1 - p) ^ 3) / ((Nat.choose (nSeq k) 3) * (geometricCov p (dSeq k)) ^ 2) by
     refine' squeeze_zero_norm' _ _;
@@ -3028,6 +3040,7 @@ lemma chebyshev_2PC_prob_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
   refine le_trans this ?_;
   field_simp [mul_comm, mul_assoc, mul_left_comm] at *;
   exact mul_le_mul_of_nonneg_right ( by nlinarith [ sq_nonneg ( fillingProb p ( dSeq k ) - 1 / 2 ), fillingProb_nonneg p ( dSeq k ), fillingProb_le_one p ( dSeq k ), pow_pos ( sub_pos.mpr hp1 ) 3 ] ) ( by positivity ) ;)))
+-/
 
 /-! Crude second moment bound for the doubly-signed statistic under Čech.
     Since |T_t| ≤ 1 for each triangle term, E[τ²] ≤ C(n,3) + 12·C(n,4).
@@ -3111,20 +3124,9 @@ private lemma triangleIndicator'_translate {n d : ℕ} (p q r : ℝ)
     (t : {σ : Finset (Fin n) // σ.card = 3})
     (pts : Fin n → Torus d) (h : Torus d) :
     triangleIndicator' p q r t (fun i => pts i + h) = triangleIndicator' p q r t pts := by
-  unfold triangleIndicator'
-  simp +decide [cechObservation, CechSample.hasEdge, CechSample.hasFill]
-  congr! 3
-  constructor <;> rintro ⟨z, hz⟩
-  · use z - h
-    intro i hi
-    specialize hz i hi
-    rw [dist_eq_norm] at *
-    simp_all +decide [norm_sub_rev]
-    convert hz using 1
-    rw [← neg_sub, norm_neg]
-    abel_nf
-  · use z + h
-    simp_all +decide [dist_eq_norm, add_sub_add_right_eq_sub]
+  -- OQ-18: under Rips clique `hasFill`, translation invariance follows directly from
+  -- `dist_eq_norm` on each pair (no existential to shift). Proof rewrite pending.
+  sorry
 
 private lemma triangleIndicator'_congr {n d : ℕ} (p q r : ℝ)
     (t : {σ : Finset (Fin n) // σ.card = 3})
@@ -3149,6 +3151,12 @@ private lemma integral_over_nu_eq' {n d : ℕ} (r : ℝ) (f : TwoParamSample n �
     ∫ s, f s ∂ν = ∫ pts : Fin n → Torus d,
       f (cechObservation r (CechSample.mk pts))
       ∂MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) := by
+  -- OQ-18: original proof uses `exact?` and existential-form `hasFill` measurability.
+  -- Stub pending refactor.
+  sorry
+
+/-
+OLD PROOF BODY:
   convert MeasureTheory.integral_map _ _ using 3;
   · exact?;
   · apply_rules [ Measurable.aemeasurable, measurable_to_countable' ];
@@ -3197,6 +3205,8 @@ private lemma integral_over_nu_eq' {n d : ℕ} (r : ℝ) (f : TwoParamSample n �
     convert h_preimage.preimage _ using 1
     generalize_proofs at *; (exact measurable_iff_comap_le.mpr le_rfl));
   · exact?
+-/
+
 -- The integral of a single triangle indicator over the product measure equals geometricCov.
 private lemma single_triangle_integral_eq_g' {n d : ℕ} (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
     (t : {σ : Finset (Fin n) // σ.card = 3}) :
@@ -3206,11 +3216,9 @@ private lemma single_triangle_integral_eq_g' {n d : ℕ} (p : ℝ) (hp0 : 0 < p)
       triangleIndicator' p q r t pts
       ∂MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d)))
     = geometricCov p d := by
-  simp [triangleIndicator', cechObservation, CechSample.hasEdge, CechSample.hasFill];
-  convert cechDoublySigned_triangle_integral n d p hp0 hp1 t using 1;
-  rw [ cech_integral_eq ];
-  simp +decide [ CechSample.hasEdge, CechSample.hasFill ];
-  grind +revert
+  -- OQ-18: depends on `cechDoublySigned_triangle_integral` (now stubbed) and the
+  -- `CechSample.hasFill` form. Stub pending refactor.
+  sorry
 set_option maxHeartbeats 400000 in
 private lemma shear_measurePreserving_vertex {n d : ℕ} (i : Fin n) :
     let μ := MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d)))
@@ -3356,6 +3364,13 @@ private lemma triangleIndicator'_factor_coord_diffs {n d : ℕ} (p q r : ℝ)
     ∃ F : (Torus d × Torus d) → ℝ, Measurable F ∧
       ∀ pts : Fin n → Torus d,
         triangleIndicator' p q r t pts = F (pts j - pts i, pts k - pts i) := by
+  -- OQ-18: factorisation through (pts j − pts i, pts k − pts i) for the clique `hasFill`
+  -- is now structurally cleaner (no existential to handle), but the original proof's
+  -- closed-set + compactness argument for the existential no longer applies. Stub.
+  sorry
+
+/-
+OLD PROOF BODY:
   refine' ⟨ fun xy => triangleIndicator' p q r t ( fun v => if v = i then 0 else if v = j then xy.1 else if v = k then xy.2 else 0 ), _, _ ⟩ <;> norm_num [ triangleIndicator' ];
   · refine' Measurable.ite _ _ _ <;> norm_num [ cechObservation ];
     · refine' MeasurableSet.mem _;
@@ -3406,6 +3421,7 @@ private lemma triangleIndicator'_factor_coord_diffs {n d : ℕ} (p q r : ℝ)
       simp +decide [ ht_eq, CechSample.hasEdge ] at hx ⊢;
       rcases hx.1.1 with ( h | h | h ) <;> rcases hx.1.2 with ( j | j | j ) <;> simp +decide [ h, j ] at hx ⊢;
       all_goals simp +decide [ dist_eq_norm, norm_sub_rev, hij.symm, hik.symm, hjk.symm ] ;
+-/
 
 /-
 When two triangles t, t' share exactly one vertex i, their triangle indicators
@@ -3681,6 +3697,12 @@ private lemma doublySignedTriangle_cov_vertex_sharing_zero {n d : ℕ} (p : ℝ)
          ((∏ e ∈ triangleEdges t',
             (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
           (if s.fill t' then (1:ℝ) - q else -q)) ∂ν = g ^ 2 := by
+  -- OQ-18: relies on `vertex_sharing_indepFun'` (which uses `triangleIndicator'_factor_coord_diffs`,
+  -- now stubbed) and the existential-form `hasFill` measurability. Stub pending refactor.
+  sorry
+
+/-
+OLD PROOF BODY:
   convert congr_arg ( fun x : ℝ => x ) ( integral_over_nu_eq' _ _ ) using 1;
   have h_ind : ProbabilityTheory.IndepFun (triangleIndicator' p (fillingProb p d) (matchRadius p d) t) (triangleIndicator' p (fillingProb p d) (matchRadius p d) t') (MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d)))) := by
     convert vertex_sharing_indepFun' p hp0 hp1 t t' htt' hshare using 1;
@@ -3738,6 +3760,7 @@ private lemma doublySignedTriangle_cov_vertex_sharing_zero {n d : ℕ} (p : ℝ)
         · unfold cechObservation; aesop;
   convert h_integral.symm using 1;
   rw [ single_triangle_integral_eq_g' p hp0 hp1 t, single_triangle_integral_eq_g' p hp0 hp1 t' ] ; ring
+-/
 
 /-- **Sub-lemma 3: Edge-sharing covariance bound.**
     For two distinct triangles t, t' sharing exactly one edge,
@@ -3860,6 +3883,12 @@ private lemma doublySignedTriangle_cov_disjoint_eq_gsq {n d : ℕ} (p : ℝ)
          ((∏ e ∈ triangleEdges t',
             (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
           (if s.fill t' then (1:ℝ) - q else -q)) ∂ν = g ^ 2 := by
+  -- OQ-18: relies on `disjoint_triangles_indepFun`, `single_triangle_integral_eq_g'`,
+  -- and the existential-form `hasFill` measurability. Stub pending refactor.
+  sorry
+
+/-
+OLD PROOF BODY:
   convert congr_arg ( fun x : ℝ => x ) ( integral_over_nu_eq' _ _ ) using 1;
   have h_ind : ProbabilityTheory.IndepFun (triangleIndicator' p (fillingProb p d) (matchRadius p d) t) (triangleIndicator' p (fillingProb p d) (matchRadius p d) t') (MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d)))) := by
     apply_rules [ disjoint_triangles_indepFun ];
@@ -3909,6 +3938,7 @@ private lemma doublySignedTriangle_cov_disjoint_eq_gsq {n d : ℕ} (p : ℝ)
     · exact h_integrable.2.1;
   convert h_integral.symm using 1 ; ring!;
   rw [ single_triangle_integral_eq_g' p hp0 hp1 t, single_triangle_integral_eq_g' p hp0 hp1 t' ] ; ring!
+-/
 
 /-
 Helper: the second moment E[τ²] satisfies a structured upper bound.
@@ -4218,6 +4248,12 @@ lemma cech_complement_set_inclusion (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p
     ν {s | doublySignedFilledCount p q s < (Nat.choose n 3 : ℝ) * g / 2} ≤
       ν {s | (Nat.choose n 3 : ℝ) * g / 2 ≤
         |doublySignedFilledCount p q s - ∫ s', doublySignedFilledCount p q s' ∂ν|} := by
+  -- OQ-18: depends on `moments_cech_signed` / `doublySignedFilledCount_cechObservation`
+  -- (now stubbed) and existential `hasFill` measurability. Stub pending refactor.
+  sorry
+
+/-
+OLD PROOF BODY:
   refine' MeasureTheory.measure_mono _;
   intro s hs
   generalize_proofs at *; (
@@ -4272,6 +4308,7 @@ lemma cech_complement_set_inclusion (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p
       apply_rules [ doublySignedFilledCount_memLp ]
   generalize_proofs at *; (
   exact Set.mem_setOf_eq.mpr ( by cases abs_cases ( doublySignedFilledCount p ( fillingProb p d ) s - ∫ s', doublySignedFilledCount p ( fillingProb p d ) s' ∂MeasureTheory.Measure.map ( cechObservation ( matchRadius p d ) ) ( cechMeasure n d ( matchRadius p d ) ) ) <;> linarith [ Set.mem_setOf.mp hs ] ) ;)))
+-/
 
 /-
 Chebyshev complement bound under the pushforward Čech measure: the probability
