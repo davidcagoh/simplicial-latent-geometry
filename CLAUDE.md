@@ -21,7 +21,7 @@ Strategy 1 (unsigned variance-gap) was abandoned — `E[V_f](p,d) → L > 0` as 
 
 Module layout (OQ-18 refactor in progress on branch `oq-18-rips`):
 - `SimplicialLatentGeometry/Core/Statistic.lean` — 2PC defs (A1, geometry-agnostic)
-- `SimplicialLatentGeometry/Core/Detection.lean` — `tvDist` + abstract `chebyshev_ratio_tendsto_zero` (A3.2/A3.3); `twoParamMeasure_totalMass`, `twoParamMeasure_isProbabilityMeasure`, `threshold_event_measurableSet`, abstract `choose3_g_sq_tendsto_atTop_abstract` + **proved** abstract `chebyshev_prob_tendsto_zero_abstract` (A3.1 + A3.5, all geometry-agnostic)
+- `SimplicialLatentGeometry/Core/Detection.lean` — full abstract detection chain (geometry-agnostic): `tvDist` + supporting lemmas; abstract `chebyshev_ratio_tendsto_zero`, `choose3_g_sq_tendsto_atTop_abstract`, `chebyshev_prob_tendsto_zero_abstract` (A3.1/A3.2/A3.3/A3.5); abstract `paleyZygmund_prob_tendsto_one_abstract` (A3.4, session 60); 2PC measure properties `twoParamMeasure_totalMass` / `twoParamMeasure_isProbabilityMeasure` / `threshold_event_measurableSet`; full 2PC moment chain `moments_twoParam_signed` + 7 private helpers (session-60 cleanup)
 - `SimplicialLatentGeometry/Geometry/Common.lean` — `GeometricModel` + `HomogeneousGeometricModel` typeclasses (A2)
 - `SimplicialLatentGeometry/Geometry/TorusLInf.lean` — L∞ Rips instance (A2)
 - `SimplicialLatentGeometry/SimplicialDetection.lean` — main proof; still contains L∞-specific defs (`geometricCov`, `fillingProb`, `matchRadius`, `CechSample`) pending A5 move
