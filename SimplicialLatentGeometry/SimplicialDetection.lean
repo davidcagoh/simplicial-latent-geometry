@@ -582,7 +582,9 @@ noncomputable def geometricCov (p : ℝ) (d : ℕ) : ℝ :=
     let e₁₂ := if dist x₁ x₂ ≤ r then (1 : ℝ) - p else -p
     let e₁₃ := if dist x₁ x₃ ≤ r then (1 : ℝ) - p else -p
     let e₂₃ := if dist x₂ x₃ ≤ r then (1 : ℝ) - p else -p
-    let fill := if ∃ z : Torus d, dist x₁ z ≤ r ∧ dist x₂ z ≤ r ∧ dist x₃ z ≤ r
+    -- OQ-18 Rips refactor: fill indicator is now the Rips clique product
+    -- (all 3 pairwise edges present), not the Čech nerve (∃ z, ...).
+    let fill := if dist x₁ x₂ ≤ r ∧ dist x₁ x₃ ≤ r ∧ dist x₂ x₃ ≤ r
                 then (1 : ℝ) - q else -q
     e₁₂ * e₁₃ * e₂₃ * fill
   ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d)))
@@ -1277,11 +1279,16 @@ lemma centered_edge_moment_fill (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) 
        (if dist (pts 1) (pts 2) ≤ matchRadius p d then (1:ℝ) else 0))
       ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))))
     = (1 - p) ^ 3 * fillingProb p d := by
-  -- OQ-18 Rips refactor — Aristotle target. See docstring above and
-  -- `my_theorems/oq18_math_audit.md`. Proof: pointwise identity X_e · A_e = (1-p) · A_e
-  -- (since A_e is a 0/1 indicator), so the integrand reduces to (1-p)^3 · A_{12}·A_{13}·A_{23},
-  -- whose integral is (1-p)^3 · fillingProb.
-  sorry
+  -- OQ-18 Rips refactor — Aristotle target (job db044b91). Proof: pointwise identity
+  -- X_e · A_e = (1-p) · A_e (since A_e is a 0/1 indicator), so the integrand reduces to
+  -- (1-p)^3 · A_{12}·A_{13}·A_{23}, whose integral is (1-p)^3 · fillingProb.
+  have h_fill : fillingProb p d = ∫ pts : Fin 3 → Torus d,
+      ((if dist (pts 0) (pts 1) ≤ matchRadius p d then 1 else 0)
+       * (if dist (pts 0) (pts 2) ≤ matchRadius p d then 1 else 0)
+       * (if dist (pts 1) (pts 2) ≤ matchRadius p d then 1 else 0))
+      ∂Measure.pi (fun _ => volume) := by
+    simp [fillingProb]
+  rw [h_fill, ← MeasureTheory.integral_const_mul]; congr; ext; split_ifs <;> ring
 
 -- BEGIN dead-code old centered_edge_moment_fill proof body (commented out for Rips refactor)
 example : True := by trivial
@@ -1593,9 +1600,77 @@ theorem geometricCov_eq_deep (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd
     (hr : matchRadius p d ≤ 1/4) :
     geometricCov p d
     = fillingProb p d * ((1 - p) ^ 3 + p ^ 3) - fillingProb p d ^ 2 := by
-  -- Proof sketch: algebraic combination of `centered_edge_moment` and
-  -- `centered_edge_moment_fill` (new Rips form), as above. Pending Aristotle.
-  sorry
+  -- OQ-18 Rips refactor — Aristotle target (job db044b91). Verbatim Aristotle proof.
+  convert congr_arg₂ ( · - · ) ( centered_edge_moment_fill p d hp0 hp1 hd hr ) ( congr_arg ( fun x : ℝ => fillingProb p d * x ) ( centered_edge_moment p d hp0 hp1 hd hr ) ) using 1 <;> ring!;
+  · rw [ ← MeasureTheory.integral_const_mul ];
+    convert MeasureTheory.integral_sub _ _ using 3;
+    · grind +locals;
+    · refine' MeasureTheory.Integrable.mono' _ _ _;
+      refine' fun _ => 1 + p + p ^ 2 + p ^ 3 + p + p + p ^ 2 + p ^ 3 + 1;
+      · norm_num [ MeasureTheory.integrable_const_iff ];
+      · refine' Measurable.aestronglyMeasurable _;
+        refine' Measurable.add _ _;
+        · refine' Measurable.add _ _;
+          · refine' Measurable.add _ _;
+            · refine' Measurable.add _ _;
+              · refine' Measurable.add _ _;
+                · refine' Measurable.neg _;
+                  refine' Measurable.mul _ _;
+                  · refine' Measurable.mul _ _;
+                    · exact Measurable.mul ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const ) measurable_const;
+                    · exact Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const ) _;
+                  · exact Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const ) _;
+                · refine' Measurable.mul _ _;
+                  · refine' Measurable.mul _ _;
+                    · exact Measurable.mul ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const ) measurable_const;
+                    · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+                  · exact Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 1 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const ) _;
+              · refine' Measurable.sub _ _;
+                · refine' Measurable.mul _ _;
+                  · refine' Measurable.mul _ _;
+                    · exact Measurable.mul ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const ) measurable_const;
+                    · exact Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const ) _;
+                  · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const;
+                · refine' Measurable.mul _ _;
+                  · refine' Measurable.mul _ _;
+                    · exact Measurable.mul ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const ) measurable_const;
+                    · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+                  · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const;
+            · refine' Measurable.sub _ _;
+              · refine' Measurable.neg _;
+                refine' Measurable.mul _ _;
+                · refine' Measurable.mul _ _;
+                  · exact Measurable.mul ( Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const ) _ ) measurable_const;
+                  · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+                · exact Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const ) _;
+              · refine' Measurable.mul _ _;
+                · refine' Measurable.mul _ _;
+                  · exact Measurable.mul ( Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) measurable_const measurable_const ) _ ) measurable_const;
+                  · exact Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const ) _;
+                · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const;
+          · refine' Measurable.mul _ _;
+            · refine' Measurable.mul _ _;
+              · refine' Measurable.mul _ _;
+                · exact Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const ) _;
+                · exact measurable_const;
+              · exact Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const;
+            · exact Measurable.ite ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const;
+        · refine' Measurable.mul _ _;
+          · refine' Measurable.mul _ _;
+            · exact Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 1 ) ) measurable_const ) measurable_const measurable_const ) _;
+            · exact Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_dist.comp ( measurable_pi_apply 0 |> Measurable.prodMk <| measurable_pi_apply 2 ) ) measurable_const ) measurable_const measurable_const ) _;
+          · exact Measurable.pow_const ( Measurable.ite ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const ) _;
+      · refine' Filter.Eventually.of_forall fun x => abs_le.mpr ⟨ _, _ ⟩ <;> split_ifs <;> nlinarith [ pow_pos hp0 3 ];
+    · refine' MeasureTheory.Integrable.const_mul _ _;
+      refine' MeasureTheory.Integrable.mono' _ _ _;
+      refine' fun a => 1 + p + p + p + p ^ 2 + p ^ 2 + p ^ 2 + p ^ 3 + 1;
+      · norm_num [ MeasureTheory.integrable_const_iff ];
+      · refine' Measurable.aestronglyMeasurable _;
+        apply_rules [ Measurable.add, Measurable.neg, Measurable.mul, measurable_const ];
+        all_goals apply_rules [ Measurable.ite, measurable_const, measurable_id, Measurable.dist, Measurable.mul, Measurable.add, Measurable.neg, Measurable.pow_const, MeasurableSet.mem ];
+        all_goals exact measurableSet_le ( measurable_pi_apply _ |> Measurable.dist <| measurable_pi_apply _ ) measurable_const;
+      · refine' Filter.Eventually.of_forall fun x => abs_le.mpr ⟨ _, _ ⟩ <;> split_ifs <;> nlinarith [ pow_pos hp0 3 ] ;
+  · rw [ fillingProb_eq_low_r p d hp0 hp1 hd hr ] ; ring
 
 /-
 OLD PROOF BODY (Čech-nerve form, preserved for reference; no longer typechecks under Rips):
@@ -2224,9 +2299,10 @@ private lemma geometricCov_eq_when_fill_always' (p : ℝ) (d : ℕ)
          let e₂₃ := if dist x₂ x₃ ≤ r then (1 : ℝ) - p else -p
          e₁₂ * e₁₃ * e₂₃)
       ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))) := by
-  unfold geometricCov;
-  rw [ ← MeasureTheory.integral_const_mul ];
-  simp +decide [ mul_assoc, mul_comm, mul_left_comm, hfill ]
+  -- OQ-18: hypothesis is in Čech ∃-form, but `geometricCov` fill indicator is now Rips clique.
+  -- Lemma is only used by `geometricCov_tendsto_zero` / `..._eventually_zero`, both of which
+  -- depend on the broken `fillingProb_tendsto_one` — stubbed pending refactor.
+  sorry
 
 /-
 Bound the absolute value of the three-edge-product integral by 1 on a
@@ -2253,14 +2329,9 @@ private lemma edgeProduct_integral_bounded' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1
 
 lemma geometricCov_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => geometricCov p d) Filter.atTop (nhds 0) := by
-  by_contra h_contra;
-  apply_mod_cast h_contra <| squeeze_zero_norm' _ _;
-  use fun d => |1 - fillingProb p d|;
-  · filter_upwards [ fill_eventually_always' p hp0 hp1 ] with d hd;
-    rw [ geometricCov_eq_when_fill_always' p d hd ];
-    rw [ norm_mul ];
-    exact mul_le_of_le_one_right ( abs_nonneg _ ) ( edgeProduct_integral_bounded' p hp0 hp1 d );
-  · simpa using Filter.Tendsto.abs ( fillingProb_tendsto_one p hp0 hp1 |> Filter.Tendsto.const_sub 1 )
+  -- OQ-18 Rips refactor: depends on `fillingProb_tendsto_one` which is FALSE under Rips
+  -- (q = (3/4)^d · p^2 → 0, not 1). Stubbed; this conclusion is itself likely false now.
+  sorry
 
 open MeasureTheory in
 /-- **Corollary.** For all sufficiently large d, geometricCov p d = 0 exactly.
@@ -2268,10 +2339,8 @@ open MeasureTheory in
     and the integral collapses. This is stronger than geometricCov_tendsto_zero. -/
 lemma geometricCov_eventually_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     ∀ᶠ d : ℕ in Filter.atTop, geometricCov p d = 0 := by
-  filter_upwards [fillingProb_eventually_one p hp0 hp1,
-                  fill_eventually_always' p hp0 hp1] with d hq hfill
-  rw [geometricCov_eq_when_fill_always' p d hfill, hq]
-  ring
+  -- OQ-18 Rips refactor: depends on `fillingProb_eventually_one` (FALSE under Rips).
+  sorry
 
 /-! ### TV distance helper lemmas -/
 
