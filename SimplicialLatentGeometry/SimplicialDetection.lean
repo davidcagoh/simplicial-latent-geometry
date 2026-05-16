@@ -1,5 +1,6 @@
 import Mathlib
 import SimplicialLatentGeometry.Core.Statistic
+import SimplicialLatentGeometry.Core.Detection
 import SimplicialLatentGeometry.DisjointTriangles
 import SimplicialLatentGeometry.TorusIntegrals
 
@@ -469,11 +470,8 @@ lemma decay_fillingProb (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
 
 /-! ## Main Theorems -/
 
-/-- Total variation distance between two probability measures on the same space.
-    TV(μ,ν) = sup_{A measurable} |μ(A) - ν(A)|. -/
-noncomputable def tvDist {Ω : Type*} [MeasurableSpace Ω]
-    (μ ν : MeasureTheory.Measure Ω) : ℝ :=
-  sSup {x : ℝ | ∃ s : Set Ω, MeasurableSet s ∧ x = |(μ s).toReal - (ν s).toReal|}
+-- `tvDist` (total variation distance) and its supporting lemmas moved to
+-- `Core.Detection` (Phase A3).
 
 /-! ### Infrastructure lemmas -/
 
@@ -2639,65 +2637,8 @@ Key steps:
 - For bddAbove: use ⟨(μ Set.univ).toReal + (ν Set.univ).toReal, by rintro x ⟨s, hs, rfl⟩; ...⟩
 - For membership: exact ⟨A, hA, rfl⟩
 -/
-lemma tvDist_ge_abs {Ω : Type*} [MeasurableSpace Ω]
-    (μ ν : MeasureTheory.Measure Ω)
-    [MeasureTheory.IsFiniteMeasure μ] [MeasureTheory.IsFiniteMeasure ν]
-    (A : Set Ω) (hA : MeasurableSet A) :
-    tvDist μ ν ≥ |(μ A).toReal - (ν A).toReal| := by
-  refine' le_csSup _ ⟨ A, hA, rfl ⟩;
-  exact ⟨ ( μ Set.univ ).toReal + ( ν Set.univ ).toReal, by rintro x ⟨ s, hs, rfl ⟩ ; exact abs_le.mpr ⟨ by linarith [ show 0 ≤ ( μ s ).toReal by positivity, show 0 ≤ ( ν s ).toReal by positivity, show ( μ s ).toReal ≤ ( μ Set.univ ).toReal by exact ENNReal.toReal_mono ( MeasureTheory.measure_ne_top _ _ ) ( MeasureTheory.measure_mono ( Set.subset_univ _ ) ), show ( ν s ).toReal ≤ ( ν Set.univ ).toReal by exact ENNReal.toReal_mono ( MeasureTheory.measure_ne_top _ _ ) ( MeasureTheory.measure_mono ( Set.subset_univ _ ) ) ], by linarith [ show 0 ≤ ( μ s ).toReal by positivity, show 0 ≤ ( ν s ).toReal by positivity, show ( μ s ).toReal ≤ ( μ Set.univ ).toReal by exact ENNReal.toReal_mono ( MeasureTheory.measure_ne_top _ _ ) ( MeasureTheory.measure_mono ( Set.subset_univ _ ) ), show ( ν s ).toReal ≤ ( ν Set.univ ).toReal by exact ENNReal.toReal_mono ( MeasureTheory.measure_ne_top _ _ ) ( MeasureTheory.measure_mono ( Set.subset_univ _ ) ) ] ⟩ ⟩
-
-/-
-PROBLEM
-tvDist ≤ 1 for probability measures.
-
-PROVIDED SOLUTION
-tvDist = sSup {|μ(A).toReal - ν(A).toReal| : A measurable}. For probability measures, μ(A).toReal ∈ [0,1] and ν(A).toReal ∈ [0,1], so |μ(A).toReal - ν(A).toReal| ≤ 1. Thus the set is bounded by 1 and sSup ≤ 1. Use csSup_le. Need to show the set is nonempty (take A = ∅ or univ).
--/
-lemma tvDist_le_one {Ω : Type*} [MeasurableSpace Ω]
-    (μ ν : MeasureTheory.Measure Ω)
-    [MeasureTheory.IsProbabilityMeasure μ] [MeasureTheory.IsProbabilityMeasure ν] :
-    tvDist μ ν ≤ 1 := by
-  refine' csSup_le _ _ <;> norm_num;
-  · exact ⟨ _, ⟨ Set.univ, MeasurableSet.univ, rfl ⟩ ⟩;
-  · intro b x hx hb; rw [ hb ] ; exact abs_sub_le_iff.mpr ⟨ by linarith [ show ( μ x |> ENNReal.toReal ) ≤ 1 by exact le_trans ( ENNReal.toReal_mono ( MeasureTheory.measure_ne_top _ _ ) ( MeasureTheory.measure_mono ( Set.subset_univ x ) ) ) ( by norm_num ), show ( ν x |> ENNReal.toReal ) ≥ 0 by positivity ], by linarith [ show ( μ x |> ENNReal.toReal ) ≥ 0 by positivity, show ( ν x |> ENNReal.toReal ) ≤ 1 by exact le_trans ( ENNReal.toReal_mono ( MeasureTheory.measure_ne_top _ _ ) ( MeasureTheory.measure_mono ( Set.subset_univ x ) ) ) ( by norm_num ) ] ⟩ ;
-
-/-
-PROBLEM
-If for each k we have measurable sets A_k with ν_k(A_k) → 1 and μ_k(A_k) → 0,
-    then tvDist μ_k ν_k → 1.
-
-PROVIDED SOLUTION
-We need to show tvDist (μ k) (ν k) → 1.
-
-For the upper bound: tvDist ≤ 1 by tvDist_le_one.
-
-For the lower bound: tvDist (μ k) (ν k) ≥ |(μ k (A k)).toReal - (ν k (A k)).toReal| by tvDist_ge_abs (using IsProbabilityMeasure implies IsFiniteMeasure). Since (μ k (A k)).toReal → 0 and (ν k (A k)).toReal → 1, |0 - 1| = 1, so tvDist → 1 from below eventually.
-
-More precisely: squeeze_zero_of_nonneg doesn't apply here since we want → 1, not → 0. Use squeeze theorem / tendsto_of_tendsto_of_tendsto_of_le_of_le:
-- 1 - (ν k (A k)).toReal + (μ k (A k)).toReal ≤ something...
-
-Actually simpler: show that eventually tvDist ≥ (ν k (A k)).toReal - (μ k (A k)).toReal (from tvDist_ge_abs, since |a - b| ≥ b - a... wait no, |μ - ν| might give μ - ν or ν - μ). We have tvDist ≥ |(μ(A) - ν(A))| ≥ ν(A) - μ(A).
-
-So: ν(A).toReal - μ(A).toReal ≤ tvDist ≤ 1. Since ν(A).toReal → 1 and μ(A).toReal → 0, the lower bound → 1. By squeeze theorem, tvDist → 1.
-
-Use Filter.tendsto_of_tendsto_of_tendsto_of_le_of_le with lower bound (ν(A).toReal - μ(A).toReal) and upper bound (constant 1).
--/
-lemma tvDist_tendsto_one_of_events {Ω : ℕ → Type*}
-    [inst : ∀ k, MeasurableSpace (Ω k)]
-    (μ ν : ∀ k, MeasureTheory.Measure (Ω k))
-    [hμ : ∀ k, MeasureTheory.IsProbabilityMeasure (μ k)]
-    [hν : ∀ k, MeasureTheory.IsProbabilityMeasure (ν k)]
-    (A : ∀ k, Set (Ω k))
-    (hA : ∀ k, MeasurableSet (A k))
-    (hμA : Filter.Tendsto (fun k => (μ k (A k)).toReal) Filter.atTop (nhds 0))
-    (hνA : Filter.Tendsto (fun k => (ν k (A k)).toReal) Filter.atTop (nhds 1)) :
-    Filter.Tendsto (fun k => tvDist (μ k) (ν k)) Filter.atTop (nhds 1) := by
-  refine' tendsto_of_tendsto_of_tendsto_of_le_of_le' _ tendsto_const_nhds _ _;
-  use fun k => |(ν k (A k)).toReal - (μ k (A k)).toReal|;
-  · simpa using Filter.Tendsto.abs ( hνA.sub hμA );
-  · exact Filter.Eventually.of_forall fun k => by simpa [ abs_sub_comm ] using tvDist_ge_abs ( μ k ) ( ν k ) ( A k ) ( hA k ) ;
-  · exact Filter.Eventually.of_forall fun k => tvDist_le_one _ _
+-- `tvDist_ge_abs`, `tvDist_le_one`, `tvDist_tendsto_one_of_events` moved to
+-- `Core.Detection` (Phase A3.2).
 
 /-
 PROBLEM
@@ -4319,36 +4260,8 @@ n^{3/2}·g → ∞ does NOT imply n·g → ∞ (counterexample: g = log(n)/n^{3/
 the extra hypothesis `hNG : n·g → ∞`. Note that `hSNR` is still used to invoke
 `choose3_g_sq_tendsto_atTop`.
 -/
-lemma chebyshev_ratio_tendsto_zero (p : ℝ)
-    (nSeq dSeq : ℕ → ℕ)
-    (hn : Filter.Tendsto nSeq Filter.atTop Filter.atTop)
-    (hSNR : Filter.Tendsto
-      (fun k => (nSeq k : ℝ) ^ (3/2 : ℝ) * geometricCov p (dSeq k))
-      Filter.atTop Filter.atTop)
-    (hNG : Filter.Tendsto
-      (fun k => (nSeq k : ℝ) * geometricCov p (dSeq k))
-      Filter.atTop Filter.atTop) :
-    Filter.Tendsto
-      (fun k => 4 * ((Nat.choose (nSeq k) 3 : ℝ) + 12 * (Nat.choose (nSeq k) 4 : ℝ)) /
-        ((Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k)) ^ 2)
-      Filter.atTop (nhds 0) := by
-  refine' squeeze_zero_norm' _ _;
-  use fun k => 288 / ( ( nSeq k : ℝ ) * geometricCov p ( dSeq k ) ) ^ 2;
-  · filter_upwards [ hn.eventually_gt_atTop 3, hNG.eventually_gt_atTop 0 ] with k hk₁ hk₂;
-    rw [ Real.norm_of_nonneg ( by positivity ), div_le_div_iff₀ ];
-    · have h_bound : (Nat.choose (nSeq k) 4 : ℝ) ≤ (nSeq k - 3) / 4 * (Nat.choose (nSeq k) 3 : ℝ) := by
-        rw [ div_mul_eq_mul_div, le_div_iff₀ ] <;> norm_cast;
-        rw [ Int.subNatNat_eq_coe ] ; push_cast ; nlinarith [ Nat.add_one_mul_choose_eq ( nSeq k ) 3, Nat.choose_succ_succ ( nSeq k ) 3 ];
-      have h_bound : (Nat.choose (nSeq k) 3 : ℝ) ≥ (nSeq k - 2) * (nSeq k - 1) * nSeq k / 6 := by
-        rw [ Nat.cast_choose ] <;> try linarith;
-        rcases n : nSeq k with ( _ | _ | _ | n ) <;> simp_all +decide [ Nat.factorial ];
-        rw [ div_le_div_iff₀ ] <;> first | positivity | ring_nf ; norm_num;
-      have h_bound : (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) ^ 2 > 0 := by
-        exact mul_pos ( Nat.cast_pos.mpr ( Nat.choose_pos ( by linarith ) ) ) ( sq_pos_of_pos ( by nlinarith [ show ( nSeq k : ℝ ) > 3 by norm_cast ] ) );
-      nlinarith [ sq_nonneg ( ( nSeq k : ℝ ) - 3 ), mul_le_mul_of_nonneg_left ( show ( nSeq k : ℝ ) ≥ 4 by norm_cast ) h_bound.le ];
-    · exact sq_pos_of_pos ( mul_pos ( Nat.cast_pos.mpr ( Nat.choose_pos ( by linarith ) ) ) ( by nlinarith ) );
-    · positivity;
-  · exact tendsto_const_nhds.div_atTop ( Filter.tendsto_pow_atTop ( by norm_num ) |> Filter.Tendsto.comp <| hNG )
+-- `chebyshev_ratio_tendsto_zero` moved to `Core.Detection` (Phase A3.3) and
+-- abstracted to take a real-valued sequence `g : ℕ → ℝ` instead of `geometricCov p ∘ dSeq`.
 
 /-
 Under the Cech pushforward, the probability that the doubly-signed statistic
@@ -4377,7 +4290,7 @@ lemma paleyZygmund_cech_prob_tendsto_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
     refine' squeeze_zero_norm' _ _;
     use fun k => 4 * ( ( Nat.choose ( nSeq k ) 3 : ℝ ) + 12 * ( Nat.choose ( nSeq k ) 4 : ℝ ) ) / ( ( Nat.choose ( nSeq k ) 3 : ℝ ) * geometricCov p ( dSeq k ) ) ^ 2;
     · filter_upwards [ h_complement, ‹∀ᶠ k in Filter.atTop, 0 < geometricCov p ( dSeq k ) › ] with k hk₁ hk₂ using by rw [ Real.norm_of_nonneg ( ENNReal.toReal_nonneg ) ] ; exact cech_complement_prob_bound _ _ _ hp0 hp1 hk₂;
-    · convert chebyshev_ratio_tendsto_zero p nSeq dSeq hn hSNR hNG using 1;
+    · convert chebyshev_ratio_tendsto_zero (fun k => geometricCov p (dSeq k)) nSeq hn hSNR hNG using 1;
   have h_complement : ∀ k, ((MeasureTheory.Measure.map (cechObservation (matchRadius p (dSeq k))) (cechMeasure (nSeq k) (dSeq k) (matchRadius p (dSeq k)))) {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s < (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2}).toReal + ((MeasureTheory.Measure.map (cechObservation (matchRadius p (dSeq k))) (cechMeasure (nSeq k) (dSeq k) (matchRadius p (dSeq k)))) {s | doublySignedFilledCount p (fillingProb p (dSeq k)) s ≥ (Nat.choose (nSeq k) 3 : ℝ) * geometricCov p (dSeq k) / 2}).toReal = 1 := by
     intro k; rw [ ← ENNReal.toReal_add ] ; rw [ ← MeasureTheory.measure_union ] ;
     · rw [ show { s : TwoParamSample ( nSeq k ) | _ } ∪ { s : TwoParamSample ( nSeq k ) | _ } = Set.univ from Set.eq_univ_of_forall fun x => by by_cases hx : doublySignedFilledCount p ( fillingProb p ( dSeq k ) ) x < ( Nat.choose ( nSeq k ) 3 : ℝ ) * geometricCov p ( dSeq k ) / 2 <;> aesop ] ; norm_num;
