@@ -29,23 +29,30 @@ structure TwoParamSample (n : ℕ) where
     equipped with the product metric inherited from AddCircle (1 : ℝ). -/
 abbrev Torus (d : ℕ) := Fin d → AddCircle (1 : ℝ)
 
-/-- **Definition 2 (Čech Complex on the Flat Torus).** A sample from Čech(n, r, d) is n
-    points on T^d. The simplicial complex structure is determined by the radius r:
+/-- **Definition 2 (Vietoris–Rips Complex on the Flat Torus).** A sample from Rips(n, r, d)
+    is n points on the sup-norm flat torus T^d. The simplicial complex structure is
+    determined by the radius r:
     - edge {i,j} is present iff dist(points i, points j) ≤ r
-    - triangle {i,j,k} is filled iff the r-balls around all three vertices have a common point
-      (equivalently, their circumradius ≤ r). -/
+    - triangle {i,j,k} is filled iff all three pairwise distances are ≤ r
+      (clique complex / flag complex of the geometric graph).
+
+    On the sup-norm torus, ℓ∞-balls are axis-aligned boxes and Helly's theorem gives
+    Helly number 2, so the Kahle Čech complex (K10 Def 1.4, nerve of {B(x_i, r/2)})
+    coincides with this Rips complex. We adopt the Rips presentation because it is
+    manifestly a clique complex (downward closed by construction) and the moment
+    computations factor coordinate-by-coordinate under sup-norm. -/
 structure CechSample (n d : ℕ) where
   points : Fin n → Torus d
 
-/-- In Čech(s, r), vertices i and j are connected iff their torus distance is ≤ r. -/
+/-- In Rips(s, r), vertices i and j are connected iff their torus distance is ≤ r. -/
 def CechSample.hasEdge {n d : ℕ} (s : CechSample n d) (r : ℝ) (i j : Fin n) : Prop :=
   dist (s.points i) (s.points j) ≤ r
 
-/-- In Čech(s, r), triangle t is filled iff the r-balls around its three vertices have a
-    common point (the Čech complex filling condition). -/
+/-- In Rips(s, r), triangle t is filled iff all three pairwise distances are ≤ r
+    (clique complex). Equivalently F_ijk = A_ij · A_ik · A_jk. -/
 def CechSample.hasFill {n d : ℕ} (s : CechSample n d) (r : ℝ)
     (t : {σ : Finset (Fin n) // σ.card = 3}) : Prop :=
-  ∃ z : Torus d, ∀ i ∈ t.val, dist (s.points i) z ≤ r
+  ∀ i ∈ t.val, ∀ j ∈ t.val, dist (s.points i) (s.points j) ≤ r
 
 /-- Volume of the Euclidean d-ball of radius r: V_d(r) = π^(d/2) / Γ(d/2 + 1) · r^d. -/
 noncomputable def euclidBallVol (d : ℕ) (r : ℝ) : ℝ :=
@@ -108,19 +115,17 @@ noncomputable def volumeFill (d : ℕ) (r s : ℝ) : ℝ :=
 
 open Classical in
 open MeasureTheory in
-/-- **Definition 5 (Filling Probability).** The matched fill probability q(p, d) is
-      q(p,d) = ∫₀¹ (V_f(s,d) / V_e(s,d)) · d · s^(d-1) ds
-    where d · s^(d-1) is the PDF of the inter-vertex separation on T^d.
-
-    PROVIDED SOLUTION
-    Two uniformly random points on T^d have separation s with PDF d·s^(d-1) on [0,1].
-    Given separation s, the conditional probability that a third vertex fills the triangle
-    is V_f(s,d) / V_e(s,d). Integrate over s ∈ [0,1] against this PDF. -/
+/-- **Definition 5 (Filling Probability, Rips convention).** Under Rips,
+    F_ijk = A_ij · A_ik · A_jk, so the matched fill probability is just the
+    triangle (3-clique) probability:
+      q(p,d) = P(all 3 pairwise distances ≤ r) for r = matchRadius p d.
+    On the sup-norm torus this equals (3 r²)^d for r ≤ 1/4 (see `gamma_pow_eq`). -/
 noncomputable def fillingProb (p : ℝ) (d : ℕ) : ℝ :=
   let r := matchRadius p d
   ∫ pts : Fin 3 → Torus d,
-    (if ∃ z : Torus d, dist (pts 0) z ≤ r ∧ dist (pts 1) z ≤ r ∧ dist (pts 2) z ≤ r
-     then (1 : ℝ) else 0)
+    ((if dist (pts 0) (pts 1) ≤ r then (1:ℝ) else 0) *
+     (if dist (pts 0) (pts 2) ≤ r then (1:ℝ) else 0) *
+     (if dist (pts 1) (pts 2) ≤ r then (1:ℝ) else 0))
   ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (MeasureTheory.volume : MeasureTheory.Measure (Torus d)))
 
 /-! ## Moment Setup -/
@@ -760,12 +765,14 @@ lemma mu_e_pow_eq (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
     = (7 * (matchRadius p d) ^ 2) ^ d := by
   exact integral_edgeFill_eq_pow d hd ( matchRadius p d ) ( by unfold matchRadius; positivity ) hr
 
-/-- **Sim-A5 / Job 1, Lemma 3.** Filling probability closed form, deep regime
-    `r ≤ 1/4`. By Stevens 1939 + coordinate factorisation, `q = (12 r²)^d`. -/
+/-- **Filling probability closed form, Rips convention, deep regime `r ≤ 1/4`.**
+    Under Rips, F_ijk = A_ij·A_ik·A_jk so `fillingProb p d` equals the triangle
+    (3-clique) probability `(3r²)^d` from `gamma_pow_eq`. -/
 lemma fillingProb_eq_low_r (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
     (hr : matchRadius p d ≤ 1/4) :
-    fillingProb p d = (12 * (matchRadius p d) ^ 2) ^ d := by
-  exact integral_fill_eq_pow d hd ( matchRadius p d ) ( show 0 ≤ matchRadius p d from by unfold matchRadius; positivity ) hr
+    fillingProb p d = (3 * (matchRadius p d) ^ 2) ^ d := by
+  unfold fillingProb
+  exact gamma_pow_eq p d hp0 hp1 hd hr
 
 /-
 ────────────────────────────────────────────────────────────────────────────
