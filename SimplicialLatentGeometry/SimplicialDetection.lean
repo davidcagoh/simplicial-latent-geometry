@@ -2161,27 +2161,25 @@ lemma matchRadius_tendsto_half (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
   have := Filter.Tendsto.rpow h2 h1 (Or.inl hp0.ne')
   rwa [Real.rpow_zero] at this
 
-/-
-With the corrected matchRadius (r = p^(1/d)/2), we have r < 1/2 always for p ∈ (0,1).
-The old lemma geometricCov_eq_large_r assumed r > 1/2 which is never satisfied.
-Instead, the correct limit argument is: as d → ∞, matchRadius p d → 1/2 from below
-(by matchRadius_tendsto_half), so fillingProb p d → 1, so geometricCov p d → 0.
+/-! ### OQ-18 Rips reframe — corrected asymptotics
 
-geometricCov_eq_limit: geometricCov p d = (1-p)^3 * (1 - fillingProb p d)
-holds as a LIMIT as d → ∞ (not as a pointwise identity for fixed d).
+Under Rips on the sup-norm torus with matched-`p` radius `r = p^{1/d}/2`, the per-coord
+3-clique probability is `γ(r) = 3r² + (3r-1)²` for `r ∈ (1/3, 1/2]` (audit doc
+`my_theorems/oq18_math_audit.md`, session-63 addendum). Letting `r_d = p^{1/d}/2` we
+have `γ(r_d) = 1 + 3·log(p)/d + O(1/d²)`, hence
 
-PROVIDED SOLUTION for geometricCov_tendsto_zero_direct:
-Step 1: By matchRadius_tendsto_half, matchRadius p d → 1/2.
-Step 2: As r → 1/2, for any s ∈ (0,1), the fill/empty ratio → 1 (the balls grow to
-  cover the whole torus). So fillingProb p d → 1 via dominated convergence (bounded by 1).
-Step 3: geometricCov p d = (1-p)^3 * ∫ (1 - fillingProb-integrand) ... → 0.
-Step 4: Direct approach: show the integrand of geometricCov → 0 as d → ∞.
-  The integrand at pts ∈ (Torus d)^3 is
-    ∏ e, (1{dist ≤ r} - p) * (1{fill} - q) where q = fillingProb p d.
-  As r → 1/2, each edge indicator → 1 a.e., so (1{dist ≤ r} - p) → (1-p) a.e.
-  The fill indicator also → 1 a.e., so (1{fill} - q) → (1-q) → 0 since q → 1.
-  By DCT, geometricCov → (1-p)^3 * (1 - 1) = 0.
--/
+  `fillingProb p d = γ(r_d)^d → exp(3 log p) = p^3`.
+
+Plugging into the algebraic identity `geomCov = q[(1-p)^3 + p^3] − q^2` (proved by
+`geometricCov_eq_deep`):
+
+  `geomCov(p, d) → p^3 · [(1-p)^3 + p^3] − p^6 = p^3 (1-p)^3 > 0`.
+
+So under Rips on `ℓ_∞` torus, both `fillingProb` and `geomCov` tend to strictly positive
+constants, not zero. The dimensional-threshold story moves to Paper 2 (sphere + Čech).
+
+The two lemmas below state the correct limits. Proofs are stubbed — they require
+`TorusIntegrals` lemmas for `r ∈ (1/3, 1/2]` not yet developed (audit Table 2). -/
 
 /-- The integral of the beta-like density d · s^{d-1} over (0,1) equals 1 for d ≥ 1. -/
 lemma beta_density_integral (d : ℕ) (hd : 1 ≤ d) :
@@ -2189,124 +2187,21 @@ lemma beta_density_integral (d : ℕ) (hd : 1 ≤ d) :
   rw [← MeasureTheory.integral_Ioc_eq_integral_Ioo, ← intervalIntegral.integral_of_le] <;> norm_num [hd]
   rw [zero_pow (by linarith), sub_zero, mul_div_cancel₀ _ (by positivity)]
 
+/-- **OQ-18 Rips asymptotic.** Under Rips on the sup-norm torus with matched p ∈ (0,1)
+    fixed, `fillingProb p d → p^3` as `d → ∞`. Replaces the Čech-era false statements
+    `fillingProb_tendsto_one` / `fillingProb_tendsto_zero`.
 
-private lemma addCircle_three_balls_intersect' (r : ℝ) (hr : r > 1/3)
-    (a₁ a₂ a₃ : AddCircle (1 : ℝ)) :
-    ∃ z : AddCircle (1 : ℝ), dist a₁ z ≤ r ∧ dist a₂ z ≤ r ∧ dist a₃ z ≤ r := by
-  by_contra h_contra;
-  have h_complement_measure : (MeasureTheory.volume (Metric.closedBall a₁ r)ᶜ) + (MeasureTheory.volume (Metric.closedBall a₂ r)ᶜ) + (MeasureTheory.volume (Metric.closedBall a₃ r)ᶜ) < 1 := by
-    rw [ MeasureTheory.measure_compl, MeasureTheory.measure_compl, MeasureTheory.measure_compl ] <;> norm_num;
-    · have h_ball_measure : ∀ a : AddCircle (1 : ℝ), MeasureTheory.volume (Metric.closedBall a r) = ENNReal.ofReal (min (2 * r) 1) := by
-        intro a;
-        rw [ AddCircle.volume_closedBall ] ; norm_num;
-        exact min_comm _ _;
-      cases min_cases ( 2 * r ) 1 <;> simp_all +decide [ ENNReal.ofReal ];
-      rw [ ← ENNReal.toReal_lt_toReal ] <;> norm_num;
-      rw [ ENNReal.toReal_add, ENNReal.toReal_add ] <;> norm_num;
-      rw [ ENNReal.toReal_sub_of_le ] <;> norm_num;
-      · rw [ max_eq_left ] <;> linarith;
-      · linarith;
-    · exact measurableSet_closedBall;
-    · exact measurableSet_closedBall;
-    · exact measurableSet_closedBall;
-  have h_complement_measure : (MeasureTheory.volume ((Metric.closedBall a₁ r)ᶜ ∪ (Metric.closedBall a₂ r)ᶜ ∪ (Metric.closedBall a₃ r)ᶜ)) < 1 := by
-    refine' lt_of_le_of_lt _ h_complement_measure;
-    exact le_trans ( MeasureTheory.measure_union_le _ _ ) ( add_le_add ( MeasureTheory.measure_union_le _ _ ) le_rfl );
-  obtain ⟨z, hz⟩ : ∃ z : AddCircle (1 : ℝ), z ∉ (Metric.closedBall a₁ r)ᶜ ∪ (Metric.closedBall a₂ r)ᶜ ∪ (Metric.closedBall a₃ r)ᶜ := by
-    contrapose! h_complement_measure;
-    rw [ show ( Metric.closedBall a₁ r ) ᶜ ∪ ( Metric.closedBall a₂ r ) ᶜ ∪ ( Metric.closedBall a₃ r ) ᶜ = Set.univ from Set.eq_univ_of_forall h_complement_measure ] ; norm_num;
-  simp_all +decide [ dist_comm ];
-  linarith [ h_contra z hz.1.1 hz.1.2 ]
-
-private lemma matchRadius_eventually_gt_third' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    ∀ᶠ d in Filter.atTop, matchRadius p d > 1/3 := by
-  convert ( Filter.Tendsto.eventually ( matchRadius_tendsto_half p hp0 hp1 ) ( lt_mem_nhds ( show 1/3 < 1/2 by norm_num ) ) ) using 1
-
-private lemma fill_eventually_always' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    ∀ᶠ d in Filter.atTop, ∀ pts : Fin 3 → Torus d,
-      ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
-                      dist (pts 1) z ≤ matchRadius p d ∧
-                      dist (pts 2) z ≤ matchRadius p d := by
-  have matchRadius_gt_third : ∀ᶠ d in Filter.atTop, matchRadius p d > 1/3 := by
-    exact?
-  generalize_proofs at *; (
-  filter_upwards [ matchRadius_gt_third ] with d hd;
-  intro pts
-  have h_fill_cond : ∀ i : Fin d, ∃ z_i : AddCircle (1 : ℝ), dist (pts 0 i) z_i ≤ matchRadius p d ∧ dist (pts 1 i) z_i ≤ matchRadius p d ∧ dist (pts 2 i) z_i ≤ matchRadius p d := by
-    exact?
-  generalize_proofs at *; (
-  choose! z hz using h_fill_cond; use z; simp_all +decide [ dist_pi_le_iff ] ;
-  exact ⟨ by rw [ dist_pi_le_iff ( by positivity ) ] ; aesop, by rw [ dist_pi_le_iff ( by positivity ) ] ; aesop, by rw [ dist_pi_le_iff ( by positivity ) ] ; aesop ⟩))
-
-open MeasureTheory in
-open Classical in
-/-- **OQ-18 Rips refactor — STATEMENT FALSE under Rips.** Under the new clique-form
-    `fillingProb p d = (3r²)^d` with `r = p^{1/d}/2 → 1/2`, `q → 0` not `1`. The correct
-    statement is `fillingProb_tendsto_zero` (see new lemma below). This stub is kept
-    because downstream `geometricCov_eventually_zero` still cites it. -/
-private lemma fillingProb_eventually_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    ∀ᶠ d : ℕ in Filter.atTop, fillingProb p d = 1 := by
-  sorry
-
-/-- **OQ-18 Rips refactor — STATEMENT FALSE under Rips.** Under Rips on sup-norm torus
-    with matched p, `q = (3r²)^d → 0` as `d → ∞`, not `1`. The correct asymptotic is
-    `fillingProb_tendsto_zero`. -/
-lemma fillingProb_tendsto_one (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    Filter.Tendsto (fun d : ℕ => fillingProb p d) Filter.atTop (nhds 1) := by
-  sorry
-
-/-- **OQ-18 Rips refactor — new asymptotic.** Under Rips, with matched p ∈ (0,1) fixed,
-    `fillingProb p d = (3 r(p,d)²)^d → 0` as `d → ∞` because `r → 1/2` and so
-    `3 r² → 3/4 < 1`. Replaces the Čech-era `fillingProb_tendsto_one`. -/
-lemma fillingProb_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    Filter.Tendsto (fun d : ℕ => fillingProb p d) Filter.atTop (nhds 0) := by
-  sorry
-
-/-
-PROVIDED SOLUTION (updated for corrected matchRadius = p^(1/d)/2):
-With the corrected matchRadius, r = p^(1/d)/2 → 1/2 as d → ∞ (by matchRadius_tendsto_half).
-The asymptotic chain for geometricCov_tendsto_zero now runs:
-
-1. matchRadius_tendsto_half: matchRadius p d → 1/2.
-2. As r → 1/2, the torus ball of radius r approaches the whole torus. So for any
-   two points x, y on Torus d, dist x y ≤ 1/2 means the edge probability → 1.
-3. fillingProb p d → 1 (proved separately via substituted_tendsto and DCT).
-4. geometricCov p d = ∫ [(1{edge}-p)^3 * (1{fill}-q)] dμ where q = fillingProb p d → 1.
-   As q → 1, the fill factor (1{fill} - q) → 0 uniformly, so geometricCov → 0.
-
-Direct approach: geometricCov p d is a bounded integral (|integrand| ≤ 1 · 2) and the
-integrand → 0 pointwise as d → ∞ (since r → 1/2 means fill → 1 a.e. and q → 1).
-By DCT, geometricCov → 0.
-
-Step 1: Show geometricCov p d = (1-p)^3 * (1 - fillingProb p d) in the limit.
-  This follows from fillingProb_tendsto_one and the definition of geometricCov.
-Step 2: (1-p)^3 * (1 - fillingProb p d) → (1-p)^3 * 0 = 0 by fillingProb_tendsto_one.
-Step 3: Show geometricCov p d - (1-p)^3 * (1 - fillingProb p d) → 0 using matchRadius_tendsto_half
-  and the boundedness of the integrand.
--/
-open MeasureTheory in
-private lemma geometricCov_eq_when_fill_always' (p : ℝ) (d : ℕ)
-    (hfill : ∀ pts : Fin 3 → Torus d,
-      ∃ z : Torus d, dist (pts 0) z ≤ matchRadius p d ∧
-                      dist (pts 1) z ≤ matchRadius p d ∧
-                      dist (pts 2) z ≤ matchRadius p d) :
-    geometricCov p d = (1 - fillingProb p d) *
-      ∫ pts : Fin 3 → Torus d,
-        (let r := matchRadius p d
-         let x₁ := pts 0; let x₂ := pts 1; let x₃ := pts 2
-         let e₁₂ := if dist x₁ x₂ ≤ r then (1 : ℝ) - p else -p
-         let e₁₃ := if dist x₁ x₃ ≤ r then (1 : ℝ) - p else -p
-         let e₂₃ := if dist x₂ x₃ ≤ r then (1 : ℝ) - p else -p
-         e₁₂ * e₁₃ * e₂₃)
-      ∂MeasureTheory.Measure.pi (fun _ : Fin 3 => (volume : Measure (Torus d))) := by
-  -- OQ-18: hypothesis is in Čech ∃-form, but `geometricCov` fill indicator is now Rips clique.
-  -- Lemma is only used by `geometricCov_tendsto_zero` / `..._eventually_zero`, both of which
-  -- depend on the broken `fillingProb_tendsto_one` — stubbed pending refactor.
+    Proof needs a `fillingProb` closed form for `r ∈ (1/3, 1/2]`:
+    `fillingProb p d = γ(r_d)^d` where `γ(r) = 3r² + (3r-1)²` and `r_d = p^{1/d}/2`.
+    Combined with `γ(r_d) = 1 + 3 log(p)/d + o(1/d)`, gives the limit `p^3`. -/
+lemma fillingProb_tendsto_pcubed (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    Filter.Tendsto (fun d : ℕ => fillingProb p d) Filter.atTop (nhds (p^3)) := by
   sorry
 
 /-
 Bound the absolute value of the three-edge-product integral by 1 on a
-product of Haar probability measures on `Torus d`.
+product of Haar probability measures on `Torus d`. Auxiliary for DCT-based
+limit proofs.
 -/
 open MeasureTheory in
 private lemma edgeProduct_integral_bounded' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) (d : ℕ) :
@@ -2327,19 +2222,14 @@ private lemma edgeProduct_integral_bounded' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1
     split_ifs <;> constructor <;> nlinarith [ mul_nonneg hp0.le ( sq_nonneg p ), mul_nonneg hp0.le ( sq_nonneg ( 1 - p ) ) ];
   · norm_num [ MeasureTheory.Measure.pi_univ ]
 
-lemma geometricCov_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    Filter.Tendsto (fun d : ℕ => geometricCov p d) Filter.atTop (nhds 0) := by
-  -- OQ-18 Rips refactor: depends on `fillingProb_tendsto_one` which is FALSE under Rips
-  -- (q = (3/4)^d · p^2 → 0, not 1). Stubbed; this conclusion is itself likely false now.
-  sorry
+/-- **OQ-18 Rips asymptotic.** Under Rips with matched p ∈ (0,1) fixed,
+    `geomCov(p, d) → p^3 (1-p)^3` as `d → ∞`. Replaces the false Čech-era
+    `geometricCov_tendsto_zero` / `geometricCov_eventually_zero`.
 
-open MeasureTheory in
-/-- **Corollary.** For all sufficiently large d, geometricCov p d = 0 exactly.
-    Once matchRadius > 1/3, every triple fills, so F_t - q = 1 - 1 = 0 everywhere
-    and the integral collapses. This is stronger than geometricCov_tendsto_zero. -/
-lemma geometricCov_eventually_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    ∀ᶠ d : ℕ in Filter.atTop, geometricCov p d = 0 := by
-  -- OQ-18 Rips refactor: depends on `fillingProb_eventually_one` (FALSE under Rips).
+    Follows from `geometricCov_eq_deep` (algebraic identity `geomCov = q[(1-p)^3+p^3]−q²`)
+    plus `fillingProb_tendsto_pcubed` and continuity of the polynomial in `q`. -/
+lemma geometricCov_tendsto_pcubed_compcubed (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    Filter.Tendsto (fun d : ℕ => geometricCov p d) Filter.atTop (nhds (p^3 * (1-p)^3)) := by
   sorry
 
 /-! ### TV distance helper lemmas -/
