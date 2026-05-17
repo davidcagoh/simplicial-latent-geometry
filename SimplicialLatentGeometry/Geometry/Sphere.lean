@@ -109,39 +109,57 @@ noncomputable def cechFillProb (p : ℝ) (d : ℕ) : ℝ :=
 noncomputable def ripsFillProb (p : ℝ) (d : ℕ) : ℝ :=
   sorry  -- ∫ 1[edge ∧ edge ∧ edge] dμ³
 
-/-- **Asymptotic (Paper 2 headline).** $1 - q_{\text{Čech}}(p, d) \sim (3 z_p^2 / d)^{(d-2)/2}$.
-    Super-exponential decay via the joint Gram-entry density's singularity at $\det G = 0$.
-    See `my_theorems/paper2_sphere_scoping.md` for the derivation. -/
+/-- Geometric covariance under Čech fill on the sphere:
+    `E[(A₁₂−p)(A₁₃−p)(A₂₃−p)(F^{Čech}−q_{Čech})]`. Closed form follows the four-moment
+    decomposition `q_Rips(1−q_Čech) + 3p²(β−p)` with `β = E[A₁₂ · F^{Čech}]`. -/
+noncomputable def geomCovCech (p : ℝ) (d : ℕ) : ℝ :=
+  sorry  -- integral expression over the uniform measure on (S^{d-1})³
+
+/-- **Tail asymptotic (Paper 2 headline part 1).**
+    $1 - q_{\text{Čech}}(p, d) \sim (3 z_p^2 / d)^{(d-2)/2}$ as $d \to \infty$ at fixed $p$.
+    Super-exponential decay via the joint Gram-entry density singularity at $\det G = 0$.
+    See `my_theorems/paper2_sphere_scoping.md` (§ Tightened rate analysis). -/
 theorem cechFillProb_tail_asymptotic (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    -- Statement form TBD: equivalence ratio, or upper/lower bounds
-    True := -- placeholder
-  trivial
+    Filter.Tendsto (fun d : ℕ => cechFillProb p d) Filter.atTop (nhds 1) :=
+  sorry
 
-/-- **GeomCov closed form (matched fixed $p$, large $d$).**
-    $\text{geomCov}_{\text{Čech}}(p, d) \sim p^3 \cdot (1 - q_{\text{Čech}}(p, d))$.
-    Sign positive; coefficient $p^3$ (not $-2p^3$ — see session-63 MC verification). -/
-theorem geomCov_cech_asymptotic (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    True := -- placeholder
-  trivial
+/-- **GeomCov asymptotic (Paper 2 headline part 2).**
+    $\text{geomCov}_{\text{Čech}}(p, d) / (p^3 \cdot (1 - q_{\text{Čech}}(p, d))) \to 1$
+    as $d \to \infty$ at fixed $p \in (0,1)$. Sign positive; leading coefficient $p^3$.
+    Derivation: surface-concentration of the Gram density forces the cross-term
+    $c_d := \Pr[A_{12} \mid F=0] \to 0$ super-exponentially (slower than $1 - q_{\text{Čech}}$),
+    leaving the universal coefficient $p^3$. MC-verified at $d \in \{5, 7, 12\}$. -/
+theorem geomCovCech_asymptotic (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    Filter.Tendsto (fun d : ℕ => geomCovCech p d / (p ^ 3 * (1 - cechFillProb p d)))
+      Filter.atTop (nhds 1) :=
+  sorry
 
-/-! ## HomogeneousGeometricModel instance -/
+/-! ## CechSphereModel instance -/
 
 /-- Validity regime for the sphere instance: $d \ge 5$ (so the Gram density vanishes at the
     boundary $\det G = 0$, enabling the super-exponential tail), $p \in (0, 1)$. -/
 def SphereValidRegime (p : ℝ) (d : ℕ) : Prop :=
   0 < p ∧ p < 1 ∧ 5 ≤ d
 
-/-- The sphere Čech instance of `HomogeneousGeometricModel`. Note: unlike the L∞ torus
-    instance, the Rips closed form `geomCov = q[(1-p)^3 + p^3] - q^2` does **not** apply
-    here because the Rips identity $F = A_{12} A_{13} A_{23}$ fails under Čech fill on the
-    sphere (with strict Helly-$d$, three points can have Čech-fill = 1 without all three
-    pairwise edges).
+/-- The sphere Čech instance of `CechSphereModel ℕ`. Wires the asymptotic theorem
+    `geomCovCech_asymptotic` as the typeclass axiom.
 
-    Consequently, the instance hookup is **not** a direct application of the typeclass
-    contract as written. The typeclass needs generalization (or the sphere needs its own
-    closed-form replacement) before the instance can be supplied. Deferred.
--/
--- noncomputable instance : HomogeneousGeometricModel ℕ := ...  -- BLOCKED on typeclass refactor
+    Note: this is **not** an instance of `HomogeneousGeometricModel` — the Rips closed form
+    fails under Čech (see session-65 decision in `wiki/decisions.md`). The split typeclass
+    architecture in `Geometry/Common.lean` keeps Rips and Čech models distinct. -/
+noncomputable instance : CechSphereModel ℕ where
+  Point d := SpherePoint d
+  pointSpace _ := inferInstance
+  μ d := uniformOnSphere d
+  isProb d := sorry  -- needs `2 ≤ d` from regime; deferred until ValidRegime is folded in
+  edge _ r x y := sphereEdge r x y
+  matchR p d := matchedCos p d
+  cechFillProb p d := cechFillProb p d
+  geomCovCech p d := geomCovCech p d
+  ValidRegime p d := SphereValidRegime p d
+  geomCov_asymptotic := by
+    intro p hp0 hp1
+    exact geomCovCech_asymptotic p hp0 hp1
 
 /-! ## Aristotle dispatch plan (S2–S6)
 

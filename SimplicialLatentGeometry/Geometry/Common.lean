@@ -111,3 +111,62 @@ lemma geomCov_le_triangleProb_mul {p : ℝ} {s : Setting}
   nlinarith [sq_nonneg (triangleProb p s)]
 
 end HomogeneousGeometricModel
+
+/-! ## Čech-on-sphere asymptotic model (Paper 2)
+
+Session-65 split (see `paper2_sphere_scoping.md` and `wiki/decisions.md`): the Rips closed
+form `geomCov = q[(1-p)³ + p³] − q²` is an exact algebraic identity that relies on
+`F^{Rips} = A₁₂ A₁₃ A₂₃`. Under Čech fill on $S^{d-1}$ (Helly-$d$), the wedge⊆fill inclusion
+is strict and the closed form is replaced by a **four-moment decomposition** with no
+algebraic shortcut. The sub-leading rate analysis in `paper2_sphere_scoping.md` (§ Sub-leading
+rate of $c_d$) gives the asymptotic form
+
+  $\text{geomCov}_{\text{Čech}}(p, d) = p^3 \cdot (1 - q_{\text{Čech}}(p, d)) \cdot (1 + o(1))$
+
+which is what this typeclass exposes as its sole axiom. Headline `d^*(n,p) = 3 log n / log log n`
+follows once the typeclass is wired into the (forthcoming) abstract detection theorem.
+
+### Why a separate class
+
+Three concrete reasons (see `wiki/decisions.md` session-65):
+
+1. Čech has no exact closed form (only asymptotic).
+2. Four moments needed ($q_{\text{Rips}}, q_{\text{Čech}}, \beta, p$) vs three for Rips.
+3. The Rips axiom would have to be weakened to admit Čech, losing the algebraic identity
+   that the L∞ instance uses for `geometricCov_eq_deep`.
+
+Detection theorems can still share a common abstract SNR criterion in `Core.Detection`;
+that abstraction takes the signal sequence as data, not the model class. -/
+
+/-- Čech-fill asymptotic model on a setting parameter ordered by `Filter.atTop`. Carries
+    `cechFillProb p s = q_{Čech}(p, s)`, `geomCovCech p s = geomCov^{Čech}(p, s)`, a
+    per-setting `ValidRegime`, and one axiom: the ratio
+    `geomCovCech / (p^3 · (1 − cechFillProb))` tends to `1` along the directed setting.
+
+    The current target instance is `Setting = ℕ` (sphere dimension). The `[Preorder]`
+    + `[IsDirected]` requirements make `Filter.atTop` available. -/
+class CechSphereModel (Setting : Type*) [Preorder Setting] extends GeometricModel Setting where
+  /-- Čech-fill triangle probability $q_{\text{Čech}}(p, s)$ on three iid points. -/
+  cechFillProb : ℝ → Setting → ℝ
+  /-- Geometric covariance under Čech fill:
+      `E[(A₁₂−p)(A₁₃−p)(A₂₃−p)(F^{Čech}−q_{Čech})]`. -/
+  geomCovCech : ℝ → Setting → ℝ
+  /-- Per-setting validity predicate (e.g. `5 ≤ d` so the Gram density vanishes at
+      $\det G = 0$ and the super-exponential tail applies). -/
+  ValidRegime : ℝ → Setting → Prop
+  /-- **Asymptotic axiom.** Leading-order identity verified by MC at $d \in \{5,7,12\}$:
+      `geomCovCech p s ∼ p^3 · (1 − cechFillProb p s)` as $s \to \infty$ at fixed $p$.
+      Derivation: surface-concentration of the joint Gram density on $\{\det G = 0\}$
+      forces the cross-term $c_d := \Pr[A_{12} \mid F=0] \to 0$ super-exponentially,
+      leaving the universal coefficient $p^3$. See `paper2_sphere_scoping.md`. -/
+  geomCov_asymptotic : ∀ {p : ℝ}, 0 < p → p < 1 →
+      Filter.Tendsto (fun s => geomCovCech p s / (p ^ 3 * (1 - cechFillProb p s)))
+        Filter.atTop (nhds 1)
+
+/-! ### Notes on the tail rate
+
+The super-exponential tail `1 − cechFillProb p d ∼ (3 z_p² / d)^{(d-2)/2}` is *not* exposed
+as a typeclass field — it is an instance-specific theorem, proved per-setting (e.g., on
+$S^{d-1}$ via the joint Gram density). Detection theorems consume only `geomCov_asymptotic`
+plus an SNR criterion `n^{3/2} · (1 − cechFillProb) → ∞`; the per-instance tail rate is
+used downstream to convert this into the explicit threshold $d^*(n, p) = 3 \log n / \log\log n$. -/
