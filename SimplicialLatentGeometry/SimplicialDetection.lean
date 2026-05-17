@@ -2201,7 +2201,32 @@ lemma fillingProb_eq_mid_r (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1)
     `matchRadius p d > 1/3` (and `≤ 1/2` always since `p^{1/d} ≤ 1`). -/
 lemma matchRadius_eventually_mid (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     ∀ᶠ d : ℕ in Filter.atTop, 1/3 < matchRadius p d ∧ matchRadius p d ≤ 1/2 := by
-  sorry
+  -- p^(1/d) → p^0 = 1 as d → ∞ via continuity of x ↦ p^x at 0.
+  have h_inv : Filter.Tendsto (fun d : ℕ => (1 : ℝ) / (d : ℝ)) Filter.atTop (nhds 0) := by
+    simpa using tendsto_const_div_atTop_nhds_zero_nat (1 : ℝ)
+  have h_rpow : Filter.Tendsto (fun d : ℕ => p ^ ((1 : ℝ) / (d : ℝ))) Filter.atTop (nhds 1) := by
+    have h_cont : ContinuousAt (fun x : ℝ => p ^ x) 0 :=
+      Real.continuousAt_const_rpow (ne_of_gt hp0)
+    have h0 : p ^ (0 : ℝ) = 1 := Real.rpow_zero p
+    have := h_cont.tendsto.comp h_inv
+    simpa [h0] using this
+  -- eventually p^(1/d) > 2/3
+  have h_gt : ∀ᶠ d : ℕ in Filter.atTop, (2 : ℝ) / 3 < p ^ ((1 : ℝ) / (d : ℝ)) :=
+    h_rpow.eventually (eventually_gt_nhds (by norm_num : (2 : ℝ) / 3 < 1))
+  filter_upwards [h_gt, Filter.eventually_ge_atTop (1 : ℕ)] with d hpd hd
+  have hd_ne : d ≠ 0 := Nat.one_le_iff_ne_zero.mp hd
+  have hd_pos : (0 : ℝ) < (d : ℝ) := by exact_mod_cast hd
+  have h_le_one : p ^ ((1 : ℝ) / (d : ℝ)) ≤ 1 :=
+    Real.rpow_le_one hp0.le hp1.le (by positivity)
+  refine ⟨?_, ?_⟩
+  · -- 1/3 < p^(1/d)/2
+    have : matchRadius p d = p ^ ((1 : ℝ) / (d : ℝ)) / 2 := by
+      unfold matchRadius; simp [hd_ne]
+    rw [this]; linarith
+  · -- p^(1/d)/2 ≤ 1/2
+    have : matchRadius p d = p ^ ((1 : ℝ) / (d : ℝ)) / 2 := by
+      unfold matchRadius; simp [hd_ne]
+    rw [this]; linarith
 
 /-- **The mid-regime gamma raised to the d-th power tends to `p^3`.**
 
