@@ -2187,16 +2187,52 @@ lemma beta_density_integral (d : ℕ) (hd : 1 ≤ d) :
   rw [← MeasureTheory.integral_Ioc_eq_integral_Ioo, ← intervalIntegral.integral_of_le] <;> norm_num [hd]
   rw [zero_pow (by linarith), sub_zero, mul_div_cancel₀ _ (by positivity)]
 
+/-- **Filling probability closed form, Rips, mid regime `r ∈ (1/3, 1/2]`.** Sibling of
+    `fillingProb_eq_low_r`. Delegates to `integral_triangle_eq_pow_mid` from
+    `TorusIntegrals`. -/
+lemma fillingProb_eq_mid_r (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1)
+    (hr_lo : 1/3 < matchRadius p d) (hr_hi : matchRadius p d ≤ 1/2) (hd : 1 ≤ d) :
+    fillingProb p d = (gammaMid (matchRadius p d)) ^ d := by
+  unfold fillingProb
+  exact integral_triangle_eq_pow_mid d hd (matchRadius p d) hr_lo hr_hi
+
+/-- **matchRadius is eventually in the mid regime.** Since `matchRadius p d = p^{1/d}/2 → 1/2`
+    as `d → ∞` (for fixed `p ∈ (0,1)`), for all sufficiently large `d` we have
+    `matchRadius p d > 1/3` (and `≤ 1/2` always since `p^{1/d} ≤ 1`). -/
+lemma matchRadius_eventually_mid (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    ∀ᶠ d : ℕ in Filter.atTop, 1/3 < matchRadius p d ∧ matchRadius p d ≤ 1/2 := by
+  sorry
+
+/-- **The mid-regime gamma raised to the d-th power tends to `p^3`.**
+
+    Math: `γ(p^{1/d}/2) = 3 p^{2/d} − 3 p^{1/d} + 1` (algebraic; see
+    `gammaMid_of_matchRadius_form`). Taylor expansion at `1/d → 0`:
+    `γ(r_d) = 1 + 3 (log p)/d + O(1/d²)`, so `d · log γ(r_d) → 3 log p`, hence
+    `γ(r_d)^d → exp(3 log p) = p^3`.
+
+    Aristotle target (analytic limit; uses Real.log_one_add_lt + Taylor). -/
+lemma gammaMid_matchRadius_pow_tendsto_pcubed (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    Filter.Tendsto (fun d : ℕ => (gammaMid (matchRadius p d)) ^ d)
+      Filter.atTop (nhds (p ^ 3)) := by
+  sorry
+
 /-- **OQ-18 Rips asymptotic.** Under Rips on the sup-norm torus with matched p ∈ (0,1)
     fixed, `fillingProb p d → p^3` as `d → ∞`. Replaces the Čech-era false statements
     `fillingProb_tendsto_one` / `fillingProb_tendsto_zero`.
 
-    Proof needs a `fillingProb` closed form for `r ∈ (1/3, 1/2]`:
-    `fillingProb p d = γ(r_d)^d` where `γ(r) = 3r² + (3r-1)²` and `r_d = p^{1/d}/2`.
-    Combined with `γ(r_d) = 1 + 3 log(p)/d + o(1/d)`, gives the limit `p^3`. -/
+    Proof chain:
+    1. For sufficiently large `d`, `matchRadius p d ∈ (1/3, 1/2]` (`matchRadius_eventually_mid`).
+    2. In that regime, `fillingProb p d = γ(r_d)^d` (`fillingProb_eq_mid_r`).
+    3. `γ(r_d)^d → p^3` (`gammaMid_matchRadius_pow_tendsto_pcubed`). -/
 lemma fillingProb_tendsto_pcubed (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => fillingProb p d) Filter.atTop (nhds (p^3)) := by
-  sorry
+  -- Replace `γ(r_d)^d` with `fillingProb p d` eventually, then transport the limit.
+  have h_eq : ∀ᶠ d : ℕ in Filter.atTop,
+      (gammaMid (matchRadius p d)) ^ d = fillingProb p d := by
+    filter_upwards [matchRadius_eventually_mid p hp0 hp1,
+                    Filter.eventually_ge_atTop (1 : ℕ)] with d ⟨hlo, hhi⟩ hd
+    exact (fillingProb_eq_mid_r p d hp0 hp1 hlo hhi hd).symm
+  exact (gammaMid_matchRadius_pow_tendsto_pcubed p hp0 hp1).congr' h_eq
 
 /-
 Bound the absolute value of the three-edge-product integral by 1 on a

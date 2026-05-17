@@ -1428,3 +1428,83 @@ lemma doubleFillSet_measurableSet (r : ℝ) : MeasurableSet (doubleFillSet r) :=
       convert h_closed.image ( continuous_fst ) using 1;
       ext; aesop;
     exact h_closed.measurableSet
+
+/-! ## Mid-regime closed forms for `r ∈ (1/3, 1/2]` (OQ-18 reframe, session 65)
+
+Under matched radius `r_d = p^{1/d}/2`, the regime `r ≤ 1/4` only covers small `d`. As
+`d → ∞` we have `r_d → 1/2`, so the relevant asymptotic regime is `r ∈ (1/3, 1/2]`.
+
+Per-coordinate 3-clique probability for three iid uniform points on T1 with threshold
+`r ∈ (1/3, 1/2]`:
+
+  `γ(r) := 3 r² + (3 r − 1)²`.
+
+Verification:
+- At `r = 1/3`: `γ = 3·(1/9) + 0 = 1/3`. Matches `3 r² = 1/3` (continuity with low-regime).
+- At `r = 1/2`: `γ = 3/4 + (1/2)² = 1`. Matches the trivial fact that any two points on
+  a circle of length 1 are within distance 1/2.
+
+Derivation: condition on `u₁ = 0`. The pair-edge events `|u₂| ≤ r ∧ |u₃| ≤ r` give a
+square of side `2r` for the joint distribution of `(u₂, u₃)`. The third edge
+`|u₂ − u₃| ≤ r` (mod 1) is the union of the diagonal strip `|u₂ − u₃| ≤ r` and the
+wraparound strips `|u₂ − u₃ − 1| ≤ r` ∪ `|u₂ − u₃ + 1| ≤ r`. For `r ≤ 1/4`, only the
+diagonal strip intersects the square, giving area `3 r²`. For `r ∈ (1/3, 1/2]`, the
+wraparound strips also clip the corners of the square, adding `(3r − 1)²`.
+
+References: audit `my_theorems/oq18_math_audit.md` § "γ(r) for r ∈ (1/3, 1/2]";
+session-63 entry in `wiki/decisions.md`.
+
+These lemmas are scaffolding — proofs deferred to Aristotle (statement scope is the
+same shape as the existing `volume_triangleSet` / `integral_triangle_eq_pow`). -/
+
+/-- The mid-regime per-coordinate 3-clique probability `γ(r) = 3r² + (3r−1)²`. -/
+noncomputable def gammaMid (r : ℝ) : ℝ := 3 * r ^ 2 + (3 * r - 1) ^ 2
+
+@[simp] lemma gammaMid_apply (r : ℝ) : gammaMid r = 3 * r ^ 2 + (3 * r - 1) ^ 2 := rfl
+
+/-- Continuity at the regime boundary `r = 1/3`: `γ(1/3) = 1/3 = 3·(1/3)²`. -/
+lemma gammaMid_at_one_third : gammaMid (1/3) = 1/3 := by
+  unfold gammaMid; ring
+
+/-- Right endpoint: `γ(1/2) = 1` (any two points on T1 are within distance 1/2). -/
+lemma gammaMid_at_one_half : gammaMid (1/2) = 1 := by
+  unfold gammaMid; ring
+
+/-- Algebraic identity used downstream: `γ(p^{1/d}/2) = 3·p^{2/d} − 3·p^{1/d} + 1`. -/
+lemma gammaMid_of_matchRadius_form (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hd : 1 ≤ d) :
+    gammaMid (p ^ ((d : ℝ)⁻¹) / 2)
+      = 3 * p ^ ((2 : ℝ) * (d : ℝ)⁻¹) - 3 * p ^ ((d : ℝ)⁻¹) + 1 := by
+  unfold gammaMid
+  have hsq : p ^ ((d : ℝ)⁻¹) * p ^ ((d : ℝ)⁻¹) = p ^ ((2 : ℝ) * (d : ℝ)⁻¹) := by
+    rw [← Real.rpow_add hp0]; congr 1; ring
+  nlinarith [hsq]
+
+/-- **Mid-regime volume.** For `r ∈ (1/3, 1/2]`, the volume of the 3-clique set on T1
+    is `γ(r) = 3r² + (3r−1)²`. Sibling of `volume_triangleSet` (which covers `r ≤ 1/4`).
+
+    Proof sketch: condition on `u₁ = 0`. Joint of `(u₂, u₃)` is uniform on `[-1/2, 1/2]²`.
+    3-clique = `|u₂| ≤ r ∧ |u₃| ≤ r ∧ dist(u₂,u₃) ≤ r` where dist is mod-1. The
+    first two define a `2r × 2r` square; the third is the diagonal band ∪ two
+    wraparound bands. For `r ∈ (1/3, 1/2]` the wraparound bands intersect the square,
+    each clipping a triangular region of side `(3r−1)`. Final area:
+    `3 r²` (diagonal contribution, unchanged from low regime) `+ (3 r − 1)²` (wraparound).
+
+    Aristotle target. -/
+lemma volume_triangleSet_mid (r : ℝ) (hr_lo : 1/3 < r) (hr_hi : r ≤ 1/2) :
+    volume (triangleSet r) = ENNReal.ofReal (gammaMid r) := by
+  sorry
+
+/-- **Mid-regime triangle integral.** Sibling of `integral_triangle_eq_pow`; the d-fold
+    coordinate factorization is identical, only the per-coordinate value changes.
+
+    Proof structure mirrors `integral_triangle_eq_pow`: reduce to
+    `volume_coordFactored_eq_pow (volume_triangleSet_mid r ...)`. Aristotle target. -/
+theorem integral_triangle_eq_pow_mid (d : ℕ) (hd : 1 ≤ d) (r : ℝ)
+    (hr_lo : 1/3 < r) (hr_hi : r ≤ 1/2) :
+    ∫ pts : Fin 3 → (Fin d → T1),
+      (if dist (pts 0) (pts 1) ≤ r then (1:ℝ) else 0) *
+      (if dist (pts 0) (pts 2) ≤ r then (1:ℝ) else 0) *
+      (if dist (pts 1) (pts 2) ≤ r then (1:ℝ) else 0)
+      ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Fin d → T1)))
+    = (gammaMid r) ^ d := by
+  sorry
