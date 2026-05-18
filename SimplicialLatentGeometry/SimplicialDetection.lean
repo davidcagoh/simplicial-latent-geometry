@@ -473,14 +473,43 @@ instance cechMeasure_isProbabilityMeasure (n d : ℕ) (r : ℝ) :
       exact MeasurableSet.univ);
   · exact MeasurableSet.univ
 
-/-- cechFilledCount is integrable under cechMeasure: bounded by C(n,3), measurable via comap
-    sigma-algebra (Čech fill sets are closed hence Borel), finite measure from probability instance. -/
+/-- Under the comap sigma-algebra, `s.hasFill r t` is a finite intersection of
+    closed preimages `{s | dist (s.points i) (s.points j) ≤ r}`. CechSample-level
+    version of `DisjointTriangles.measurableSet_hasFill`. -/
+lemma measurableSet_cechSample_hasFill (n d : ℕ) (r : ℝ)
+    (t : {σ : Finset (Fin n) // σ.card = 3}) :
+    MeasurableSet {s : CechSample n d | s.hasFill r t} := by
+  have h_rewrite : {s : CechSample n d | s.hasFill r t} =
+      ⋂ i ∈ t.val, ⋂ j ∈ t.val,
+        {s : CechSample n d | dist (s.points i) (s.points j) ≤ r} := by
+    ext s; simp [CechSample.hasFill]
+  rw [h_rewrite]
+  -- Under the comap MS, a preimage of a measurable target set is measurable.
+  have h_points_meas : Measurable (CechSample.points : CechSample n d → Fin n → Torus d) :=
+    fun x hx => ⟨x, hx, rfl⟩
+  refine MeasurableSet.biInter t.val.countable_toSet (fun i _ => ?_)
+  refine MeasurableSet.biInter t.val.countable_toSet (fun j _ => ?_)
+  exact measurableSet_le
+    (((measurable_pi_apply i).comp h_points_meas).dist
+      ((measurable_pi_apply j).comp h_points_meas))
+    measurable_const
+
+/-- cechFilledCount is integrable under cechMeasure: each triangle indicator is the
+    integrable indicator of `measurableSet_cechSample_hasFill` (probability measure
+    is finite). -/
 lemma cechFilledCount_integrable (n d : ℕ) (r : ℝ) :
     MeasureTheory.Integrable (fun s => cechFilledCount s r) (cechMeasure n d r) := by
-  -- OQ-18 Rips refactor: under clique `hasFill`, this is a finite intersection of
-  -- `{dist ≤ r}` sets pulled back through `CechSample.points`. The original existential-
-  -- form proof is no longer the right shape. Stubbed pending refactor.
-  sorry
+  classical
+  unfold cechFilledCount
+  refine MeasureTheory.integrable_finset_sum _ (fun t _ => ?_)
+  have h_indicator :
+      (fun s : CechSample n d => if s.hasFill r t then (1:ℝ) else 0)
+        = Set.indicator {s | s.hasFill r t} (fun _ => (1:ℝ)) := by
+    ext s
+    by_cases h : s.hasFill r t <;> simp [Set.indicator, h]
+  rw [h_indicator]
+  exact (MeasureTheory.integrable_const (1:ℝ) (μ := cechMeasure n d r)).indicator
+    (measurableSet_cechSample_hasFill n d r t)
 
 /-! ### Helper lemmas for snr_diverges -/
 
@@ -2030,9 +2059,66 @@ lemma cechDoublySigned_summand_integrable (n d : ℕ) (p q r : ℝ)
         (if s.hasEdge r e.1 e.2 then (1 : ℝ) - p else -p)) *
         (if s.hasFill r t then (1 : ℝ) - q else -q))
       (cechMeasure n d r) := by
-  -- OQ-18: under clique `hasFill`, measurability is via finite intersection. The original
-  -- proof references `exact?` which doesn't close under the new sigma-algebra setup. Stub.
-  sorry
+  classical
+  -- Under the comap MS, edge and fill predicates are measurable via the helper.
+  have h_points_meas :
+      Measurable (CechSample.points : CechSample n d → Fin n → Torus d) :=
+    fun x hx => ⟨x, hx, rfl⟩
+  have h_edge_meas : ∀ i j : Fin n,
+      MeasurableSet {s : CechSample n d | s.hasEdge r i j} := by
+    intro i j
+    exact measurableSet_le
+      (((measurable_pi_apply i).comp h_points_meas).dist
+        ((measurable_pi_apply j).comp h_points_meas))
+      measurable_const
+  -- Integrand measurability: product of indicator-style ifs.
+  have h_fun_meas : Measurable (fun s : CechSample n d =>
+      (∏ e ∈ triangleEdges t,
+        (if s.hasEdge r e.1 e.2 then (1:ℝ) - p else -p)) *
+        (if s.hasFill r t then (1:ℝ) - q else -q)) := by
+    refine Measurable.mul ?_ ?_
+    · exact Finset.measurable_prod _ (fun e _ =>
+        Measurable.ite (h_edge_meas e.1 e.2) measurable_const measurable_const)
+    · exact Measurable.ite (measurableSet_cechSample_hasFill n d r t)
+        measurable_const measurable_const
+  -- Pointwise bound: |edge term| ≤ |1-p|+|p|; |fill term| ≤ |1-q|+|q|.
+  set Mp : ℝ := |1 - p| + |p|
+  set Mq : ℝ := |1 - q| + |q|
+  have h_edge_bound : ∀ (s : CechSample n d) (e : Fin n × Fin n),
+      |if s.hasEdge r e.1 e.2 then (1:ℝ) - p else -p| ≤ Mp := by
+    intro s e
+    show |if s.hasEdge r e.1 e.2 then (1:ℝ) - p else -p| ≤ |1 - p| + |p|
+    by_cases h : s.hasEdge r e.1 e.2
+    · rw [if_pos h]; linarith [abs_nonneg p, abs_nonneg (1 - p), le_abs_self (1 - p)]
+    · rw [if_neg h, abs_neg]; linarith [abs_nonneg (1 - p), le_abs_self p]
+  have h_fill_bound : ∀ s : CechSample n d,
+      |if s.hasFill r t then (1:ℝ) - q else -q| ≤ Mq := by
+    intro s
+    show |if s.hasFill r t then (1:ℝ) - q else -q| ≤ |1 - q| + |q|
+    by_cases h : s.hasFill r t
+    · rw [if_pos h]; linarith [abs_nonneg q, abs_nonneg (1 - q), le_abs_self (1 - q)]
+    · rw [if_neg h, abs_neg]; linarith [abs_nonneg (1 - q), le_abs_self q]
+  have hMp_nn : 0 ≤ Mp := by show 0 ≤ |1 - p| + |p|; positivity
+  have hMq_nn : 0 ≤ Mq := by show 0 ≤ |1 - q| + |q|; positivity
+  -- Product over a finset of bounded-by-Mp terms ≤ Mp^card.
+  have h_prod_bound : ∀ s : CechSample n d,
+      |∏ e ∈ triangleEdges t, (if s.hasEdge r e.1 e.2 then (1:ℝ) - p else -p)|
+        ≤ Mp ^ (triangleEdges t).card := by
+    intro s
+    rw [← Finset.prod_const]
+    refine (Finset.abs_prod _ _).le.trans ?_
+    exact Finset.prod_le_prod (fun e _ => abs_nonneg _) (fun e _ => h_edge_bound s e)
+  -- Combine into the overall bound.
+  have h_bound : ∀ s : CechSample n d,
+      ‖(∏ e ∈ triangleEdges t, (if s.hasEdge r e.1 e.2 then (1:ℝ) - p else -p)) *
+        (if s.hasFill r t then (1:ℝ) - q else -q)‖
+        ≤ Mp ^ (triangleEdges t).card * Mq := by
+    intro s
+    rw [Real.norm_eq_abs, abs_mul]
+    exact mul_le_mul (h_prod_bound s) (h_fill_bound s) (abs_nonneg _) (by positivity)
+  exact (MeasureTheory.integrable_const (Mp ^ (triangleEdges t).card * Mq)).mono'
+    h_fun_meas.aestronglyMeasurable
+    (Filter.Eventually.of_forall h_bound)
 
 /-
 OLD PROOF BODY:
