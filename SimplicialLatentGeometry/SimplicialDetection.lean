@@ -2328,20 +2328,21 @@ private lemma edgeProduct_integral_bounded' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1
     split_ifs <;> constructor <;> nlinarith [ mul_nonneg hp0.le ( sq_nonneg p ), mul_nonneg hp0.le ( sq_nonneg ( 1 - p ) ) ];
   · norm_num [ MeasureTheory.Measure.pi_univ ]
 
-/-- **Mid-regime extension of `geometricCov_eq_deep` (axiom).**
+/-- **Mid-regime extension of `geometricCov_eq_deep` (target).**
     `geometricCov_eq_deep` proves the closed form `geomCov = q[(1-p)^3 + p^3] − q^2`
     only under `matchRadius ≤ 1/4` (deep regime, no wraparound). At fixed `p` and
     `d → ∞`, `matchRadius → 1/2` (mid regime), so the deep hypothesis fails
     eventually. A full mid-regime derivation requires `centered_edge_moment_mid`
-    and `centered_edge_moment_fill_mid` returning `γ_mid(r)^d − ...` (where
-    `γ_mid(r) := 3r^2 + (3r-1)^2` per session 65) — substantial new infrastructure.
-    The asymptotic statement below is the weakest form needed to land the Paper 1
-    headline `geometricCov → p^3 (1-p)^3`. -/
-axiom geometricCov_sub_closedForm_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    and `centered_edge_moment_fill_mid` returning closed forms in terms of
+    `γ_mid(r) := 3r^2 + (3r-1)^2` per session 65 — substantial new infrastructure.
+    The statement below is the weakest form needed for the Paper 1 headline; it
+    remains `sorry` (NOT an axiom) until the mid-regime moment lemmas land. -/
+lemma geometricCov_sub_closedForm_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto
       (fun d : ℕ => geometricCov p d -
         (fillingProb p d * ((1 - p)^3 + p^3) - (fillingProb p d)^2))
-      Filter.atTop (nhds 0)
+      Filter.atTop (nhds 0) :=
+  sorry
 
 /-- **OQ-18 Rips asymptotic (Paper 1 headline).** Under Rips with matched
     `p ∈ (0,1)` fixed, `geomCov(p, d) → p^3 (1-p)^3` as `d → ∞`. Replaces
