@@ -143,7 +143,48 @@ Mathlib~\cite{Mathlib2020}, with no remaining sorries in the active proof chain.
 \maketitle
 
 %% ─────────────────────────────────────────────────────────────────────────────
-\section{Introduction}
+\section*{Note added in revision (session 63, 2026-05-16)}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\noindent\textbf{Convention-specificity of Theorem~\ref{thm:phase-transition}(b).}
+The phase-transition result---a finite $n$-independent critical dimension
+$d^*(p) = |\log p|/\log(3/2)$ above which $\geomCov \equiv 0$ via Helly-2 collapse---is
+\emph{specific to David's same-radius \v{C}ech convention} (edge and fill both parameterized
+by the same radius $r$). N.~Cook (May 2026) flagged that under this convention, the
+``\v{C}ech complex'' is \emph{not} a downward-closed simplicial complex (triple-intersection
+only forces pairwise distance $\le 2r$, while edges require distance $\le r$). The
+natural fix is to reinterpret the fill indicator as the Rips clique
+$F_{ijk} = A_{ij} A_{ik} A_{jk}$, which is manifestly downward-closed.
+
+Under the Rips reinterpretation on $\ell_\infty$-torus, Helly-2 forces \v{C}ech and Rips
+to coincide \emph{as set complexes}, but the algebraic collapse mechanism behind
+Theorem~\ref{thm:phase-transition}(b) does \emph{not} survive: instead,
+$\geomCov(p,d) \to p^3(1-p)^3 > 0$ as $d \to \infty$ at fixed $p \in (0,1)$, so the
+$\tauf$-based test detects at every dimension and there is no $n$-independent dimensional
+barrier. The Theorem~\ref{thm:detection} detection bound and the sparse-regime
+Corollary~\ref{cor:sparse} survive intact; only Theorem~\ref{thm:phase-transition}(b)
+is convention-dependent.
+
+\noindent\textbf{Sphere sequel (Paper~2).}
+The original ``Helly-2 collapse'' headline is recovered, in a stronger form, on the sphere
+$S^{d-1}$ with uniform measure under proper \v{C}ech fill (existential common cap; Helly
+number $d$). The \v{C}ech-Rips gap survives concentration of measure, and the
+$\geomCov_{\text{\v{C}ech}}$ signal vanishes super-exponentially as
+$1 - q_{\text{\v{C}ech}}(p,d) \sim (3 z_p^2/d)^{(d-2)/2}$ via the joint Gram-entry density
+$\propto (\det G)^{(d-4)/2}$ singularity. The detection threshold is
+$d^*(n,p) = 3 \log n / \log\log n$, sub-logarithmic. Companion paper in preparation.
+
+The present paper develops the doubly-signed statistic and detection bound under David's
+original convention; readers should treat
+Theorem~\ref{thm:phase-transition}(b) and the surrounding ``finite critical dimension''
+discussion as a \emph{Helly-2 case study} rather than a structural conclusion. The fuller
+multi-instance story---Helly number controls the dimensional barrier; Helly-2 spaces
+have no barrier, Helly-$d$ spaces have $\Theta(\log n / \log\log n)$, Helly-$(d{+}1)$
+Euclidean torus has $\Theta(\log n)$---is the subject of the methodology paper that
+follows this one and its sphere sequel.
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Introduction}\label{sec:intro}
 %% ─────────────────────────────────────────────────────────────────────────────
 
 \subsection{Background and Motivation}
@@ -857,6 +898,18 @@ would require bounding the second moment of the likelihood ratio in the spirit o
 \cite[\S6]{Bubeck2016}; see Section~\ref{sec:discussion}.
 \end{remark}
 
+\begin{remark}[Convention-specificity]\label{rem:convention-specific}
+The collapse mechanism in part~(b) is specific to David's same-radius \v{C}ech convention.
+Under the Rips reinterpretation $F_{ijk} := A_{ij} A_{ik} A_{jk}$, the algebraic identity
+$F \equiv 1$ above $d^*(p)$ does \emph{not} hold; instead $\geomCov(p,d) =
+q[(1-p)^3 + p^3] - q^2$ with $q = (3 r^2)^d$ in the deep regime $r \le 1/4$, and
+$\geomCov(p,d) \to p^3 (1-p)^3 > 0$ as $d \to \infty$ at fixed $p$. The
+$d^*(p) = |\log p|/\log(3/2)$ headline is therefore a \emph{Helly-2 case study} rather than
+a structural barrier. See the ``Note added in revision'' before Section~\ref{sec:intro} for
+context, and the sphere sequel for the dimensional-barrier story that survives proper
+\v{C}ech complex definition on Helly-$d$ ambient spaces.
+\end{remark}
+
 \begin{proof}
 \textit{Part~(a).} For $d < d^*(p)$, by definition we have $r(p,d) < 1/3$, so
 $\fillingP(p,d) < 1$ and $q \in (0,1)$. Moreover, $\geomCov(p,d) > 0$ because the joint
@@ -1084,9 +1137,22 @@ natural next step.
 \subsubsection*{Beyond the flat torus}
 Porting the analysis to the sphere $\Sph^{d-1}$ with geodesic distance replaces the
 Helly argument with spherical-cap intersections and a transcendental matched-radius
-formula. It would also be interesting to consider extensions to other latent geometries,
+formula. The companion sphere paper (in preparation) develops this in detail: under
+proper \v{C}ech complex definition on $\Sph^{d-1}$ (Helly number $d$), concentration
+of measure forces caps to nearly hemispheres at matched fixed $p$, but the existential
+\v{C}ech fill saturates ($q_{\text{\v{C}ech}} \to 1$) while Rips fill collapses
+($q_{\text{Rips}} \to p^3$). The covariance signal vanishes super-exponentially:
+$1 - q_{\text{\v{C}ech}}(p,d) \sim (3 z_p^2/d)^{(d-2)/2}$ where $z_p = \Phi^{-1}(1-p)$,
+driven by the singularity of the joint Gram-entry density
+$\propto (\det G)^{(d-4)/2}$ at the boundary $\det G = 0$. Detection threshold:
+$d^*(n,p) = 3 \log n / \log\log n$, sub-logarithmic. The L$^2$ Euclidean torus (Helly
+number $d{+}1$) sits between: detection threshold $\Theta(\log n)$ via standard
+exponential concentration tail. Together with the present paper (\v{C}ech-Rips collapse
+on Helly-2 sup-norm torus, no dimensional barrier), this trilogy gives three distinct
+detection-threshold mechanisms unified by the Helly number of the ambient space; a
+methodology paper synthesizes them. Extensions to other latent geometries
 e.g.\ anisotropic~\cite{Brennan2022} or hyperbolic~\cite{Litvak2022}, where
-triangle-based tests behave differently.
+triangle-based tests behave differently, are also of interest.
 
 %% ─────────────────────────────────────────────────────────────────────────────
 \section*{Acknowledgments}
