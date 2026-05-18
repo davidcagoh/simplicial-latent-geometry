@@ -2414,21 +2414,53 @@ private lemma edgeProduct_integral_bounded' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1
     split_ifs <;> constructor <;> nlinarith [ mul_nonneg hp0.le ( sq_nonneg p ), mul_nonneg hp0.le ( sq_nonneg ( 1 - p ) ) ];
   · norm_num [ MeasureTheory.Measure.pi_univ ]
 
-/-- **Mid-regime extension of `geometricCov_eq_deep` (target).**
-    `geometricCov_eq_deep` proves the closed form `geomCov = q[(1-p)^3 + p^3] − q^2`
-    only under `matchRadius ≤ 1/4` (deep regime, no wraparound). At fixed `p` and
-    `d → ∞`, `matchRadius → 1/2` (mid regime), so the deep hypothesis fails
-    eventually. A full mid-regime derivation requires `centered_edge_moment_mid`
-    and `centered_edge_moment_fill_mid` returning closed forms in terms of
-    `γ_mid(r) := 3r^2 + (3r-1)^2` per session 65 — substantial new infrastructure.
-    The statement below is the weakest form needed for the Paper 1 headline; it
-    remains `sorry` (NOT an axiom) until the mid-regime moment lemmas land. -/
+/-! ### Regime-free closed form (Aristotle dispatch target)
+
+`geometricCov_eq_deep` carries the hypothesis `matchRadius ≤ 1/4`. That was an
+artefact of the specific proof template (using `(3r²)^d` volume identity), NOT
+the underlying math: the closed form `geomCov = q[(1-p)^3 + p^3] − q^2` holds for
+*any* `r ≤ 1/2` via a regime-independent argument:
+
+(a) `centered_edge_moment_fill = (1-p)^3 · q` is purely algebraic — for 0/1
+    indicators E, `E · (E - p) = (1 - p) · E`, so the product collapses to
+    `(1-p)^3 · F` and integrates to `(1-p)^3 · q`. NO regime dependence.
+
+(b) `centered_edge_moment = q − p^3` reduces by Fubini to the identity
+    `μ_W = p^2` where `μ_W := ∫ E_12 E_13` is the wedge probability. This holds
+    whenever `r ≤ 1/2` (each 1D torus ball has Lebesgue 2r, and matched
+    `(2r)^d = p`).
+
+Since `matchRadius p d = p^{1/d}/2 ≤ 1/2` ALWAYS, no auxiliary hypothesis is
+needed. This single regime-free identity replaces `geometricCov_eq_deep` (deep
+hypothesis) and the would-be `geometricCov_eq_mid` (mid hypothesis). -/
+
+/-- **Regime-free closed form for `geometricCov`.** Same conclusion as
+    `geometricCov_eq_deep` but with no `matchRadius ≤ 1/4` hypothesis. Proof:
+    expand the integrand, use Fubini to factor pairwise/single-edge integrals
+    (each 1D torus ball has measure 2r for r ≤ 1/2, matched to give p),
+    apply the algebraic identity `E·(E-p) = (1-p)·E` for 0/1 indicators. -/
+lemma geometricCov_eq (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d) :
+    geometricCov p d
+    = fillingProb p d * ((1 - p) ^ 3 + p ^ 3) - fillingProb p d ^ 2 :=
+  sorry
+
+/-- **Closed-form difference tends to zero (Paper 1 headline bridge).**
+    Trivial corollary of `geometricCov_eq` — the difference is identically 0
+    for `d ≥ 1`, hence its `atTop` limit is 0. -/
 lemma geometricCov_sub_closedForm_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto
       (fun d : ℕ => geometricCov p d -
         (fillingProb p d * ((1 - p)^3 + p^3) - (fillingProb p d)^2))
-      Filter.atTop (nhds 0) :=
-  sorry
+      Filter.atTop (nhds 0) := by
+  have h_eventually_zero :
+      ∀ᶠ d : ℕ in Filter.atTop,
+        geometricCov p d -
+          (fillingProb p d * ((1 - p)^3 + p^3) - (fillingProb p d)^2) = 0 := by
+    filter_upwards [Filter.eventually_ge_atTop (1 : ℕ)] with d hd
+    rw [geometricCov_eq p d hp0 hp1 hd]
+    ring
+  exact Filter.Tendsto.congr' (Filter.EventuallyEq.symm h_eventually_zero)
+    tendsto_const_nhds
 
 /-- **OQ-18 Rips asymptotic (Paper 1 headline).** Under Rips with matched
     `p ∈ (0,1)` fixed, `geomCov(p, d) → p^3 (1-p)^3` as `d → ∞`. Replaces
