@@ -230,7 +230,46 @@ private lemma gram_tail_bound_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
     Filter.Tendsto
       (fun d : ℕ => ((3 * (normalQuantile (1 - p))^2) / (d : ℝ))^(((d : ℝ) - 2) / 2))
       Filter.atTop (nhds 0) := by
-  sorry
+  -- Strategy: let `a = 3 * (normalQuantile (1-p))^2 ≥ 0`. Squeeze the function `f d :=
+  -- (a/d)^((d-2)/2)` between `0` and `a/d`. For `d ≥ a + 1` and `d ≥ 4` we have
+  -- `0 ≤ a/d ≤ 1` and `1 ≤ (d-2)/2`, so by `Real.rpow_le_rpow_of_exponent_ge` (which
+  -- requires `0 < base`, handled via case split on `a/d = 0`) the rpow at the larger
+  -- exponent is dominated by the rpow at exponent 1, i.e. by `a/d` itself. Then
+  -- `a/d → 0`, and the lower bound `0` is immediate from `Real.rpow_nonneg`.
+  set a : ℝ := 3 * (normalQuantile (1 - p))^2 with ha_def
+  have ha_nn : 0 ≤ a := by
+    have : (0 : ℝ) ≤ 3 * (normalQuantile (1 - p))^2 := by positivity
+    exact this
+  -- Bound `a/d → 0`.
+  have h_bd_to_zero : Filter.Tendsto (fun d : ℕ => a / (d : ℝ)) Filter.atTop (nhds 0) := by
+    have h_inv : Filter.Tendsto (fun d : ℕ => (1 : ℝ) / (d : ℝ)) Filter.atTop (nhds 0) :=
+      tendsto_one_div_atTop_nhds_zero_nat
+    have h_eq : (fun d : ℕ => a / (d : ℝ)) = (fun d : ℕ => a * (1 / (d : ℝ))) := by
+      funext d; ring
+    rw [h_eq, show (0 : ℝ) = a * 0 by ring]
+    exact h_inv.const_mul a
+  -- Squeeze.
+  apply tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds h_bd_to_zero
+  · -- Lower bound: `0 ≤ (a/d)^((d-2)/2)`.
+    refine Filter.Eventually.of_forall fun d => ?_
+    exact Real.rpow_nonneg (by positivity) _
+  · -- Upper bound: `(a/d)^((d-2)/2) ≤ a/d` eventually.
+    have h_large_a : ∀ᶠ d : ℕ in Filter.atTop, a + 1 ≤ (d : ℝ) :=
+      (tendsto_natCast_atTop_atTop (R := ℝ)).eventually_ge_atTop (a + 1)
+    have h_large_4 : ∀ᶠ d : ℕ in Filter.atTop, 4 ≤ d := Filter.eventually_ge_atTop 4
+    filter_upwards [h_large_a, h_large_4] with d hd_a hd_4
+    have hd4 : (4 : ℝ) ≤ d := by exact_mod_cast hd_4
+    have hd_pos : (0 : ℝ) < d := by linarith
+    have h_ad_nn : 0 ≤ a / (d : ℝ) := div_nonneg ha_nn hd_pos.le
+    have h_ad_le_one : a / (d : ℝ) ≤ 1 := by
+      rw [div_le_one hd_pos]; linarith
+    have h_exp_ge_one : (1 : ℝ) ≤ ((d : ℝ) - 2) / 2 := by linarith
+    by_cases h_ad_zero : a / (d : ℝ) = 0
+    · rw [h_ad_zero]
+      rw [Real.zero_rpow (by linarith : ((d : ℝ) - 2) / 2 ≠ 0)]
+    · have h_ad_pos : 0 < a / (d : ℝ) := h_ad_nn.lt_of_ne (Ne.symm h_ad_zero)
+      have := Real.rpow_le_rpow_of_exponent_ge h_ad_pos h_ad_le_one h_exp_ge_one
+      simpa using this
 
 /-- **Tail asymptotic (Paper 2 headline part 1).** Derived from the Wishart
     Gram-density tail axiom + squeeze: $0 \le 1 - q_{\text{Čech}} \le $ Gram tail bound,
