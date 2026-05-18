@@ -81,42 +81,76 @@ def sphereCechFill {d : ℕ} (r : ℝ) (x₁ x₂ x₃ : SpherePoint d) : Prop :
   ∃ z : SpherePoint d,
     inner ℝ z.val x₁.val ≥ r ∧ inner ℝ z.val x₂.val ≥ r ∧ inner ℝ z.val x₃.val ≥ r
 
+/-! ## Cap probability — primitive quantity
+
+The uniform probability that a single point lies in a spherical cap of cosine threshold
+`r ∈ [-1, 1]` centred at a fixed pole. In dimension `d ≥ 2` this is
+`(1/2) · I_{1-r²}((d-1)/2, 1/2)` when `r ≥ 0` by the standard incomplete-beta formula
+(Li 2011, Eq. (3)). Axiomatized here pending a clean Mathlib formalization; the
+constructive integral against `uniformOnSphere` is the natural body. -/
+axiom capProb (d : ℕ) (r : ℝ) : ℝ
+
+/-- Cap probability is in `[0, 1]` for any threshold and dimension. -/
+axiom capProb_mem_unitInterval (d : ℕ) (r : ℝ) : 0 ≤ capProb d r ∧ capProb d r ≤ 1
+
+/-- Monotone in the threshold: a higher cosine threshold gives a smaller cap. -/
+axiom capProb_antitone (d : ℕ) : Antitone (capProb d)
+
+/-- Endpoints. `r = -1` covers the whole sphere; `r = 1` is the pole. -/
+axiom capProb_neg_one (d : ℕ) (hd : 2 ≤ d) : capProb d (-1) = 1
+axiom capProb_one (d : ℕ) (hd : 2 ≤ d) : capProb d 1 = 0
+
+/-- Continuity in the threshold (for `d ≥ 2`). Needed to invert via IVT. -/
+axiom capProb_continuous (d : ℕ) (hd : 2 ≤ d) : Continuous (capProb d)
+
 /-! ## Matched threshold
 
-For two iid uniform points on $S^{d-1}$, the inner product has density
-$f_d(y) = C_d (1-y^2)^{(d-3)/2}$. The matched threshold `matchedCos p d` is the unique
-`r ∈ (-1, 1)` satisfying $\Pr[\text{inner} \ge r] = p$. By the incomplete-beta
-representation:
-$$p = \frac{1}{2} I_{1-r^2}\!\left(\frac{d-1}{2}, \frac{1}{2}\right) \quad (r \ge 0).$$
--/
+For two iid uniform points on $S^{d-1}$, the marginal edge probability at threshold
+`r` is `2 · capProb d r · (1/2) = capProb d r` (rotate the first point to the pole).
+The matched threshold `matchedCos p d` is the unique `r ∈ [-1, 1]` with
+`capProb d r = p`. Existence + uniqueness from continuity + strict monotonicity. -/
 
-/-- The matched cosine threshold realizing edge probability `p` in dimension `d`. -/
+/-- The matched cosine threshold realizing edge probability `p` in dimension `d`.
+    Defined via classical choice on the existence axiom `matchedCos_exists`. -/
 noncomputable def matchedCos (p : ℝ) (d : ℕ) : ℝ :=
-  sorry  -- Aristotle target: inverse incomplete beta. For d ≥ 2, p ∈ (0, 1), value in (-1, 1)
+  Classical.epsilon (fun r : ℝ => -1 ≤ r ∧ r ≤ 1 ∧ capProb d r = p)
+
+/-- Existence of a matched threshold. Follows from IVT applied to the continuous
+    monotone `capProb d` between values `1` at `-1` and `0` at `1`. -/
+axiom matchedCos_exists (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 2 ≤ d) :
+    ∃ r : ℝ, -1 ≤ r ∧ r ≤ 1 ∧ capProb d r = p
+
+/-- The specification realized by `matchedCos`. -/
+lemma matchedCos_spec (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 2 ≤ d) :
+    -1 ≤ matchedCos p d ∧ matchedCos p d ≤ 1 ∧ capProb d (matchedCos p d) = p := by
+  unfold matchedCos
+  exact Classical.epsilon_spec (matchedCos_exists p d hp0 hp1 hd)
 
 /-- Asymptotic: $\text{matchedCos}(p, d) \sim z_p / \sqrt{d}$ as $d \to \infty$,
-    where $z_p = \Phi^{-1}(1-p)$ is the standard normal quantile. -/
-lemma matchedCos_asymptotic (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    where $z_p = \Phi^{-1}(1-p)$ is the standard normal quantile. Stated against
+    an axiomatized normal-quantile constant `normalQuantile p`. -/
+axiom normalQuantile : ℝ → ℝ
+
+lemma matchedCos_asymptotic (p : ℝ) (_hp0 : 0 < p) (_hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => Real.sqrt d * matchedCos p d) Filter.atTop
-      (nhds (sorry : ℝ)) := -- z_p; needs normal quantile API
+      (nhds (normalQuantile (1 - p))) :=
   sorry
 
-/-! ## Triangle (Čech-fill) probability and the asymptotic headline -/
+/-! ## Triangle (Čech-fill) probability and the asymptotic headline
 
-/-- $q_{\text{Čech}}(p, d) = \Pr[\text{sphereCechFill at threshold matchedCos } p d]$.
-    Defined as the integral of the indicator against the product uniform measure. -/
-noncomputable def cechFillProb (p : ℝ) (d : ℕ) : ℝ :=
-  sorry  -- ∫ 1[sphereCechFill (matchedCos p d) x₁ x₂ x₃] dμ³
+The triangle (Rips/Čech) probabilities are axiomatized as functions of `(p, d)`; their
+defining integral expressions live in the moonshot proof and are not yet ported. -/
+
+/-- $q_{\text{Čech}}(p, d) = \Pr[\text{sphereCechFill at threshold matchedCos } p d]$. -/
+axiom cechFillProb (p : ℝ) (d : ℕ) : ℝ
 
 /-- Rips clique probability under matched edge $p$. -/
-noncomputable def ripsFillProb (p : ℝ) (d : ℕ) : ℝ :=
-  sorry  -- ∫ 1[edge ∧ edge ∧ edge] dμ³
+axiom ripsFillProb (p : ℝ) (d : ℕ) : ℝ
 
 /-- Geometric covariance under Čech fill on the sphere:
     `E[(A₁₂−p)(A₁₃−p)(A₂₃−p)(F^{Čech}−q_{Čech})]`. Closed form follows the four-moment
     decomposition `q_Rips(1−q_Čech) + 3p²(β−p)` with `β = E[A₁₂ · F^{Čech}]`. -/
-noncomputable def geomCovCech (p : ℝ) (d : ℕ) : ℝ :=
-  sorry  -- integral expression over the uniform measure on (S^{d-1})³
+axiom geomCovCech (p : ℝ) (d : ℕ) : ℝ
 
 /-- **Tail asymptotic (Paper 2 headline part 1).**
     $1 - q_{\text{Čech}}(p, d) \sim (3 z_p^2 / d)^{(d-2)/2}$ as $d \to \infty$ at fixed $p$.
