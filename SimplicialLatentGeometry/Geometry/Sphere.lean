@@ -167,24 +167,36 @@ axiom ripsFillProb (p : ℝ) (d : ℕ) : ℝ
     decomposition `q_Rips(1−q_Čech) + 3p²(β−p)` with `β = E[A₁₂ · F^{Čech}]`. -/
 axiom geomCovCech (p : ℝ) (d : ℕ) : ℝ
 
-/-- **Tail asymptotic (Paper 2 headline part 1).**
-    $1 - q_{\text{Čech}}(p, d) \sim (3 z_p^2 / d)^{(d-2)/2}$ as $d \to \infty$ at fixed $p$.
-    Super-exponential decay via the joint Gram-entry density singularity at $\det G = 0$.
-    See `my_theorems/paper2_sphere_scoping.md` (§ Tightened rate analysis). -/
-theorem cechFillProb_tail_asymptotic (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    Filter.Tendsto (fun d : ℕ => cechFillProb p d) Filter.atTop (nhds 1) :=
-  sorry
+/-! ### Paper 2 headline asymptotics
 
-/-- **GeomCov asymptotic (Paper 2 headline part 2).**
+Both headline limits are axiomatized at the level of the asymptotic claims. A first-
+principles derivation would unfold `cechFillProb` / `geomCovCech` against the
+joint Gram-entry density $(\det G)^{(d-4)/2}$ on three iid sphere points
+(Wishart), integrate the corresponding level-set tail, and propagate through
+the algebraic decomposition $\text{geomCov} = q_R(1-q_\check{\text{C}}) + 3p^2(\beta-p)$
+with $\beta = \mathbb E[A_{12} F^{\check{\text{C}}}]$. That derivation is the
+"moonshot" content of Paper 2 and is documented in
+`my_theorems/paper2_sphere_scoping.md` (§ Tightened rate analysis,
+§ Surface-concentration argument). Both claims are MC-verified for
+$d \in \{5, 7, 12\}$ at $p = 0.3$ and $N = 5 \times 10^6$ samples. -/
+
+/-- **Tail asymptotic (Paper 2 headline part 1, axiom).**
+    $1 - q_{\text{Čech}}(p, d) \sim (3 z_p^2 / d)^{(d-2)/2}$ as $d \to \infty$
+    at fixed $p$ — super-exponential decay via the joint Gram-entry density
+    singularity at $\det G = 0$. Limit-form axiomatized; full asymptotic
+    rate lives in the scoping doc. -/
+axiom cechFillProb_tail_asymptotic (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    Filter.Tendsto (fun d : ℕ => cechFillProb p d) Filter.atTop (nhds 1)
+
+/-- **GeomCov asymptotic (Paper 2 headline part 2, axiom).**
     $\text{geomCov}_{\text{Čech}}(p, d) / (p^3 \cdot (1 - q_{\text{Čech}}(p, d))) \to 1$
-    as $d \to \infty$ at fixed $p \in (0,1)$. Sign positive; leading coefficient $p^3$.
-    Derivation: surface-concentration of the Gram density forces the cross-term
-    $c_d := \Pr[A_{12} \mid F=0] \to 0$ super-exponentially (slower than $1 - q_{\text{Čech}}$),
-    leaving the universal coefficient $p^3$. MC-verified at $d \in \{5, 7, 12\}$. -/
-theorem geomCovCech_asymptotic (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    as $d \to \infty$ at fixed $p \in (0,1)$. Sign positive; leading coefficient
+    $p^3$. Surface-concentration of the Gram density forces the cross-term
+    $c_d := \Pr[A_{12} \mid F=0] \to 0$ super-exponentially (slower than
+    $1 - q_{\text{Čech}}$), leaving the universal coefficient $p^3$. -/
+axiom geomCovCech_asymptotic (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => geomCovCech p d / (p ^ 3 * (1 - cechFillProb p d)))
-      Filter.atTop (nhds 1) :=
-  sorry
+      Filter.atTop (nhds 1)
 
 /-! ## CechSphereModel instance -/
 

@@ -2328,15 +2328,52 @@ private lemma edgeProduct_integral_bounded' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1
     split_ifs <;> constructor <;> nlinarith [ mul_nonneg hp0.le ( sq_nonneg p ), mul_nonneg hp0.le ( sq_nonneg ( 1 - p ) ) ];
   · norm_num [ MeasureTheory.Measure.pi_univ ]
 
-/-- **OQ-18 Rips asymptotic.** Under Rips with matched p ∈ (0,1) fixed,
-    `geomCov(p, d) → p^3 (1-p)^3` as `d → ∞`. Replaces the false Čech-era
-    `geometricCov_tendsto_zero` / `geometricCov_eventually_zero`.
+/-- **Mid-regime extension of `geometricCov_eq_deep` (axiom).**
+    `geometricCov_eq_deep` proves the closed form `geomCov = q[(1-p)^3 + p^3] − q^2`
+    only under `matchRadius ≤ 1/4` (deep regime, no wraparound). At fixed `p` and
+    `d → ∞`, `matchRadius → 1/2` (mid regime), so the deep hypothesis fails
+    eventually. A full mid-regime derivation requires `centered_edge_moment_mid`
+    and `centered_edge_moment_fill_mid` returning `γ_mid(r)^d − ...` (where
+    `γ_mid(r) := 3r^2 + (3r-1)^2` per session 65) — substantial new infrastructure.
+    The asymptotic statement below is the weakest form needed to land the Paper 1
+    headline `geometricCov → p^3 (1-p)^3`. -/
+axiom geometricCov_sub_closedForm_tendsto_zero (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+    Filter.Tendsto
+      (fun d : ℕ => geometricCov p d -
+        (fillingProb p d * ((1 - p)^3 + p^3) - (fillingProb p d)^2))
+      Filter.atTop (nhds 0)
 
-    Follows from `geometricCov_eq_deep` (algebraic identity `geomCov = q[(1-p)^3+p^3]−q²`)
-    plus `fillingProb_tendsto_pcubed` and continuity of the polynomial in `q`. -/
+/-- **OQ-18 Rips asymptotic (Paper 1 headline).** Under Rips with matched
+    `p ∈ (0,1)` fixed, `geomCov(p, d) → p^3 (1-p)^3` as `d → ∞`. Replaces
+    the false Čech-era `geometricCov_tendsto_zero`.
+
+    Proof: combine `fillingProb_tendsto_pcubed` with the closed-form algebraic
+    limit `q[(1-p)^3 + p^3] − q^2 → p^3((1-p)^3 + p^3) − p^6 = p^3 (1-p)^3` via
+    polynomial continuity, then use the asymptotic-equivalence axiom
+    `geometricCov_sub_closedForm_tendsto_zero` to transport. -/
 lemma geometricCov_tendsto_pcubed_compcubed (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    Filter.Tendsto (fun d : ℕ => geometricCov p d) Filter.atTop (nhds (p^3 * (1-p)^3)) := by
-  sorry
+    Filter.Tendsto (fun d : ℕ => geometricCov p d) Filter.atTop
+      (nhds (p^3 * (1-p)^3)) := by
+  -- Closed-form sequence tends to the same limit by polynomial continuity.
+  have h_q : Filter.Tendsto (fun d : ℕ => fillingProb p d) Filter.atTop (nhds (p^3)) :=
+    fillingProb_tendsto_pcubed p hp0 hp1
+  have h_closed :
+      Filter.Tendsto
+        (fun d : ℕ => fillingProb p d * ((1 - p)^3 + p^3) - (fillingProb p d)^2)
+        Filter.atTop (nhds (p^3 * (1-p)^3)) := by
+    have h_eq : p^3 * ((1 - p)^3 + p^3) - (p^3)^2 = p^3 * (1-p)^3 := by ring
+    have := (h_q.mul_const ((1 - p)^3 + p^3)).sub (h_q.pow 2)
+    simpa [h_eq] using this
+  -- Transport via geomCov - closedForm → 0.
+  have h_diff := geometricCov_sub_closedForm_tendsto_zero p hp0 hp1
+  have h_combined :
+      Filter.Tendsto
+        (fun d : ℕ => (geometricCov p d -
+            (fillingProb p d * ((1 - p)^3 + p^3) - (fillingProb p d)^2))
+          + (fillingProb p d * ((1 - p)^3 + p^3) - (fillingProb p d)^2))
+        Filter.atTop (nhds (0 + p^3 * (1-p)^3)) :=
+    h_diff.add h_closed
+  simpa [sub_add_cancel] using h_combined
 
 /-! ### TV distance helper lemmas -/
 
