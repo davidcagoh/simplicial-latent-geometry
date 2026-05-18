@@ -2912,11 +2912,32 @@ private lemma triangleIndicator'_translate {n d : ℕ} (p q r : ℝ)
     (t : {σ : Finset (Fin n) // σ.card = 3})
     (pts : Fin n → Torus d) (h : Torus d) :
     triangleIndicator' p q r t (fun i => pts i + h) = triangleIndicator' p q r t pts := by
-  -- OQ-18: under Rips clique `hasFill`, translation invariance follows directly from
-  -- `dist_add_right` on each pair. Attempted close hit Decidable-instance mismatch
-  -- (Nat.decidableForallFin vs Classical.propDecidable) after simp; needs careful
-  -- `decide`-bridge or `Subsingleton (Decidable P)` lemma. Deferred.
-  sorry
+  -- Translation invariance: both `hasEdge` and `hasFill` (Rips clique form) are
+  -- defined via pairwise `dist (·) (·) ≤ r`, and `dist` is right-translation
+  -- invariant on the abelian group `Torus d = Fin d → AddCircle 1`.
+  unfold triangleIndicator' cechObservation
+  simp only
+  have h_edge_iff : ∀ i j : Fin n,
+      (CechSample.mk (n := n) (d := d) (fun i => pts i + h)).hasEdge r i j ↔
+        (CechSample.mk (n := n) (d := d) pts).hasEdge r i j := by
+    intro i j
+    unfold CechSample.hasEdge
+    simp only [dist_add_right]
+  have h_fill_iff :
+      (CechSample.mk (n := n) (d := d) (fun i => pts i + h)).hasFill r t ↔
+        (CechSample.mk (n := n) (d := d) pts).hasFill r t := by
+    unfold CechSample.hasFill
+    simp only
+    refine ⟨fun H i hi j hj => ?_, fun H i hi j hj => ?_⟩
+    · have := H i hi j hj; rwa [dist_add_right] at this
+    · have := H i hi j hj; rwa [dist_add_right]
+  congr 1
+  · apply Finset.prod_congr rfl
+    intro e _
+    congr 1
+    exact congrArg (· = true) (decide_eq_decide.mpr (h_edge_iff e.1 e.2))
+  · congr 1
+    exact congrArg (· = true) (decide_eq_decide.mpr h_fill_iff)
 
 private lemma triangleIndicator'_congr {n d : ℕ} (p q r : ℝ)
     (t : {σ : Finset (Fin n) // σ.card = 3})
