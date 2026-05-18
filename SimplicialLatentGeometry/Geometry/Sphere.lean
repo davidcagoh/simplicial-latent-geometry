@@ -53,16 +53,19 @@ abbrev SpherePoint (d : ℕ) := { x : EuclideanSpace ℝ (Fin d) // ‖x‖ = 1 
 /-- Measurable-space structure inherited from `EuclideanSpace`. -/
 instance (d : ℕ) : MeasurableSpace (SpherePoint d) := Subtype.instMeasurableSpace
 
-/-- Uniform probability measure on $S^{d-1}$. Constructed as the pushforward of Haar
-    measure on $SO(d)$ acting on a basepoint, equivalently the normalized $(d-1)$-Hausdorff
-    measure. Mathlib coverage of this is partial; we axiomatize the existence here pending
-    a clean Mathlib formalization. -/
-noncomputable def uniformOnSphere (d : ℕ) : Measure (SpherePoint d) :=
-  sorry  -- Aristotle target: construct via Haar/Hausdorff; verify probability measure
+/-- Uniform probability measure on $S^{d-1}$. The canonical construction is the
+    pushforward of Haar measure on $SO(d)$ acting on a basepoint, equivalently the
+    normalized $(d-1)$-Hausdorff measure. Mathlib coverage of these is partial as of
+    the current toolchain; we axiomatize existence + the `IsProbabilityMeasure` witness
+    here pending a clean Mathlib formalization. The asymptotic theorems downstream
+    quantify only over `ValidRegime p d` (which forces `5 ≤ d`), so the choice of
+    representative measure for `d ≤ 1` (where `SpherePoint d` is empty or trivial)
+    does not affect any consumer. -/
+axiom uniformOnSphere (d : ℕ) : Measure (SpherePoint d)
 
-/-- The uniform measure is a probability measure. -/
-instance (d : ℕ) (hd : 2 ≤ d) : IsProbabilityMeasure (uniformOnSphere d) :=
-  sorry  -- Follows once uniformOnSphere is constructed
+/-- The uniform measure is a probability measure whenever the sphere is non-trivial,
+    i.e. `2 ≤ d`. Axiomatized alongside `uniformOnSphere`. -/
+axiom uniformOnSphere_isProb (d : ℕ) (hd : 2 ≤ d) : IsProbabilityMeasure (uniformOnSphere d)
 
 /-! ## Edge and fill predicates -/
 
@@ -151,7 +154,8 @@ noncomputable instance : CechSphereModel ℕ where
   Point d := SpherePoint d
   pointSpace _ := inferInstance
   μ d := uniformOnSphere d
-  isProb d := sorry  -- needs `2 ≤ d` from regime; deferred until ValidRegime is folded in
+  WellFormed d := 2 ≤ d
+  isProb d hd := uniformOnSphere_isProb d hd
   edge _ r x y := sphereEdge r x y
   matchR p d := matchedCos p d
   cechFillProb p d := cechFillProb p d

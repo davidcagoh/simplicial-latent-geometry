@@ -52,14 +52,19 @@ class GeometricModel (Setting : Type*) where
   pointSpace : ∀ s, MeasurableSpace (Point s)
   /-- The probability measure on `Point s` (uniform, in all current instances). -/
   μ : ∀ s, MeasureTheory.Measure (Point s)
-  /-- The measure is a probability measure. -/
-  isProb : ∀ s, MeasureTheory.IsProbabilityMeasure (μ s)
+  /-- *Setting-level* well-formedness predicate. For L∞ Rips this is `True` (every
+      dimension yields a torus and Haar is automatic); for the sphere instance this is
+      `2 ≤ d` (the point type `SpherePoint d` is empty for `d = 0`). The conditional
+      probability-measure-ness `isProb` consumes a witness of this predicate. -/
+  WellFormed : Setting → Prop
+  /-- The measure is a probability measure on every well-formed setting. -/
+  isProb : ∀ s, WellFormed s → MeasureTheory.IsProbabilityMeasure (μ s)
   /-- Edge predicate: two points are at distance ≤ `r` for radius `r`. -/
   edge : ∀ s, ℝ → Point s → Point s → Prop
   /-- Matched radius: the `r ≥ 0` for which the marginal edge probability equals `p`. -/
   matchR : ℝ → Setting → ℝ
 
-attribute [instance] GeometricModel.pointSpace GeometricModel.isProb
+attribute [instance] GeometricModel.pointSpace
 
 /-! ## Homogeneity axioms -/
 

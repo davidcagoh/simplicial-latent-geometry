@@ -38,7 +38,8 @@ noncomputable instance : HomogeneousGeometricModel ℕ where
   Point d := Torus d
   pointSpace _ := inferInstance
   μ _ := MeasureTheory.volume
-  isProb _ := inferInstance
+  WellFormed _ := True
+  isProb _ _ := inferInstance
   edge _ r x y := dist x y ≤ r
   matchR p d := matchRadius p d
   triangleProb p d := fillingProb p d
