@@ -1479,26 +1479,286 @@ lemma gammaMid_of_matchRadius_form (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hd : 1 ≤
     rw [← Real.rpow_add hp0]; congr 1; ring
   nlinarith [hsq]
 
-/-- **Mid-regime volume.** For `r ∈ (1/3, 1/2]`, the volume of the 3-clique set on T1
-    is `γ(r) = 3r² + (3r−1)²`. Sibling of `volume_triangleSet` (which covers `r ≤ 1/4`).
+/-! ### Helper lemmas for volume_triangleSet_mid -/
 
-    Proof sketch: condition on `u₁ = 0`. Joint of `(u₂, u₃)` is uniform on `[-1/2, 1/2]²`.
-    3-clique = `|u₂| ≤ r ∧ |u₃| ≤ r ∧ dist(u₂,u₃) ≤ r` where dist is mod-1. The
-    first two define a `2r × 2r` square; the third is the diagonal band ∪ two
-    wraparound bands. For `r ∈ (1/3, 1/2]` the wraparound bands intersect the square,
-    each clipping a triangular region of side `(3r−1)`. Final area:
-    `3 r²` (diagonal contribution, unchanged from low regime) `+ (3 r − 1)²` (wraparound).
+/-
+Shared infrastructure: reduce the volume of `triangleSet r` on T1 to a real integral
+    over `[-r, r]`, computing the measure of the intersection of two `r`-balls. Valid for
+    any `0 ≤ r ≤ 1/2`.
+-/
+lemma volume_triangleSet_eq_real_integral (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/2) :
+    volume (triangleSet r) = ∫⁻ (x : ℝ) in Set.Icc (-r) r,
+      volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk x : T1) r) := by
+  have h_volume : volume (triangleSet r) = ∫⁻ (u0 : T1), ∫⁻ (u1 : T1), ∫⁻ (u2 : T1), (if dist u0 u1 ≤ r ∧ dist u0 u2 ≤ r ∧ dist u1 u2 ≤ r then 1 else 0) ∂volume ∂volume ∂volume := by
+    -- The volume of the triangle set is equal to the integral of the indicator function over the set.
+    have h_triangle_volume : volume (triangleSet r) = ∫⁻ (u : Fin 3 → T1), (if dist (u 0) (u 1) ≤ r ∧ dist (u 0) (u 2) ≤ r ∧ dist (u 1) (u 2) ≤ r then 1 else 0) ∂volume := by
+      rw [ MeasureTheory.lintegral_congr_ae, MeasureTheory.lintegral_indicator ];
+      exact?;
+      · exact MeasurableSet.inter ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) ( MeasurableSet.inter ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) );
+      · exact Filter.Eventually.of_forall fun x => by unfold triangleSet; aesop; ;
+    have h_fubini : ∀ {f : (Fin 3 → T1) → ENNReal}, Measurable f → ∫⁻ (u : Fin 3 → T1), f u ∂volume = ∫⁻ (u0 : T1), ∫⁻ (u1 : T1), ∫⁻ (u2 : T1), f (fun i => if i = 0 then u0 else if i = 1 then u1 else u2) ∂volume ∂volume ∂volume := by
+      intro f hf;
+      have h_fubini : ∀ {f : (Fin 3 → T1) → ENNReal}, Measurable f → ∫⁻ (u : Fin 3 → T1), f u ∂volume = ∫⁻ (u : T1 × T1 × T1), f (fun i => if i = 0 then u.1 else if i = 1 then u.2.1 else u.2.2) ∂(volume.prod (volume.prod volume)) := by
+        intro f hf;
+        have h_fubini : ∀ {f : (Fin 3 → T1) → ENNReal}, Measurable f → ∫⁻ (u : Fin 3 → T1), f u ∂volume = ∫⁻ (u : T1 × T1 × T1), f (fun i => if i = 0 then u.1 else if i = 1 then u.2.1 else u.2.2) ∂(volume.prod (volume.prod volume)) := by
+          intro f hf
+          have h_iso : (volume : Measure (Fin 3 → T1)) = Measure.map (fun u : T1 × T1 × T1 => fun i => if i = 0 then u.1 else if i = 1 then u.2.1 else u.2.2) (volume.prod (volume.prod volume)) := by
+            simp +decide [ MeasureTheory.MeasureSpace.volume ];
+            erw [ MeasureTheory.Measure.pi_eq ];
+            intro s hs; erw [ MeasureTheory.Measure.map_apply ] ; simp +decide [ Fin.prod_univ_three ] ;
+            · simp +decide [ Set.preimage, Fin.forall_fin_succ ];
+              erw [ show { x : T1 × T1 × T1 | x.1 ∈ s 0 ∧ x.2.1 ∈ s 1 ∧ x.2.2 ∈ s 2 } = ( s 0 ×ˢ s 1 ×ˢ s 2 ) by ext ; aesop ] ; simp +decide [ mul_assoc ];
+            · exact measurable_pi_lambda _ fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd ] ;
+            · exact MeasurableSet.univ_pi hs
+          rw [ h_iso, MeasureTheory.lintegral_map ];
+          · exact hf;
+          · exact measurable_pi_lambda _ fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd ] ;
+        exact h_fubini hf;
+      rw [ h_fubini hf, MeasureTheory.lintegral_prod ];
+      · congr! 2;
+        erw [ MeasureTheory.lintegral_prod ];
+        exact hf.comp ( measurable_pi_lambda _ fun i => by fin_cases i <;> measurability ) |> Measurable.aemeasurable;
+      · exact hf.aemeasurable.comp_aemeasurable ( by exact Measurable.aemeasurable ( by exact measurable_pi_lambda _ fun i => by fin_cases i <;> [ exact measurable_fst; exact measurable_snd.fst; exact measurable_snd.snd ] ) );
+    convert h_fubini _ using 1;
+    exact Measurable.ite ( MeasurableSet.inter ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) <| MeasurableSet.inter ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) <| measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) measurable_const measurable_const;
+  -- Fix u0: by translation invariance, the iterated integral doesn't depend on u0, so the outer u0 integral just multiplies by 1 (probability measure).
+  have h_translation_invariance : ∀ (u0 : T1), ∫⁻ (u1 : T1), ∫⁻ (u2 : T1), (if dist u0 u1 ≤ r ∧ dist u0 u2 ≤ r ∧ dist u1 u2 ≤ r then 1 else 0) ∂volume ∂volume = ∫⁻ (u1 : T1), ∫⁻ (u2 : T1), (if dist 0 u1 ≤ r ∧ dist 0 u2 ≤ r ∧ dist u1 u2 ≤ r then 1 else 0) ∂volume ∂volume := by
+    intro u0
+    have h_translation_invariance : ∀ (f : T1 → T1 → ENNReal), (∫⁻ (u1 : T1), ∫⁻ (u2 : T1), f u1 u2 ∂volume ∂volume) = (∫⁻ (u1 : T1), ∫⁻ (u2 : T1), f (u1 + u0) (u2 + u0) ∂volume ∂volume) := by
+      intro f
+      have h_translation_invariance : ∀ (g : T1 → ENNReal), ∫⁻ (u : T1), g u ∂volume = ∫⁻ (u : T1), g (u + u0) ∂volume := by
+        intro g;
+        rw [ ← MeasureTheory.lintegral_add_right_eq_self ];
+      rw [ h_translation_invariance ];
+      exact MeasureTheory.lintegral_congr fun u => h_translation_invariance _ ▸ rfl;
+    convert h_translation_invariance _ using 4 ; norm_num [ dist_eq_norm ];
+  -- For fixed u0 = 0, the inner u2 integral over {u2 : dist(0,u2) ≤ r ∧ dist(u1,u2) ≤ r} equals volume(closedBall(0,r) ∩ closedBall(u1,r)).
+  have h_inner_integral : ∀ (u1 : T1), ∫⁻ (u2 : T1), (if dist 0 u2 ≤ r ∧ dist u1 u2 ≤ r then 1 else 0) ∂volume = volume (Metric.closedBall 0 r ∩ Metric.closedBall u1 r) := by
+    intro u1; rw [ MeasureTheory.lintegral_congr_ae, MeasureTheory.lintegral_indicator ];
+    change ∫⁻ x in Metric.closedBall 0 r ∩ Metric.closedBall u1 r, 1 ∂volume = volume ( Metric.closedBall 0 r ∩ Metric.closedBall u1 r );
+    · norm_num;
+    · exact measurableSet_closedBall.inter measurableSet_closedBall;
+    · norm_num [ Filter.EventuallyEq, Set.indicator ];
+      simp +decide only [dist_comm];
+      exact Filter.Eventually.of_forall fun _ => trivial;
+  -- Lift the T1 integral to ℝ: ∫_{x ∈ [-r,r]} volume(closedBall(0,r) ∩ closedBall(mk(x),r)) dx, using AddCircle.measurePreserving_mk and the fact that dist(0, mk(x)) = |x| for |x| ≤ r ≤ 1/2.
+  have h_lift_integral : ∫⁻ (u1 : T1), (if dist 0 u1 ≤ r then volume (Metric.closedBall 0 r ∩ Metric.closedBall u1 r) else 0) ∂volume = ∫⁻ (x : ℝ) in Set.Icc (-r) r, volume (Metric.closedBall 0 r ∩ Metric.closedBall (QuotientAddGroup.mk x : T1) r) := by
+    have h_lift_integral : ∫⁻ (u1 : T1), (if dist 0 u1 ≤ r then volume (Metric.closedBall 0 r ∩ Metric.closedBall u1 r) else 0) ∂volume = ∫⁻ (x : ℝ) in Set.Icc (-1 / 2) (1 / 2), (if |x| ≤ r then volume (Metric.closedBall 0 r ∩ Metric.closedBall (QuotientAddGroup.mk x : T1) r) else 0) := by
+      have h_lift_integral : ∫⁻ (u1 : T1), (if dist 0 u1 ≤ r then volume (Metric.closedBall 0 r ∩ Metric.closedBall u1 r) else 0) ∂volume = ∫⁻ (x : ℝ) in Set.Ioc (-1 / 2) (1 / 2), (if dist 0 (QuotientAddGroup.mk x : T1) ≤ r then volume (Metric.closedBall 0 r ∩ Metric.closedBall (QuotientAddGroup.mk x : T1) r) else 0) := by
+        have := AddCircle.measurePreserving_mk ( 1 : ℝ );
+        specialize this ( -1 / 2 );
+        rw [ ← this.lintegral_comp ] ; norm_num;
+        refine' Measurable.ite _ _ measurable_const;
+        · exact measurableSet_le ( measurable_const.dist measurable_id' ) measurable_const;
+        · have h_measurable : Measurable (fun u1 : T1 => volume (Metric.closedBall 0 r ∩ Metric.closedBall u1 r)) := by
+            have h_closedBall_measurable : MeasurableSet {p : T1 × T1 | p.1 ∈ Metric.closedBall 0 r ∧ p.1 ∈ Metric.closedBall p.2 r} := by
+              simp +zetaDelta at *;
+              exact MeasurableSet.mem ( MeasurableSet.inter ( measurableSet_le ( measurable_norm.comp measurable_fst ) measurable_const ) ( measurableSet_le ( measurable_fst.dist measurable_snd ) measurable_const ) )
+            convert measurable_measure_prodMk_right h_closedBall_measurable using 1;
+            infer_instance;
+          convert h_measurable using 1;
+      rw [ h_lift_integral, MeasureTheory.Measure.restrict_congr_set MeasureTheory.Ioc_ae_eq_Icc ];
+      norm_num [ dist_eq_norm, AddCircle.norm_eq ];
+      rw [ MeasureTheory.lintegral_congr_ae ];
+      filter_upwards [ MeasureTheory.ae_restrict_mem measurableSet_Icc, MeasureTheory.measure_eq_zero_iff_ae_notMem.mp ( MeasureTheory.measure_singleton ( -1 / 2 ) ), MeasureTheory.measure_eq_zero_iff_ae_notMem.mp ( MeasureTheory.measure_singleton ( 1 / 2 ) ) ] with x hx₁ hx₂ hx₃;
+      norm_num [ show round x = 0 by exact round_eq_zero_iff.mpr ⟨ by linarith [ hx₁.1 ], by linarith [ hx₁.2, show x < 1 / 2 from lt_of_le_of_ne hx₁.2 hx₃ ] ⟩ ];
+    rw [ h_lift_integral, ← MeasureTheory.lintegral_indicator, ← MeasureTheory.lintegral_indicator ];
+    · congr with x ; norm_num [ Set.indicator ] ; split_ifs <;> norm_num;
+      · exact False.elim <| ‹¬ ( -r ≤ x ∧ x ≤ r ) › ⟨ by linarith [ abs_le.mp ‹_› ], by linarith [ abs_le.mp ‹_› ] ⟩;
+      · cases abs_cases x <;> linarith;
+      · exact False.elim <| ‹¬ ( - ( 1 / 2 ) ≤ x ∧ x ≤ 1 / 2 ) › ⟨ by linarith, by linarith ⟩;
+    · norm_num;
+    · norm_num;
+  simp_all +decide [ ← MeasureTheory.lintegral_indicator, Set.indicator_apply ];
+  convert h_lift_integral using 1;
+  congr! 1;
+  ext u1; by_cases hu1 : ‖u1‖ ≤ r <;> simp +decide [ hu1, h_inner_integral ] ;
 
-    Aristotle target. -/
-lemma volume_triangleSet_mid (r : ℝ) (hr_lo : 1/3 < r) (hr_hi : r ≤ 1/2) :
-    volume (triangleSet r) = ENNReal.ofReal (gammaMid r) := by
+/-- Helper: dist(0, mk b) = |b| when |b| ≤ 1/2 on T1. -/
+lemma T1_dist_zero_mk (b : ℝ) (hb : |b| ≤ 1/2) :
+    dist (0 : T1) (QuotientAddGroup.mk b) = |b| := by
+  simp [dist_eq_norm]
+  exact T1_norm_mk_of_abs_le b hb
+
+/-- Non-wrapping ball-intersection volume on T1 for `r > 1/4` with `|b| + 2r ≤ 1`.
+    Volume of `closedBall 0 r ∩ closedBall (mk b) r` equals `2r − |b|`.
+
+    The proof strategy is the **same preimage decomposition** used in the proved
+    sibling `volume_closedBall_inter_T1_wrap` (just below in this file), but the
+    "wrap piece" `Set.Icc (-r) (b + r − 1)` is now empty / measure-zero because
+    `hno : |b| + 2r ≤ 1` forces `b + r − 1 ≤ −r` (in fact `b + r − 1 ≤ r − 1 < −r`
+    using `r ≤ 1/2`). Mirror the wrap-case proof line-for-line and discharge the
+    wrap piece via `Set.Icc_eq_empty` / measure-zero.
+
+    PROVIDED SOLUTION
+    Step 1 (WLOG b ≥ 0). By negation symmetry (`AddCircle` is a group, `closedBall`
+      is symmetric under negation), reduce to the case `0 ≤ b ≤ r`, exactly as in
+      `volume_closedBall_inter_T1_wrap`.
+
+    Step 2 (preimage decomposition). Push the T1 volume back to ℝ via
+      `AddCircle.measurePreserving_mk (1 : ℝ)` from `-1/2` (or restrict to
+      `Set.Ioc (-1/2) (1/2)`). For `x ∈ Ioc (-1/2) (1/2)` and `0 ≤ b ≤ r ≤ 1/2`:
+      • `‖(mk x : T1)‖ = |x|` via `T1_norm_mk_of_abs_le`.
+      • `‖(mk x : T1) - (mk b : T1)‖ = |x − b|` when `x ≥ b − 1/2`, and
+        `= |x − b + 1|` otherwise — same case split as in the wrap-case proof.
+      The intersection's preimage in `Ioc (-1/2) (1/2)` equals
+      `Set.Icc (b − r) r ∪ Set.Icc (−r) (b + r − 1)`.
+
+    Step 3 (wrap piece is empty). From `hno : |b| + 2 * r ≤ 1` and the WLOG
+      `0 ≤ b`, we get `b + 2r ≤ 1`, i.e. `b + r − 1 ≤ −r`. Hence
+      `Set.Icc (−r) (b + r − 1) ⊆ {−r}` (or is outright empty), so its volume is 0.
+
+    Step 4 (main piece is an interval). `Set.Icc (b − r) r` has length `2r − b = 2r − |b|`
+      (using `0 ≤ b`). Volume equals `ENNReal.ofReal (2r − |b|)`.
+
+    Step 5 (assemble). `volume (A ∪ B) = volume A + volume B` (disjoint up to
+      measure zero) = `ENNReal.ofReal (2r − |b|) + 0`. Close.
+
+    A faithful copy-edit of `volume_closedBall_inter_T1_wrap` (in the same file)
+    should work: keep its `h_preimage` block verbatim, then replace
+    `MeasureTheory.measure_union₀` with `volume (Icc (b−r) r) = ENNReal.ofReal (2r − b)`
+    (`Real.volume_Icc`) and a measure-zero discharge of the wrap piece. -/
+lemma volume_closedBall_inter_T1_nowrap_large (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/2)
+    (hr4 : 1/4 < r) (b : ℝ) (hb : |b| ≤ r) (hno : |b| + 2 * r ≤ 1) :
+    volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) =
+    ENNReal.ofReal (2 * r - |b|) := by
   sorry
 
-/-- **Mid-regime triangle integral.** Sibling of `integral_triangle_eq_pow`; the d-fold
+lemma volume_closedBall_inter_T1_nowrap (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/2)
+    (b : ℝ) (hb : |b| ≤ r) (hno : |b| + 2 * r ≤ 1) :
+    volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) =
+    ENNReal.ofReal (2 * r - |b|) := by
+  by_cases hr4 : r ≤ 1/4
+  · -- Use the existing volume_closedBall_inter_T1
+    have hd : dist (0 : T1) (QuotientAddGroup.mk b) = |b| :=
+      T1_dist_zero_mk b (by linarith)
+    have h := volume_closedBall_inter_T1 r hr0 hr4 0 (QuotientAddGroup.mk b) (by rw [hd]; exact hb)
+    rw [hd] at h; exact h
+  · exact volume_closedBall_inter_T1_nowrap_large r hr0 hr (by linarith) b hb hno
+
+/-
+Wrapping case: when `|b| + 2r > 1`, the intersection volume is `4r - 1`.
+    The ball `closedBall(mk b, r)` wraps around T1, creating an extra intersection.
+-/
+lemma volume_closedBall_inter_T1_wrap (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/2)
+    (b : ℝ) (hb : |b| ≤ r) (hwrap : 1 < |b| + 2 * r) :
+    volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) =
+    ENNReal.ofReal (4 * r - 1) := by
+  -- Assume WLOG $b \geq 0$ (by negation symmetry).
+  suffices h_wlog : ∀ {b : ℝ}, 0 ≤ b → b ≤ r → 1 < b + 2 * r → volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) = ENNReal.ofReal (4 * r - 1) by
+    cases abs_cases b <;> simp_all +decide;
+    convert h_wlog ( show 0 ≤ -b by linarith ) ( show -b ≤ r by linarith ) ( show 1 < -b + 2 * r by linarith ) using 1;
+    rw [ ← MeasureTheory.measure_preimage_add_right ] ; norm_num;
+    swap;
+    exact ↑b;
+    norm_num [ Set.inter_comm ];
+  intros b hb_nonneg hb_le_r hb_gt_one
+  have h_preimage : volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) = volume (Set.Icc (b - r) r ∪ Set.Icc (-r) (b + r - 1)) := by
+    have h_preimage : ∀ x ∈ Set.Ioc (-1 / 2) (1 / 2), (QuotientAddGroup.mk x : T1) ∈ Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r ↔ x ∈ Set.Icc (b - r) r ∪ Set.Icc (-r) (b + r - 1) := by
+      intro x hx
+      have h_dist_x : ‖(QuotientAddGroup.mk x : T1)‖ = |x| := by
+        exact T1_norm_mk_of_abs_le x ( abs_le.mpr ⟨ by linarith [ hx.1 ], by linarith [ hx.2 ] ⟩ )
+      have h_dist_x_b : ‖(QuotientAddGroup.mk x : T1) - (QuotientAddGroup.mk b : T1)‖ = if x ≥ b - 1 / 2 then |x - b| else |x - b + 1| := by
+        split_ifs <;> norm_num [ AddCircle.norm_eq ] at *;
+        · convert T1_norm_mk_of_abs_le ( x - b ) _ using 1;
+          grind +splitIndPred;
+        · erw [ AddCircle.norm_eq ] ; norm_num [ round_eq ] ; ring;
+          norm_num [ show ⌊1 / 2 + ( x - b ) ⌋ = -1 by exact Int.floor_eq_iff.mpr ⟨ by norm_num; linarith, by norm_num; linarith ⟩ ] ; ring;
+      split_ifs at h_dist_x_b <;> simp_all +decide [ abs_le ];
+      · simp_all +decide [ dist_eq_norm ];
+        grind;
+      · norm_num [ dist_eq_norm ] at *;
+        exact ⟨ fun h => Or.inr ⟨ by linarith, by cases abs_cases ( x - b + 1 ) <;> linarith ⟩, fun h => ⟨ ⟨ by cases h <;> linarith, by cases h <;> linarith ⟩, by cases h <;> cases abs_cases ( x - b + 1 ) <;> linarith ⟩ ⟩;
+    have h_preimage : volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) = volume (Set.preimage (fun x : ℝ => QuotientAddGroup.mk x : ℝ → T1) (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) ∩ Set.Ioc (-1 / 2) (1 / 2)) := by
+      have h_preimage : MeasureTheory.MeasurePreserving (fun x : ℝ => QuotientAddGroup.mk x : ℝ → T1) (MeasureTheory.Measure.restrict MeasureTheory.volume (Set.Ioc (-1 / 2) (1 / 2))) (MeasureTheory.volume : MeasureTheory.Measure T1) := by
+        convert AddCircle.measurePreserving_mk ( 1 : ℝ ) ( -1 / 2 ) using 1;
+        norm_num;
+      rw [ ← h_preimage.measure_preimage ];
+      · norm_num;
+      · exact MeasurableSet.nullMeasurableSet ( by exact MeasurableSet.inter ( measurableSet_closedBall ) ( measurableSet_closedBall ) );
+    rw [ h_preimage ];
+    rw [ show ( fun x : ℝ => QuotientAddGroup.mk x : ℝ → T1 ) ⁻¹' ( Metric.closedBall 0 r ∩ Metric.closedBall ( QuotientAddGroup.mk b : T1 ) r ) ∩ Set.Ioc ( -1 / 2 ) ( 1 / 2 ) = ( Set.Icc ( b - r ) r ∪ Set.Icc ( -r ) ( b + r - 1 ) ) ∩ Set.Ioc ( -1 / 2 ) ( 1 / 2 ) from ?_ ];
+    · nontriviality;
+      rw [ MeasureTheory.measure_congr ];
+      rw [ MeasureTheory.ae_eq_set ];
+      constructor <;> rw [ MeasureTheory.measure_eq_zero_iff_ae_notMem ] <;> norm_num;
+      · exact Filter.Eventually.of_forall fun x hx₁ hx₂ hx₃ hx₄ => by cases hx₁ <;> first | exact ⟨ by linarith, by linarith ⟩ | exact False.elim <| hx₄ ( by linarith ) |> not_lt_of_ge ( by linarith ) ;
+      · filter_upwards [ MeasureTheory.measure_eq_zero_iff_ae_notMem.mp ( MeasureTheory.measure_singleton ( -1 / 2 ) ), MeasureTheory.measure_eq_zero_iff_ae_notMem.mp ( MeasureTheory.measure_singleton ( 1 / 2 ) ) ] with x hx₁ hx₂ using fun hx => ⟨ by cases hx <;> cases lt_or_gt_of_ne hx₁ <;> cases lt_or_gt_of_ne hx₂ <;> linarith, by cases hx <;> cases lt_or_gt_of_ne hx₁ <;> cases lt_or_gt_of_ne hx₂ <;> linarith ⟩;
+    · grind;
+  rw [ h_preimage, MeasureTheory.measure_union₀ ] <;> norm_num;
+  · rw [ ← ENNReal.ofReal_add ] <;> ring <;> linarith;
+  · refine' MeasureTheory.measure_mono_null _ _;
+    exact { ( b + r - 1 ) };
+    · exact fun x hx => by norm_num; linarith [ hx.1.1, hx.1.2, hx.2.1, hx.2.2 ] ;
+    · norm_num [ MeasureTheory.MeasureSpace.volume ]
+
+/-- Volume of the intersection of two `r`-balls on T1 for `r ≤ 1/2`.
+    When the two balls don't wrap around each other (`|b| + 2r ≤ 1`), the intersection
+    has volume `2r - |b|`. When wrapping occurs (`|b| + 2r > 1`), the volume is `4r - 1`. -/
+lemma volume_closedBall_inter_T1_general (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/2)
+    (b : ℝ) (hb : |b| ≤ r) :
+    volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) =
+    ENNReal.ofReal (if |b| + 2 * r ≤ 1 then 2 * r - |b| else 4 * r - 1) := by
+  split_ifs with h
+  · exact volume_closedBall_inter_T1_nowrap r hr0 hr b hb h
+  · exact volume_closedBall_inter_T1_wrap r hr0 hr b hb (by linarith)
+
+/-
+Real-analysis helper: the piecewise integral arising from the mid-regime ball
+    intersection volume.
+-/
+lemma lintegral_piecewise_mid (r : ℝ) (hr_lo : 1/3 < r) (hr_hi : r ≤ 1/2) :
+    ∫⁻ (x : ℝ) in Set.Icc (-r) r,
+      ENNReal.ofReal (if |x| + 2 * r ≤ 1 then 2 * r - |x| else 4 * r - 1) =
+    ENNReal.ofReal (gammaMid r) := by
+  have h_split : ∫⁻ (x : ℝ) in Set.Icc (-r) r, ENNReal.ofReal (if |x| + 2 * r ≤ 1 then 2 * r - |x| else 4 * r - 1) = (∫⁻ (x : ℝ) in Set.Icc (-r) (-(1 - 2 * r)), ENNReal.ofReal (4 * r - 1)) + (∫⁻ (x : ℝ) in Set.Ioc (-(1 - 2 * r)) (1 - 2 * r), ENNReal.ofReal (2 * r - |x|)) + (∫⁻ (x : ℝ) in Set.Ioc (1 - 2 * r) r, ENNReal.ofReal (4 * r - 1)) := by
+    have h_split : ∫⁻ (x : ℝ) in Set.Icc (-r) r, ENNReal.ofReal (if |x| + 2 * r ≤ 1 then 2 * r - |x| else 4 * r - 1) = (∫⁻ (x : ℝ) in Set.Icc (-r) (-(1 - 2 * r)), ENNReal.ofReal (if |x| + 2 * r ≤ 1 then 2 * r - |x| else 4 * r - 1)) + (∫⁻ (x : ℝ) in Set.Ioc (-(1 - 2 * r)) (1 - 2 * r), ENNReal.ofReal (if |x| + 2 * r ≤ 1 then 2 * r - |x| else 4 * r - 1)) + (∫⁻ (x : ℝ) in Set.Ioc (1 - 2 * r) r, ENNReal.ofReal (if |x| + 2 * r ≤ 1 then 2 * r - |x| else 4 * r - 1)) := by
+      rw [ ← MeasureTheory.lintegral_union, ← MeasureTheory.lintegral_union ] <;> norm_num;
+      · rw [ Set.Icc_union_Ioc_eq_Icc, Set.Icc_union_Ioc_eq_Icc ] <;> linarith;
+      · exact Set.disjoint_left.mpr fun x hx₁ hx₂ => by linarith [ hx₁.2, hx₂.1 ] ;
+      · grind +locals;
+    rw [ h_split ];
+    refine' congrArg₂ _ ( congrArg₂ _ _ _ ) _ <;> refine' MeasureTheory.setLIntegral_congr_fun _ _ <;> norm_num;
+    · intro x hx; norm_num [ abs_of_nonpos ( by linarith [ hx.1, hx.2 ] : x ≤ 0 ) ] ;
+      grind;
+    · exact fun x hx => congr_arg _ ( if_pos <| by cases abs_cases x <;> linarith [ hx.1, hx.2 ] );
+    · intro x hx; norm_num [ abs_of_nonneg ( by linarith [ hx.1 ] : 0 ≤ x ) ] ; split_ifs <;> norm_num ; linarith [ hx.1, hx.2 ] ;
+  -- Compute the middle integral: $\int_{-(1-2r)}^{1-2r} (2r - |x|) \, dx$.
+  have h_middle : ∫⁻ (x : ℝ) in Set.Ioc (-(1 - 2 * r)) (1 - 2 * r), ENNReal.ofReal (2 * r - |x|) = ENNReal.ofReal (4 * r * (1 - 2 * r) - (1 - 2 * r) ^ 2) := by
+    rw [ ← MeasureTheory.ofReal_integral_eq_lintegral_ofReal ];
+    · rw [ ← intervalIntegral.integral_of_le ( by linarith ), intervalIntegral.integral_sub ] <;> norm_num;
+      · -- Evaluate the integral of $|x|$ over $[2r-1, 1-2r]$.
+        have h_abs : ∫ x in (2 * r - 1)..1 - 2 * r, |x| = (∫ x in (2 * r - 1)..0, |x|) + (∫ x in (0)..1 - 2 * r, |x|) := by
+          rw [ intervalIntegral.integral_add_adjacent_intervals ] <;> exact Continuous.intervalIntegrable ( by continuity ) _ _;
+        rw [ h_abs, intervalIntegral.integral_congr fun x hx => abs_of_nonpos <| by linarith [ Set.mem_Icc.mp <| by rwa [ Set.uIcc_of_le ( by linarith ) ] at hx ], intervalIntegral.integral_congr fun x hx => abs_of_nonneg <| by linarith [ Set.mem_Icc.mp <| by rwa [ Set.uIcc_of_le ( by linarith ) ] at hx ] ] ; norm_num ; ring;
+        rw [ intervalIntegral.integral_neg ] ; norm_num ; ring;
+      · exact Continuous.intervalIntegrable ( continuous_abs ) _ _;
+    · exact Continuous.integrableOn_Ioc ( by continuity );
+    · filter_upwards [ MeasureTheory.ae_restrict_mem measurableSet_Ioc ] with x hx using sub_nonneg_of_le <| by cases abs_cases x <;> linarith [ hx.1, hx.2 ] ;
+  simp_all +decide [ gammaMid ];
+  rw [ ← ENNReal.ofReal_mul, ← ENNReal.ofReal_mul ] <;> ring <;> norm_num at * <;> try nlinarith;
+  rw [ ← ENNReal.toReal_eq_toReal_iff' ] <;> norm_num;
+  · rw [ ENNReal.toReal_add, ENNReal.toReal_mul ] <;> norm_num;
+    · rw [ ENNReal.toReal_ofReal, ENNReal.toReal_ofReal, ENNReal.toReal_ofReal ] <;> nlinarith;
+    · exact ENNReal.mul_ne_top ( ENNReal.ofReal_ne_top ) ( by norm_num );
+  · exact ENNReal.mul_ne_top ( ENNReal.ofReal_ne_top ) ( by norm_num )
+
+lemma volume_triangleSet_mid (r : ℝ) (hr_lo : 1/3 < r) (hr_hi : r ≤ 1/2) :
+    volume (triangleSet r) = ENNReal.ofReal (gammaMid r) := by
+  rw [ volume_triangleSet_eq_real_integral r ( by linarith ) hr_hi, ← lintegral_piecewise_mid r hr_lo hr_hi ];
+  -- Apply the lemma volume_closedBall_inter_T1_general to each x in the interval [-r, r].
+  have h_apply_lemma : ∀ x ∈ Set.Icc (-r) r, volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk x : T1) r) = ENNReal.ofReal (if |x| + 2 * r ≤ 1 then 2 * r - |x| else 4 * r - 1) := by
+    exact fun x hx => volume_closedBall_inter_T1_general r ( by linarith ) hr_hi x ( by cases abs_cases x <;> linarith [ hx.1, hx.2 ] );
+  rw [ MeasureTheory.lintegral_congr_ae ];
+  filter_upwards [ MeasureTheory.ae_restrict_mem measurableSet_Icc ] with x hx using h_apply_lemma x hx
+
+/-
+**Mid-regime triangle integral.** Sibling of `integral_triangle_eq_pow`; the d-fold
     coordinate factorization is identical, only the per-coordinate value changes.
 
     Proof structure mirrors `integral_triangle_eq_pow`: reduce to
-    `volume_coordFactored_eq_pow (volume_triangleSet_mid r ...)`. Aristotle target. -/
+    `volume_coordFactored_eq_pow (volume_triangleSet_mid r ...)`. Aristotle target.
+-/
 theorem integral_triangle_eq_pow_mid (d : ℕ) (hd : 1 ≤ d) (r : ℝ)
     (hr_lo : 1/3 < r) (hr_hi : r ≤ 1/2) :
     ∫ pts : Fin 3 → (Fin d → T1),
@@ -1507,4 +1767,14 @@ theorem integral_triangle_eq_pow_mid (d : ℕ) (hd : 1 ≤ d) (r : ℝ)
       (if dist (pts 1) (pts 2) ≤ r then (1:ℝ) else 0)
       ∂Measure.pi (fun _ : Fin 3 => (volume : Measure (Fin d → T1)))
     = (gammaMid r) ^ d := by
-  sorry
+  have h_volume : ∫ (pts : Fin 3 → Fin d → T1), (if dist (pts 0) (pts 1) ≤ r ∧ dist (pts 0) (pts 2) ≤ r ∧ dist (pts 1) (pts 2) ≤ r then 1 else 0) ∂Measure.pi (fun _ => MeasureSpace.volume) = (MeasureTheory.volume {pts : Fin 3 → Fin d → T1 | dist (pts 0) (pts 1) ≤ r ∧ dist (pts 0) (pts 2) ≤ r ∧ dist (pts 1) (pts 2) ≤ r}).toReal := by
+    rw [ MeasureTheory.integral_congr_ae, MeasureTheory.integral_indicator ];
+    change (∫ x in { pts : Fin 3 → Fin d → T1 | dist ( pts 0 ) ( pts 1 ) ≤ r ∧ dist ( pts 0 ) ( pts 2 ) ≤ r ∧ dist ( pts 1 ) ( pts 2 ) ≤ r }, 1 ∂Measure.pi fun _ => volume) = _;
+    · aesop;
+    · exact MeasurableSet.inter ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) ( MeasurableSet.inter ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) );
+    · norm_num [ Filter.EventuallyEq, Set.indicator ];
+  convert h_volume using 1;
+  · grind;
+  · rw [ triangleSet_torus_eq d hd r ( by linarith ), volume_coordFactored_eq_pow ] <;> norm_num [ volume_triangleSet_mid r hr_lo hr_hi ];
+    · rw [ ENNReal.toReal_ofReal ( by positivity ) ];
+    · exact MeasurableSet.inter ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 1 ) measurable_const ) ( MeasurableSet.inter ( measurableSet_le ( measurable_pi_apply 0 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) ( measurableSet_le ( measurable_pi_apply 1 |> Measurable.dist <| measurable_pi_apply 2 ) measurable_const ) )

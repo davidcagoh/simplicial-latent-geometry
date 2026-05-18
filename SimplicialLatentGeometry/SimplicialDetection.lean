@@ -2228,18 +2228,63 @@ lemma matchRadius_eventually_mid (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
       unfold matchRadius; simp [hd_ne]
     rw [this]; linarith
 
-/-- **The mid-regime gamma raised to the d-th power tends to `p^3`.**
+/-
+**The mid-regime gamma raised to the d-th power tends to `p^3`.**
 
     Math: `γ(p^{1/d}/2) = 3 p^{2/d} − 3 p^{1/d} + 1` (algebraic; see
     `gammaMid_of_matchRadius_form`). Taylor expansion at `1/d → 0`:
     `γ(r_d) = 1 + 3 (log p)/d + O(1/d²)`, so `d · log γ(r_d) → 3 log p`, hence
     `γ(r_d)^d → exp(3 log p) = p^3`.
 
-    Aristotle target (analytic limit; uses Real.log_one_add_lt + Taylor). -/
+    Aristotle target (analytic limit; uses Real.log_one_add_lt + Taylor).
+-/
 lemma gammaMid_matchRadius_pow_tendsto_pcubed (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => (gammaMid (matchRadius p d)) ^ d)
       Filter.atTop (nhds (p ^ 3)) := by
-  sorry
+  -- Let $x = \log p$. We need to show $\lim_{d \to \infty} d \cdot (\gamma(r_d) - 1) = 3x$.
+  set x := Real.log p
+  set f := fun d : ℕ => d * (gammaMid (matchRadius p d) - 1)
+  have h_lim : Filter.Tendsto f Filter.atTop (nhds (3 * x)) := by
+    -- We'll use the fact that $gammaMid(r_d) = 3p^{2/d} - 3p^{1/d} + 1$.
+    have h_gammaMid : ∀ d : ℕ, d ≠ 0 → gammaMid (matchRadius p d) = 3 * p^(2 / (d : ℝ)) - 3 * p^(1 / (d : ℝ)) + 1 := by
+      intro d hd_ne; unfold matchRadius; norm_num [ hd_ne ] ; ring;
+      rw [ Real.rpow_mul hp0.le ] ; norm_num;
+    -- We'll use the fact that $d \cdot (p^{2/d} - 1)$ and $d \cdot (p^{1/d} - 1)$ tend to $2 \log p$ and $\log p$ respectively as $d \to \infty$.
+    have h_lim : Filter.Tendsto (fun d : ℕ => d * (p^(2 / (d : ℝ)) - 1)) Filter.atTop (nhds (2 * x)) ∧ Filter.Tendsto (fun d : ℕ => d * (p^(1 / (d : ℝ)) - 1)) Filter.atTop (nhds (x)) := by
+      have h_lim : Filter.Tendsto (fun t : ℝ => t⁻¹ * (p^t - 1)) (nhdsWithin 0 (Set.Ioi 0)) (nhds (Real.log p)) := by
+        simpa [ div_eq_inv_mul, Real.rpow_def_of_pos hp0 ] using HasDerivAt.tendsto_slope_zero_right ( HasDerivAt.sub ( HasDerivAt.exp ( HasDerivAt.const_mul ( Real.log p ) ( hasDerivAt_id 0 ) ) ) ( hasDerivAt_const 0 1 ) );
+      constructor;
+      · have := h_lim.comp ( show Filter.Tendsto ( fun d : ℕ => 2 / ( d : ℝ ) ) Filter.atTop ( nhdsWithin 0 ( Set.Ioi 0 ) ) from ?_ );
+        · convert this.const_mul 2 using 2 ; norm_num ; ring;
+        · rw [ tendsto_nhdsWithin_iff ];
+          exact ⟨ tendsto_const_nhds.div_atTop tendsto_natCast_atTop_atTop, Filter.eventually_atTop.mpr ⟨ 1, fun n hn => by norm_num; positivity ⟩ ⟩;
+      · convert h_lim.comp ( show Filter.Tendsto ( fun d : ℕ => ( d : ℝ ) ⁻¹ ) Filter.atTop ( nhdsWithin 0 ( Set.Ioi 0 ) ) from ?_ ) using 2;
+        · norm_num [ mul_comm ];
+        · rw [ tendsto_nhdsWithin_iff ];
+          exact ⟨ tendsto_inv_atTop_zero.comp tendsto_natCast_atTop_atTop, Filter.eventually_atTop.mpr ⟨ 1, fun n hn => by simpa using hn ⟩ ⟩;
+    convert Filter.Tendsto.congr' _ ( h_lim.1.const_mul 3 |> Filter.Tendsto.sub <| h_lim.2.const_mul 3 ) using 2 <;> norm_num ; ring;
+    filter_upwards [ Filter.eventually_ne_atTop 0 ] with d hd using by rw [ show f d = ↑d * ( gammaMid ( matchRadius p d ) - 1 ) by rfl, h_gammaMid d hd ] ; ring;
+  -- Using the continuity of the exponential function and the fact that $f(d) \to 3x$, we get $\lim_{d \to \infty} \exp(f(d)) = \exp(3x)$.
+  have h_exp : Filter.Tendsto (fun d : ℕ => Real.exp (d * Real.log (gammaMid (matchRadius p d)))) Filter.atTop (nhds (Real.exp (3 * x))) := by
+    refine' Real.continuous_exp.continuousAt.tendsto.comp _;
+    have h_log : Filter.Tendsto (fun d : ℕ => Real.log (1 + (gammaMid (matchRadius p d) - 1)) / (gammaMid (matchRadius p d) - 1)) Filter.atTop (nhds 1) := by
+      have h_log : Filter.Tendsto (fun y : ℝ => Real.log (1 + y) / y) (nhdsWithin 0 {0}ᶜ) (nhds 1) := by
+        simpa [ div_eq_inv_mul ] using Real.hasDerivAt_log one_ne_zero |> HasDerivAt.tendsto_slope_zero;
+      refine h_log.comp <| Filter.tendsto_inf.mpr ⟨ ?_, ?_ ⟩;
+      · have := h_lim.div_atTop tendsto_natCast_atTop_atTop;
+        exact this.congr' ( by filter_upwards [ Filter.eventually_ne_atTop 0 ] with d hd; aesop );
+      · simp +zetaDelta at *;
+        exact Filter.eventually_atTop.mp ( h_lim.eventually_ne ( show ( 3 * Real.log p ) ≠ 0 by linarith [ Real.log_le_sub_one_of_pos hp0 ] ) ) |> fun ⟨ N, hN ⟩ ↦ ⟨ N, fun n hn ↦ by specialize hN n hn; aesop ⟩;
+    have := h_log.mul h_lim;
+    simp +zetaDelta at *;
+    refine' this.congr' ( by filter_upwards [ h_log.eventually_ne one_ne_zero ] with d hd using by rw [ div_mul_eq_mul_div, div_eq_iff ( by aesop ) ] ; ring );
+  convert h_exp.congr' _ using 2;
+  · rw [ mul_comm, Real.exp_mul, Real.exp_log ] <;> norm_cast;
+  · have h_pos : ∀ᶠ d in Filter.atTop, 0 < gammaMid (matchRadius p d) := by
+      have h_pos : Filter.Tendsto (fun d : ℕ => matchRadius p d) Filter.atTop (nhds (1 / 2)) := by
+        convert matchRadius_tendsto_half p hp0 hp1 using 1;
+      exact h_pos.eventually ( lt_mem_nhds <| show 1 / 2 > 1 / 3 by norm_num ) |> fun h => h.mono fun d hd => by unfold gammaMid; nlinarith;
+    filter_upwards [ h_pos ] with d hd using by rw [ Real.exp_nat_mul, Real.exp_log hd ] ;
 
 /-- **OQ-18 Rips asymptotic.** Under Rips on the sup-norm torus with matched p ∈ (0,1)
     fixed, `fillingProb p d → p^3` as `d → ∞`. Replaces the Čech-era false statements
