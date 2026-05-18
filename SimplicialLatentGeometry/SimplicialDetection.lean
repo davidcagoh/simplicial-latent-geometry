@@ -2496,10 +2496,21 @@ lemma doublySignedFilledCount_cechObservation {n d : ℕ} (p q r : ℝ)
     (s : CechSample n d) :
     doublySignedFilledCount p q (cechObservation r s) =
     cechDoublySignedCount p q s r := by
-  -- OQ-18: `cechObservation` likely still encodes the old existential fill; under Rips
-  -- the equivalence between `s.hasFill` (clique) and the existential needs to be threaded.
-  -- Stub pending refactor.
-  sorry
+  classical
+  -- Under the new Rips definition of `cechObservation` (`edge := decide ∘ hasEdge`,
+  -- `fill := decide ∘ hasFill`), the doubly-signed-count formulas match pointwise
+  -- via `decide_eq_true_eq` (Bool-`if` ≡ Prop-`if` for Decidable propositions).
+  unfold doublySignedFilledCount cechDoublySignedCount cechObservation
+  congr 1
+  funext t
+  congr 1
+  · refine Finset.prod_congr rfl (fun e _ => ?_)
+    by_cases h : s.hasEdge r e.1 e.2
+    · rw [if_pos (by simp [h] : (decide (s.hasEdge r e.1 e.2) = true)), if_pos h]
+    · rw [if_neg (by simp [h] : ¬(decide (s.hasEdge r e.1 e.2) = true)), if_neg h]
+  · by_cases h : s.hasFill r t
+    · rw [if_pos (by simp [h] : (decide (s.hasFill r t) = true)), if_pos h]
+    · rw [if_neg (by simp [h] : ¬(decide (s.hasFill r t) = true)), if_neg h]
 
 /-
 PROBLEM
