@@ -2913,7 +2913,9 @@ private lemma triangleIndicator'_translate {n d : ℕ} (p q r : ℝ)
     (pts : Fin n → Torus d) (h : Torus d) :
     triangleIndicator' p q r t (fun i => pts i + h) = triangleIndicator' p q r t pts := by
   -- OQ-18: under Rips clique `hasFill`, translation invariance follows directly from
-  -- `dist_eq_norm` on each pair (no existential to shift). Proof rewrite pending.
+  -- `dist_add_right` on each pair. Attempted close hit Decidable-instance mismatch
+  -- (Nat.decidableForallFin vs Classical.propDecidable) after simp; needs careful
+  -- `decide`-bridge or `Subsingleton (Decidable P)` lemma. Deferred.
   sorry
 
 private lemma triangleIndicator'_congr {n d : ℕ} (p q r : ℝ)
@@ -4036,8 +4038,8 @@ lemma cech_complement_set_inclusion (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p
     ν {s | doublySignedFilledCount p q s < (Nat.choose n 3 : ℝ) * g / 2} ≤
       ν {s | (Nat.choose n 3 : ℝ) * g / 2 ≤
         |doublySignedFilledCount p q s - ∫ s', doublySignedFilledCount p q s' ∂ν|} := by
-  -- OQ-18: depends on `moments_cech_signed` / `doublySignedFilledCount_cechObservation`
-  -- (now stubbed) and existential `hasFill` measurability. Stub pending refactor.
+  -- OQ-18: depends on integral_map pushforward (needs cechObservation measurable —
+  -- same Decidable-instance issue as triangleIndicator'_translate). Stub pending refactor.
   sorry
 
 /-
