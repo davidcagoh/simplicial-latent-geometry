@@ -131,10 +131,25 @@ lemma matchedCos_spec (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 2 �
     an axiomatized normal-quantile constant `normalQuantile p`. -/
 axiom normalQuantile : ℝ → ℝ
 
-lemma matchedCos_asymptotic (p : ℝ) (_hp0 : 0 < p) (_hp1 : p < 1) :
+/-- **Cap-CLT + normal-quantile inversion (auxiliary axiom).**
+    The Poincaré / CLT limit for spherical caps says that as $d \to \infty$,
+    the spherical cap probability at cosine threshold $t / \sqrt{d}$ converges
+    to $\Phi(-t)$. Inverting this uniformly: if a sequence of thresholds
+    $r_d \in [-1, 1]$ satisfies `capProb d (r d) = p` for all sufficiently large
+    $d$, then $\sqrt{d} \cdot r_d \to \Phi^{-1}(1 - p) = $ `normalQuantile (1 - p)`.
+    Axiomatized pending Mathlib formalization of the CLT for spherical caps
+    (Li 2011 / Poincaré limit) + continuous inversion of the normal CDF. -/
+axiom capCLT_matched_inversion (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
+    (r : ℕ → ℝ) (hr : ∀ᶠ d in Filter.atTop, capProb d (r d) = p) :
+    Filter.Tendsto (fun d : ℕ => Real.sqrt d * r d) Filter.atTop
+      (nhds (normalQuantile (1 - p)))
+
+lemma matchedCos_asymptotic (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     Filter.Tendsto (fun d : ℕ => Real.sqrt d * matchedCos p d) Filter.atTop
-      (nhds (normalQuantile (1 - p))) :=
-  sorry
+      (nhds (normalQuantile (1 - p))) := by
+  apply capCLT_matched_inversion p hp0 hp1
+  rw [Filter.eventually_atTop]
+  exact ⟨2, fun d hd => (matchedCos_spec p d hp0 hp1 hd).2.2⟩
 
 /-! ## Triangle (Čech-fill) probability and the asymptotic headline
 
