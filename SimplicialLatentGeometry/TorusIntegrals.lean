@@ -1622,7 +1622,62 @@ lemma volume_closedBall_inter_T1_nowrap_large (r : ℝ) (hr0 : 0 ≤ r) (hr : r 
     (hr4 : 1/4 < r) (b : ℝ) (hb : |b| ≤ r) (hno : |b| + 2 * r ≤ 1) :
     volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) =
     ENNReal.ofReal (2 * r - |b|) := by
-  sorry
+  -- Assume WLOG $b \geq 0$ (by negation symmetry).
+  suffices h_wlog : ∀ {b : ℝ}, 0 ≤ b → b ≤ r → b + 2 * r ≤ 1 → volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) = ENNReal.ofReal (2 * r - b) by
+    rcases abs_cases b with ⟨hab, hb_nonneg⟩ | ⟨hab, hb_neg⟩
+    · rw [hab] at hb hno ⊢; exact h_wlog hb_nonneg hb hno
+    · rw [hab] at hb hno ⊢
+      have hb_pos : 0 ≤ -b := by linarith
+      have h1 : volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) = volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk (-b) : T1) r) := by
+        rw [ ← MeasureTheory.measure_preimage_add_right ]; norm_num;
+        swap; exact ↑b;
+        norm_num [ Set.inter_comm ];
+      rw [h1, h_wlog hb_pos hb hno]
+  intros b hb_nonneg hb_le_r hb_no_wrap
+  have h_preimage : volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) = volume (Set.Icc (b - r) r ∪ Set.Icc (-r) (b + r - 1)) := by
+    have h_preimage : ∀ x ∈ Set.Ioc (-1 / 2) (1 / 2), (QuotientAddGroup.mk x : T1) ∈ Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r ↔ x ∈ Set.Icc (b - r) r ∪ Set.Icc (-r) (b + r - 1) := by
+      intro x hx
+      have h_dist_x : ‖(QuotientAddGroup.mk x : T1)‖ = |x| := by
+        exact T1_norm_mk_of_abs_le x ( abs_le.mpr ⟨ by linarith [ hx.1 ], by linarith [ hx.2 ] ⟩ )
+      have h_dist_x_b : ‖(QuotientAddGroup.mk x : T1) - (QuotientAddGroup.mk b : T1)‖ = if x ≥ b - 1 / 2 then |x - b| else |x - b + 1| := by
+        split_ifs <;> norm_num [ AddCircle.norm_eq ] at *;
+        · convert T1_norm_mk_of_abs_le ( x - b ) _ using 1;
+          grind +splitIndPred;
+        · erw [ AddCircle.norm_eq ] ; norm_num [ round_eq ] ; ring;
+          norm_num [ show ⌊1 / 2 + ( x - b ) ⌋ = -1 by exact Int.floor_eq_iff.mpr ⟨ by norm_num; linarith, by norm_num; linarith ⟩ ] ; ring;
+      split_ifs at h_dist_x_b <;> simp_all +decide [ abs_le ];
+      · simp_all +decide [ dist_eq_norm ];
+        grind;
+      · norm_num [ dist_eq_norm ] at *;
+        exact ⟨ fun h => Or.inr ⟨ by linarith, by cases abs_cases ( x - b + 1 ) <;> linarith ⟩, fun h => ⟨ ⟨ by cases h <;> linarith, by cases h <;> linarith ⟩, by cases h <;> cases abs_cases ( x - b + 1 ) <;> linarith ⟩ ⟩;
+    have h_preimage : volume (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) = volume (Set.preimage (fun x : ℝ => QuotientAddGroup.mk x : ℝ → T1) (Metric.closedBall (0 : T1) r ∩ Metric.closedBall (QuotientAddGroup.mk b : T1) r) ∩ Set.Ioc (-1 / 2) (1 / 2)) := by
+      have h_preimage : MeasureTheory.MeasurePreserving (fun x : ℝ => QuotientAddGroup.mk x : ℝ → T1) (MeasureTheory.Measure.restrict MeasureTheory.volume (Set.Ioc (-1 / 2) (1 / 2))) (MeasureTheory.volume : MeasureTheory.Measure T1) := by
+        convert AddCircle.measurePreserving_mk ( 1 : ℝ ) ( -1 / 2 ) using 1;
+        norm_num;
+      rw [ ← h_preimage.measure_preimage ];
+      · norm_num;
+      · exact MeasurableSet.nullMeasurableSet ( by exact MeasurableSet.inter ( measurableSet_closedBall ) ( measurableSet_closedBall ) );
+    rw [ h_preimage ];
+    rw [ show ( fun x : ℝ => QuotientAddGroup.mk x : ℝ → T1 ) ⁻¹' ( Metric.closedBall 0 r ∩ Metric.closedBall ( QuotientAddGroup.mk b : T1 ) r ) ∩ Set.Ioc ( -1 / 2 ) ( 1 / 2 ) = ( Set.Icc ( b - r ) r ∪ Set.Icc ( -r ) ( b + r - 1 ) ) ∩ Set.Ioc ( -1 / 2 ) ( 1 / 2 ) from ?_ ];
+    · nontriviality;
+      rw [ MeasureTheory.measure_congr ];
+      rw [ MeasureTheory.ae_eq_set ];
+      constructor <;> rw [ MeasureTheory.measure_eq_zero_iff_ae_notMem ] <;> norm_num;
+      · exact Filter.Eventually.of_forall fun x hx₁ hx₂ hx₃ hx₄ => by cases hx₁ <;> first | exact ⟨ by linarith, by linarith ⟩ | exact False.elim <| hx₄ ( by linarith ) |> not_lt_of_ge ( by linarith ) ;
+      · filter_upwards [ MeasureTheory.measure_eq_zero_iff_ae_notMem.mp ( MeasureTheory.measure_singleton ( -1 / 2 ) ), MeasureTheory.measure_eq_zero_iff_ae_notMem.mp ( MeasureTheory.measure_singleton ( 1 / 2 ) ) ] with x hx₁ hx₂ using fun hx => ⟨ by cases hx <;> cases lt_or_gt_of_ne hx₁ <;> cases lt_or_gt_of_ne hx₂ <;> linarith, by cases hx <;> cases lt_or_gt_of_ne hx₁ <;> cases lt_or_gt_of_ne hx₂ <;> linarith ⟩;
+    · grind;
+  -- The wrap piece has measure zero because b + r - 1 ≤ -r.
+  have h_wrap_meas : volume (Set.Icc (-r) (b + r - 1)) = 0 := by
+    rw [Real.volume_Icc, ENNReal.ofReal_eq_zero]; linarith
+  rw [ h_preimage ]
+  have h_disj : MeasureTheory.AEDisjoint volume (Set.Icc (b - r) r) (Set.Icc (-r) (b + r - 1)) := by
+    refine' MeasureTheory.measure_mono_null _ _;
+    exact { ( b + r - 1 ) };
+    · exact fun x hx => by norm_num; linarith [ hx.1.1, hx.1.2, hx.2.1, hx.2.2 ] ;
+    · norm_num [ MeasureTheory.MeasureSpace.volume ]
+  rw [MeasureTheory.measure_union₀ measurableSet_Icc.nullMeasurableSet h_disj,
+      h_wrap_meas, add_zero, Real.volume_Icc]
+  congr 1; ring
 
 lemma volume_closedBall_inter_T1_nowrap (r : ℝ) (hr0 : 0 ≤ r) (hr : r ≤ 1/2)
     (b : ℝ) (hb : |b| ≤ r) (hno : |b| + 2 * r ≤ 1) :
