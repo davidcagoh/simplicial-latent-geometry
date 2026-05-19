@@ -4654,7 +4654,7 @@ private lemma doublySignedTriangle_cov_disjoint_eq_gsq {n d : ℕ} (p : ℝ)
     (hp0 : 0 < p) (hp1 : p < 1)
     (t t' : {σ : Finset (Fin n) // σ.card = 3})
     (_htt' : t ≠ t')
-    (_hshare : (t.val ∩ t'.val).card = 0) :
+    (hshare : (t.val ∩ t'.val).card = 0) :
     let r := matchRadius p d
     let q := fillingProb p d
     let g := geometricCov p d
@@ -4665,9 +4665,74 @@ private lemma doublySignedTriangle_cov_disjoint_eq_gsq {n d : ℕ} (p : ℝ)
          ((∏ e ∈ triangleEdges t',
             (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
           (if s.fill t' then (1:ℝ) - q else -q)) ∂ν = g ^ 2 := by
-  -- OQ-18: relies on `disjoint_triangles_indepFun`, `single_triangle_integral_eq_g'`,
-  -- and the existential-form `hasFill` measurability. Stub pending refactor.
-  sorry
+  classical
+  -- Convert the ν-integral to a product-measure integral, recognise the integrand
+  -- as `triangleIndicator' t · triangleIndicator' t'`, then split via independence.
+  set r : ℝ := matchRadius p d with hr_def
+  set q : ℝ := fillingProb p d with hq_def
+  set g : ℝ := geometricCov p d with hg_def
+  show
+    ∫ s, (∏ e ∈ triangleEdges t,
+            (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
+          (if s.fill t then (1:ℝ) - q else -q) *
+         ((∏ e ∈ triangleEdges t',
+            (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
+          (if s.fill t' then (1:ℝ) - q else -q))
+      ∂((cechMeasure n d r).map (cechObservation r)) = g ^ 2
+  rw [integral_over_nu_eq' r (fun s =>
+        (∏ e ∈ triangleEdges t,
+          (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
+        (if s.fill t then (1:ℝ) - q else -q) *
+        ((∏ e ∈ triangleEdges t',
+          (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
+        (if s.fill t' then (1:ℝ) - q else -q)))]
+  -- Now: ∫ pts, (factored integrand on cechObservation r ⟨pts⟩) ∂μ = g^2.
+  -- The integrand equals T_t pts · T_t' pts where T_t := triangleIndicator' p q r t.
+  set μ : MeasureTheory.Measure (Fin n → Torus d) :=
+    MeasureTheory.Measure.pi
+      (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) with hμ_def
+  have h_integrand : ∀ pts : Fin n → Torus d,
+      (∏ e ∈ triangleEdges t,
+          (if (cechObservation r (CechSample.mk pts)).edge e.1 e.2
+            then (1:ℝ) - p else -p)) *
+        (if (cechObservation r (CechSample.mk pts)).fill t then (1:ℝ) - q else -q) *
+      ((∏ e ∈ triangleEdges t',
+          (if (cechObservation r (CechSample.mk pts)).edge e.1 e.2
+            then (1:ℝ) - p else -p)) *
+        (if (cechObservation r (CechSample.mk pts)).fill t' then (1:ℝ) - q else -q))
+      = triangleIndicator' p q r t pts * triangleIndicator' p q r t' pts := by
+    intro pts
+    unfold triangleIndicator'
+    rfl
+  rw [show
+    (∫ pts : Fin n → Torus d,
+      (∏ e ∈ triangleEdges t,
+          (if (cechObservation r (CechSample.mk pts)).edge e.1 e.2
+            then (1:ℝ) - p else -p)) *
+        (if (cechObservation r (CechSample.mk pts)).fill t then (1:ℝ) - q else -q) *
+      ((∏ e ∈ triangleEdges t',
+          (if (cechObservation r (CechSample.mk pts)).edge e.1 e.2
+            then (1:ℝ) - p else -p)) *
+        (if (cechObservation r (CechSample.mk pts)).fill t' then (1:ℝ) - q else -q))
+      ∂μ) =
+    ∫ pts, triangleIndicator' p q r t pts * triangleIndicator' p q r t' pts ∂μ from
+    MeasureTheory.integral_congr_ae (Filter.Eventually.of_forall h_integrand)]
+  -- Independence-based factorisation.
+  have h_indep := disjoint_triangles_indepFun (n := n) (d := d) p hp0 hp1 t t' _htt' hshare
+  -- h_indep typechecks: ProbabilityTheory.IndepFun T_t T_t' μ (after let-eval).
+  have hT_meas : Measurable (fun pts : Fin n → Torus d => triangleIndicator' p q r t pts) :=
+    triangleIndicator'_measurable p q r t
+  have hT'_meas : Measurable (fun pts : Fin n → Torus d => triangleIndicator' p q r t' pts) :=
+    triangleIndicator'_measurable p q r t'
+  rw [h_indep.integral_fun_mul_eq_mul_integral hT_meas.aestronglyMeasurable
+        hT'_meas.aestronglyMeasurable]
+  -- Each ∫ T_• ∂μ = g via single_triangle_integral_eq_g'.
+  have h_t := single_triangle_integral_eq_g' (n := n) (d := d) p hp0 hp1 t
+  have h_t' := single_triangle_integral_eq_g' (n := n) (d := d) p hp0 hp1 t'
+  -- h_t : ∫ pts, triangleIndicator' p q r t pts ∂μ = g (after let-eval).
+  rw [show (∫ pts, triangleIndicator' p q r t pts ∂μ) = g from h_t,
+      show (∫ pts, triangleIndicator' p q r t' pts ∂μ) = g from h_t']
+  ring
 
 /-
 OLD PROOF BODY:
