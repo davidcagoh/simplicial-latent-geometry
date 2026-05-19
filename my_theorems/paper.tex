@@ -218,12 +218,16 @@ The simplest null model for 2-dimensional complexes is the \emph{2-parameter com
 $\PC(n,p,q)$: place $n$ vertices, insert each edge independently with probability $p$, and
 fill each completed triangle independently with probability $q$ (see also the multi-parameter
 model of Kahle~\cite{Kahle2016}). This encodes no geometry---all events are mutually
-independent. The geometric alternative is the \emph{\v{C}ech complex} $\Cech(n,r,d)$: sample
-$n$ points uniformly on the flat torus $\TT^d$, connect two points whenever they lie within
-distance $r$, and fill a triangle whenever the three associated sup-norm balls of radius $r$
-share a common point (the nerve criterion~\cite{Bjorner1995}; see also
-Figure~\ref{fig:models}). The fundamental detection question is: given only
-the observed simplicial complex, can one tell which model generated it?
+independent. The geometric alternative on the flat torus $\TT^d$ samples $n$ points uniformly,
+connects two points within sup-norm distance $r$, and fills a triangle whenever all three
+pairwise edges are present (Rips clique fill). The traditional \v{C}ech existential
+$F_{ijk} = \mathbf{1}[\bigcap_\ell B(x_\ell, r) \neq \emptyset]$ would seem to be a stronger
+geometric condition, but on the $\ell^\infty$ torus the Helly-2 structure (1D Helly per
+coordinate) collapses the existential nerve onto the Rips clique fill at the matched-radius
+regime (Remark~\ref{rem:helly2-collapse}); we work directly with the Rips clique form
+throughout. We retain the symbol $\Cech(n,r,d)$ for continuity with the literature
+\cite{Bjorner1995}; see also Figure~\ref{fig:models}. The fundamental detection question is:
+given only the observed simplicial complex, can one tell which model generated it?
 
 \subsection{Related Work}\label{sec:related}
 
@@ -1095,32 +1099,15 @@ and Dhawan--Mao--Wein~\cite{DhawanMaoWein2023} provide tools; cataloguing all
 degree-$\leq D$ Fourier contributions to the \v{C}ech--$2\PC$ likelihood ratio is the
 natural next step.
 
-\subsubsection*{Beyond the flat torus}
-Porting the analysis to the sphere $\Sph^{d-1}$ with geodesic distance replaces the
-Helly argument with spherical-cap intersections and a transcendental matched-radius
-formula. The sphere companion section (\S\ref{sec:sphere-instance}, formerly a planned
-separate paper) develops this in detail: under
-proper \v{C}ech complex definition on $\Sph^{d-1}$ (Helly number $d$), concentration
-of measure forces caps to nearly hemispheres at matched fixed $p$, but the existential
-\v{C}ech fill saturates ($q_{\text{\v{C}ech}} \to 1$) while Rips fill collapses
-($q_{\text{Rips}} \to p^3$). The covariance signal vanishes super-exponentially:
-$1 - q_{\text{\v{C}ech}}(p,d) \sim (3 z_p^2/d)^{(d-2)/2}$ where $z_p = \Phi^{-1}(1-p)$,
-driven by the singularity of the joint Gram-entry density
-$\propto (\det G)^{(d-4)/2}$ at the boundary $\det G = 0$. Detection threshold:
-$d^*(n,p) = 3 \log n / \log\log n$, sub-logarithmic.
-
-\textbf{Note (revised May 2026).} An earlier draft hypothesized that the $L^2$ Euclidean
-torus (Helly number $d{+}1$) would give an intermediate detection threshold $\Theta(\log n)$
-between the $\ell^\infty$ no-barrier and the sphere $\Theta(\log n / \log\log n)$ result.
-\S\ref{sec:lp-nogo} shows this expectation is incorrect: on any \emph{centered}
-ambient with iid coordinates (Gaussian, uniform, Bernoulli; under any $\ell^p$ metric
-for $p \in [1,\infty)$), the matched radius $r_d$ eventually exceeds the typical
-distance from samples to the origin, so the origin becomes a free \v{C}ech witness for
-every triple and the dimensional-barrier story \emph{trivialises}. The sphere construction
-is essentially canonical: it escapes trivialisation only by having no interior reference
-point. Extensions to other latent geometries e.g.\ anisotropic~\cite{Brennan2022}
-or hyperbolic~\cite{Litvak2022}, where triangle-based tests behave differently,
-remain open.
+\subsubsection*{Beyond the flat torus and the sphere}
+Two natural extensions of the present framework are developed in
+\S\ref{sec:sister-instances}: the sphere instance (\S\ref{sec:sphere-instance}), giving
+the sub-logarithmic $d^*(n,p) = 3 \log n / \log\log n$ threshold, and the
+$\ell^p$-centered-ambient no-go result (\S\ref{sec:lp-nogo}), which shows that the
+dimensional-barrier story trivialises on any centered iid-coordinate ambient
+(Gaussian, uniform, Bernoulli) under any $\ell^p$ metric. Extensions to other latent
+geometries, e.g.\ anisotropic~\cite{Brennan2022} or hyperbolic~\cite{Litvak2022},
+where triangle-based tests behave differently, remain open.
 
 %% ─────────────────────────────────────────────────────────────────────────────
 \section{Sister Instances: A Unified Three-Instance Framework}\label{sec:sister-instances}
