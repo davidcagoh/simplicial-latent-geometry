@@ -3729,10 +3729,66 @@ private lemma triangleIndicator'_factor_coord_diffs {n d : ℕ} (p q r : ℝ)
     ∃ F : (Torus d × Torus d) → ℝ, Measurable F ∧
       ∀ pts : Fin n → Torus d,
         triangleIndicator' p q r t pts = F (pts j - pts i, pts k - pts i) := by
-  -- OQ-18: factorisation through (pts j − pts i, pts k − pts i) for the clique `hasFill`
-  -- is now structurally cleaner (no existential to handle), but the original proof's
-  -- closed-set + compactness argument for the existential no longer applies. Stub.
-  sorry
+  -- Define F by applying triangleIndicator' to a sample whose nontrivial values are at j, k
+  -- (with i mapped to 0). Translation invariance (`triangleIndicator'_translate`) + agreement
+  -- on t.val (`triangleIndicator'_congr`) close the factorisation.
+  refine ⟨fun xy : Torus d × Torus d =>
+            triangleIndicator' p q r t
+              (fun v => if v = j then xy.1 else if v = k then xy.2 else 0),
+          ?_, ?_⟩
+  · -- Measurability: inline (forward reference to `triangleIndicator'_measurable` blocked).
+    -- Build the assembler `Torus d × Torus d → (Fin n → Torus d)` first, then compose
+    -- with the standard measurability of `triangleIndicator'`.
+    have hAssemble : Measurable
+        (fun xy : Torus d × Torus d => fun v : Fin n =>
+          (if v = j then xy.1 else if v = k then xy.2 else (0 : Torus d))) := by
+      refine measurable_pi_lambda _ ?_
+      intro v
+      split_ifs
+      · exact measurable_fst
+      · exact measurable_snd
+      · exact measurable_const
+    -- Inline `triangleIndicator'` measurability (same proof as `triangleIndicator'_measurable`).
+    have hTI : Measurable (fun pts : Fin n → Torus d => triangleIndicator' p q r t pts) := by
+      unfold triangleIndicator' cechObservation
+      simp only [CechSample.hasEdge, CechSample.hasFill]
+      refine Measurable.mul ?_ ?_
+      · exact Finset.measurable_prod _ fun e _ => by
+          exact Measurable.ite (by
+            simp only [decide_eq_true_eq]
+            exact measurableSet_le (Measurable.dist (measurable_pi_apply _)
+              (measurable_pi_apply _)) measurable_const)
+            measurable_const measurable_const
+      · refine Measurable.ite ?_ measurable_const measurable_const
+        simp only [decide_eq_true_eq]
+        exact measurableSet_hasFill r t
+    exact hTI.comp hAssemble
+  · intro pts
+    -- Build the "centered at 0" auxiliary sample.
+    set auxPts : Fin n → Torus d := fun v =>
+      if v = j then pts j - pts i else if v = k then pts k - pts i else 0 with hauxPts_def
+    -- Step 1: translation invariance under `pts i`.
+    have h_translate :
+        triangleIndicator' p q r t (fun v => auxPts v + pts i) =
+        triangleIndicator' p q r t auxPts :=
+      triangleIndicator'_translate p q r t auxPts (pts i)
+    -- Step 2: `auxPts + pts i` agrees with `pts` on t.val = {i, j, k}.
+    have h_agree : ∀ v ∈ t.val, pts v = auxPts v + pts i := by
+      intro v hv
+      rw [ht_eq] at hv
+      simp only [Finset.mem_insert, Finset.mem_singleton] at hv
+      rcases hv with rfl | rfl | rfl
+      · -- v = i
+        simp [hauxPts_def, hij, hik]
+      · -- v = j
+        simp [hauxPts_def]
+      · -- v = k
+        simp [hauxPts_def, Ne.symm hjk]
+    have h_congr : triangleIndicator' p q r t pts =
+        triangleIndicator' p q r t (fun v => auxPts v + pts i) :=
+      triangleIndicator'_congr p q r t pts (fun v => auxPts v + pts i) h_agree
+    -- Step 3: combine.
+    rw [h_congr, h_translate]
 
 /-
 OLD PROOF BODY:
