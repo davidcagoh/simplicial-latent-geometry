@@ -181,10 +181,49 @@ theorem capProb_antitone (d : ℕ) : Antitone (capProb d) := by
     exact (measure_lt_top _ _).ne
   exact ENNReal.toReal_mono h_top (measure_mono h_sub)
 
-/-- Endpoints. `r = -1` covers the whole sphere; `r = 1` is the pole.
-    Kept axiomatic pending the closed form ‖x‖ = 1 ⇒ inner pole x ∈ [-1, 1]
-    chain (Cauchy-Schwarz) and the single-point measure-zero fact at the pole. -/
-axiom capProb_neg_one (d : ℕ) (hd : 2 ≤ d) : capProb d (-1) = 1
+/-- Pole vector has norm 1 (for `d ≥ 1`). -/
+private lemma norm_spherePoleVec (d : ℕ) (hd : 1 ≤ d) :
+    ‖spherePoleVec d‖ = 1 := by
+  have hd' : 0 < d := hd
+  unfold spherePoleVec
+  rw [dif_pos hd']
+  simp
+
+/-- For `d ≥ 1`, any sphere point's inner product with the pole is at most 1 in absolute value. -/
+private lemma abs_inner_spherePoleVec_le_one (d : ℕ) (hd : 1 ≤ d)
+    (x : SpherePoint d) : |inner ℝ (spherePoleVec d) x.val| ≤ 1 := by
+  have hx : ‖x.val‖ = 1 := mem_sphere_zero_iff_norm.mp x.2
+  have h_pole : ‖spherePoleVec d‖ = 1 := norm_spherePoleVec d hd
+  have := abs_real_inner_le_norm (spherePoleVec d) x.val
+  rw [h_pole, hx, one_mul] at this
+  exact this
+
+/-- For `d ≥ 1`, the inner product `inner pole x.val` lies in `[-1, 1]`. -/
+private lemma neg_one_le_inner_spherePoleVec (d : ℕ) (hd : 1 ≤ d)
+    (x : SpherePoint d) : -1 ≤ inner ℝ (spherePoleVec d) x.val := by
+  have h := abs_inner_spherePoleVec_le_one d hd x
+  exact (abs_le.mp h).1
+
+/-- **Endpoint `r = -1`: cap is the whole sphere.**
+    For `d ≥ 2` the underlying measure is a probability measure, and Cauchy-Schwarz
+    gives `inner pole x.val ≥ -1` for every `x : S^{d-1}`, so the cap set is `Set.univ`.
+    Concretised 2026-05-19 (was axiomatic). -/
+theorem capProb_neg_one (d : ℕ) (hd : 2 ≤ d) : capProb d (-1) = 1 := by
+  unfold capProb
+  have h_set :
+      {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val ≥ -1} = Set.univ := by
+    ext x
+    refine ⟨fun _ => Set.mem_univ x, fun _ => ?_⟩
+    exact neg_one_le_inner_spherePoleVec d (by linarith) x
+  rw [h_set]
+  haveI := uniformOnSphere_isProb' d hd
+  simp
+
+/-- **Endpoint `r = 1`: cap is the single pole point, measure-zero.**
+    Kept axiomatic pending the no-atoms property of `Measure.toSphere` (singletons on
+    the sphere are measure-zero in dimensions `d ≥ 2`). The set-theoretic side is
+    closeable (cap reduces to `{x | x.val = pole}` via Cauchy-Schwarz equality case),
+    but the measure-zero conclusion requires a no-atoms result not yet in Mathlib. -/
 axiom capProb_one (d : ℕ) (hd : 2 ≤ d) : capProb d 1 = 0
 
 /-- Continuity in the threshold (for `d ≥ 2`). Kept axiomatic pending the
