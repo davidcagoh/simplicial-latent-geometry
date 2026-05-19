@@ -47,25 +47,55 @@ open MeasureTheory
 
 /-! ## Point space: unit sphere in $\mathbb{R}^d$ -/
 
-/-- The unit sphere $S^{d-1} \subset \mathbb{R}^d$ as a `Subtype` of vectors of norm 1. -/
-abbrev SpherePoint (d : ℕ) := { x : EuclideanSpace ℝ (Fin d) // ‖x‖ = 1 }
+/-- The unit sphere $S^{d-1} \subset \mathbb{R}^d$, as the subtype carried by mathlib's
+    `Metric.sphere`. Concretised 2026-05-19 to use the standard mathlib sphere instead of
+    `{x // ‖x‖ = 1}` so that the radial-pushforward `Measure.toSphere` (HaarToSphere.lean)
+    applies directly. -/
+abbrev SpherePoint (d : ℕ) := Metric.sphere (0 : EuclideanSpace ℝ (Fin d)) 1
 
 /-- Measurable-space structure inherited from `EuclideanSpace`. -/
 instance (d : ℕ) : MeasurableSpace (SpherePoint d) := Subtype.instMeasurableSpace
 
-/-- Uniform probability measure on $S^{d-1}$. The canonical construction is the
-    pushforward of Haar measure on $SO(d)$ acting on a basepoint, equivalently the
-    normalized $(d-1)$-Hausdorff measure. Mathlib coverage of these is partial as of
-    the current toolchain; we axiomatize existence + the `IsProbabilityMeasure` witness
-    here pending a clean Mathlib formalization. The asymptotic theorems downstream
-    quantify only over `ValidRegime p d` (which forces `5 ≤ d`), so the choice of
-    representative measure for `d ≤ 1` (where `SpherePoint d` is empty or trivial)
-    does not affect any consumer. -/
-axiom uniformOnSphere (d : ℕ) : Measure (SpherePoint d)
+/-- Uniform probability measure on $S^{d-1}$. Built from the standard Lebesgue measure on
+    `EuclideanSpace ℝ (Fin d)` via mathlib's `Measure.toSphere` (radial pushforward; see
+    `Mathlib/MeasureTheory/Constructions/HaarToSphere.lean`), then normalized to total
+    mass 1. For `d ≤ 1` this is the zero measure (the underlying `toSphere` vanishes,
+    so the normalization factor `μ univ⁻¹` is `⊤⁻¹ = 0`); consumers only quantify over
+    `ValidRegime p d` which forces `5 ≤ d`. -/
+noncomputable def uniformOnSphere (d : ℕ) : Measure (SpherePoint d) :=
+  let μ : Measure (SpherePoint d) :=
+    (volume : Measure (EuclideanSpace ℝ (Fin d))).toSphere
+  (μ Set.univ)⁻¹ • μ
 
 /-- The uniform measure is a probability measure whenever the sphere is non-trivial,
-    i.e. `2 ≤ d`. Axiomatized alongside `uniformOnSphere`. -/
-axiom uniformOnSphere_isProb (d : ℕ) (hd : 2 ≤ d) : IsProbabilityMeasure (uniformOnSphere d)
+    i.e. `2 ≤ d`. Derives from the finite-measure instance on `Measure.toSphere` plus
+    `toSphere_apply_univ`'s non-zero ball volume formula (`dim * vol(ball 0 1)`). -/
+instance uniformOnSphere_isProb (d : ℕ) [hd : Fact (2 ≤ d)] :
+    IsProbabilityMeasure (uniformOnSphere d) := by
+  constructor
+  unfold uniformOnSphere
+  have h_dim_pos : 0 < Module.finrank ℝ (EuclideanSpace ℝ (Fin d)) := by
+    rw [finrank_euclideanSpace, Fintype.card_fin]
+    exact lt_of_lt_of_le (by norm_num : (0:ℕ) < 2) hd.out
+  haveI h_nontriv : Nontrivial (EuclideanSpace ℝ (Fin d)) :=
+    Module.finrank_pos_iff.mp h_dim_pos
+  have h_ne : (volume : Measure (EuclideanSpace ℝ (Fin d))).toSphere ≠ 0 :=
+    Measure.toSphere_ne_zero (volume : Measure (EuclideanSpace ℝ (Fin d)))
+  have h_finite :
+      (volume : Measure (EuclideanSpace ℝ (Fin d))).toSphere Set.univ ≠ ⊤ :=
+    (measure_lt_top _ _).ne
+  have h_pos :
+      (volume : Measure (EuclideanSpace ℝ (Fin d))).toSphere Set.univ ≠ 0 := by
+    rwa [Measure.measure_univ_ne_zero]
+  rw [Measure.smul_apply, smul_eq_mul]
+  exact ENNReal.inv_mul_cancel h_pos h_finite
+
+/-- Uniform-sphere as `Fact (2 ≤ d)` is the natural form for typeclass synthesis; expose a
+    direct version with explicit hypothesis for backward compatibility with the rest of
+    this file (which threads `hd : 2 ≤ d` as an ordinary argument). -/
+lemma uniformOnSphere_isProb' (d : ℕ) (hd : 2 ≤ d) :
+    IsProbabilityMeasure (uniformOnSphere d) :=
+  @uniformOnSphere_isProb d ⟨hd⟩
 
 /-! ## Edge and fill predicates -/
 
@@ -317,7 +347,7 @@ noncomputable instance : CechSphereModel ℕ where
   pointSpace _ := inferInstance
   μ d := uniformOnSphere d
   WellFormed d := 2 ≤ d
-  isProb d hd := uniformOnSphere_isProb d hd
+  isProb d hd := uniformOnSphere_isProb' d hd
   edge _ r x y := sphereEdge r x y
   matchR p d := matchedCos p d
   cechFillProb p d := cechFillProb p d
