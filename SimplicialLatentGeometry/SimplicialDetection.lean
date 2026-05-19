@@ -5157,9 +5157,44 @@ lemma cech_complement_set_inclusion (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p
     ν {s | doublySignedFilledCount p q s < (Nat.choose n 3 : ℝ) * g / 2} ≤
       ν {s | (Nat.choose n 3 : ℝ) * g / 2 ≤
         |doublySignedFilledCount p q s - ∫ s', doublySignedFilledCount p q s' ∂ν|} := by
-  -- OQ-18: depends on `moments_cech_signed` / `doublySignedFilledCount_cechObservation`
-  -- (now stubbed) and existential `hasFill` measurability. Stub pending refactor.
-  sorry
+  classical
+  set r : ℝ := matchRadius p d with hr_def
+  set q : ℝ := fillingProb p d with hq_def
+  set g : ℝ := geometricCov p d with hg_def
+  set ν : MeasureTheory.Measure (TwoParamSample n) :=
+    (cechMeasure n d r).map (cechObservation r) with hν_def
+  -- Step 1: identify the mean ∫ f dν = C(n,3)*g, by pushing through cechObservation.
+  have h_mean : (∫ s', doublySignedFilledCount p q s' ∂ν) = (Nat.choose n 3 : ℝ) * g := by
+    rw [hν_def,
+        MeasureTheory.integral_map (cechObservation_measurable r).aemeasurable
+          (Measurable.aestronglyMeasurable (by exact fun _ _ => trivial))]
+    -- pointwise: doublySignedFilledCount _ _ (cechObservation r s) = cechDoublySignedCount p q s r
+    rw [show
+      (∫ s, doublySignedFilledCount p q (cechObservation r s) ∂cechMeasure n d r) =
+      ∫ s, cechDoublySignedCount p q s r ∂cechMeasure n d r from
+        MeasureTheory.integral_congr_ae
+          (Filter.Eventually.of_forall fun s => doublySignedFilledCount_cechObservation p q r s)]
+    -- moments_cech_signed gives the value
+    have hm := moments_cech_signed n d p hp0 hp1
+    exact hm
+  -- Step 2: set inclusion {f < λ} ⊆ {|f - mean| ≥ λ}, where λ = C(n,3)*g/2 = mean/2.
+  apply MeasureTheory.measure_mono
+  intro s hs
+  rw [Set.mem_setOf_eq] at hs ⊢
+  rw [h_mean]
+  -- hs : doublySignedFilledCount p q s < C(n,3)*g/2
+  -- want : C(n,3)*g/2 ≤ |doublySignedFilledCount p q s - C(n,3)*g|
+  have h_diff : doublySignedFilledCount p q s - (Nat.choose n 3 : ℝ) * g < -((Nat.choose n 3 : ℝ) * g / 2) := by
+    linarith
+  have : |doublySignedFilledCount p q s - (Nat.choose n 3 : ℝ) * g| ≥ (Nat.choose n 3 : ℝ) * g / 2 := by
+    rw [abs_sub_comm]
+    have h_pos_diff : (Nat.choose n 3 : ℝ) * g - doublySignedFilledCount p q s > (Nat.choose n 3 : ℝ) * g / 2 := by
+      linarith
+    have h_nn : 0 ≤ (Nat.choose n 3 : ℝ) * g - doublySignedFilledCount p q s := by
+      linarith [hcg]
+    rw [abs_of_nonneg h_nn]
+    linarith
+  exact this
 
 /-
 OLD PROOF BODY:
