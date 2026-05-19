@@ -165,16 +165,6 @@ noncomputable def expectedFillVol (d : ℕ) (r : ℝ) : ℝ :=
 --     (n.choose 3 : ℝ) * p ^ 3 * q * (1 - p ^ 3 * q)
 -- This is commented out below and replaced with the corrected formula.
 
-/- COMMENTED OUT — incorrect variance formula (see note above):
-open MeasureTheory ProbabilityTheory in
-lemma moments_twoParam (n : ℕ) (p q : ℝ) (hp : 0 ≤ p) (hp1 : p ≤ 1)
-    (hq : 0 ≤ q) (hq1 : q ≤ 1) :
-    ∫ s, filledTriangleCount s ∂twoParamMeasure n p q = (n.choose 3 : ℝ) * p ^ 3 * q ∧
-    variance filledTriangleCount (twoParamMeasure n p q) =
-      (n.choose 3 : ℝ) * p ^ 3 * q * (1 - p ^ 3 * q) := by
-  sorry
--/
-
 /-! **Lemma 3 (Moments under 2PC, corrected).** Under 2PC(n, p, q):
       𝔼[Δ_f] = C(n,3) · p³ · q
       Var[Δ_f] = C(n,3) · p³q · (1 - p³q) + 12 · C(n,4) · p⁵ · q² · (1 - p)
@@ -308,71 +298,9 @@ lemma moments_twoParam_mean (n : ℕ) (p q : ℝ) (hp : 0 ≤ p) (hp1 : p ≤ 1)
       fun_prop;
     · filter_upwards [ ] with s using by split_ifs <;> norm_num ; exact Finset.prod_le_one ( fun _ _ => by split_ifs <;> norm_num ) fun _ _ => by split_ifs <;> norm_num;
 
-/- DEPRECATED (Strategy 1) — superseded by doublySignedFilledCount / cech_second_moment_bound
-   in Strategy 2. No downstream callers.
-open MeasureTheory ProbabilityTheory in
-/-- Variance of filledTriangleCount under 2PC (corrected). -/
-lemma moments_twoParam_var (n : ℕ) (p q : ℝ) (hp : 0 ≤ p) (hp1 : p ≤ 1)
-    (hq : 0 ≤ q) (hq1 : q ≤ 1) :
-    variance filledTriangleCount (twoParamMeasure n p q) =
-      (n.choose 3 : ℝ) * p ^ 3 * q * (1 - p ^ 3 * q) +
-      12 * (n.choose 4 : ℝ) * p ^ 5 * q ^ 2 * (1 - p) := by
-  sorry
--/
-
-/- DEPRECATED duplicate (Strategy 1). The variance half depends on `moments_twoParam_var`
-   which is itself commented out as dead. Kept only for reference; use `moments_twoParam_mean`
-   directly for the expectation, and `moments_twoParam_signed` / `cech_second_moment_bound`
-   for Strategy 2 variance arguments. No downstream callers.
-open MeasureTheory ProbabilityTheory in
-lemma moments_twoParam (n : ℕ) (p q : ℝ) (hp : 0 ≤ p) (hp1 : p ≤ 1)
-    (hq : 0 ≤ q) (hq1 : q ≤ 1) :
-    ∫ s, filledTriangleCount s ∂twoParamMeasure n p q = (n.choose 3 : ℝ) * p ^ 3 * q ∧
-    variance filledTriangleCount (twoParamMeasure n p q) =
-      (n.choose 3 : ℝ) * p ^ 3 * q * (1 - p ^ 3 * q) +
-      12 * (n.choose 4 : ℝ) * p ^ 5 * q ^ 2 * (1 - p) :=
-  ⟨moments_twoParam_mean n p q hp hp1 hq hq1, moments_twoParam_var n p q hp hp1 hq hq1⟩
--/
-
-/- COMMENTED OUT — disproved for d=0 where expectedFillVol vanishes but cechFilledCount is nonzero.
-   When d=0, Torus 0 is a single point, all Čech fills hold trivially, but
-   expectedFillVol 0 r = 0 (the integrand has factor d=0). This makes
-   C(n,3)*p*EVf = 0 ≠ C(n,3) = E[cechFilledCount]. Adding 0 < p < 1 rules out
-   d=0 since euclidBallVol 0 (2r) = 1 for any r, contradicting p < 1.
-
-   Original statement (without the 0 < p < 1 hypotheses):
-   open MeasureTheory ProbabilityTheory in
-   lemma moments_cech (n d : ℕ) (r p : ℝ) (hp : p = euclidBallVol d (2 * r)) :
-       let μ := cechMeasure n d r
-       let EVf := expectedFillVol d r
-       ∫ s, cechFilledCount s r ∂μ = (n.choose 3 : ℝ) * p * EVf ∧
-       variance (fun s => cechFilledCount s r) μ =
-         (n.choose 3 : ℝ) * p * EVf * (1 - p * EVf) +
-         12 * (n.choose 4 : ℝ) * (p - p ^ 2) * EVf ^ 2 := by
-     sorry
--/
-
-open MeasureTheory ProbabilityTheory in
-/-- **Lemma 4 (Moments under Čech, corrected).** Under Čech(n, r, d) with p = V_d(2r) ∈ (0,1):
-      𝔼[Δ_f] = C(n,3) p 𝔼[V_f]
-      Var[Δ_f] = C(n,3) p 𝔼[V_f](1 - p 𝔼[V_f]) + 12 C(n,4) (p - p²) 𝔼[V_f]²
-
-    **Modification from original:** added hypotheses `0 < p` and `p < 1` to exclude
-    the degenerate case d=0 where euclidBallVol 0 (2r) = 1 and the formula fails.
-
-    **Deprecated (Strategy 1):** used only by `cechFilledCount_integral` and
-    `cechFilledCount_variance` (Strategy 1 helpers). The Strategy 2 replacement is
-    `moments_cech_signed`. -/
-@[deprecated "Strategy 1 lemma; use moments_cech_signed for Strategy 2 proofs"]
-lemma moments_cech (n d : ℕ) (r p : ℝ) (hp : p = euclidBallVol d (2 * r))
-    (hp0 : 0 < p) (hp1 : p < 1) :
-    let μ := cechMeasure n d r
-    let EVf := expectedFillVol d r
-    ∫ s, cechFilledCount s r ∂μ = (n.choose 3 : ℝ) * p * EVf ∧
-    variance (fun s => cechFilledCount s r) μ =
-      (n.choose 3 : ℝ) * p * EVf * (1 - p * EVf) +
-      12 * (n.choose 4 : ℝ) * (p - p ^ 2) * EVf ^ 2 := by
-  sorry
+-- DEPRECATED (Strategy 1): `moments_cech` and its wrappers `cechFilledCount_integral`
+-- / `cechFilledCount_variance` were removed 2026-05-19 (session 77 follow-up). They had
+-- no downstream callers; the Strategy 2 replacement is `moments_cech_signed`.
 
 /-- **Definition 6 (Signed Filled Triangle Statistic).**
     Δ̃_f(s) = Δ_f(s) − 𝔼_2PC[Δ_f] = filledTriangleCount s − C(n,3) p³q. -/
@@ -398,33 +326,10 @@ open MeasureTheory in
 noncomputable def expectedEmptyVol (d : ℕ) (r : ℝ) : ℝ :=
   ∫ s in Set.Ioo 0 1, volumeEmpty d r s * (d : ℝ) * s ^ (d - 1)
 
-/- SUPERSEDED by Strategy 2 — these asymptotics assumed E[V_f] → 0 polynomially,
-   but Aristotle showed E[V_f] → L > 0 (positive constant) as d → ∞.
-   Kept for reference; not used in the current proof.
-
-open MeasureTheory in
-lemma asymptotics_expectedEmptyVol (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    ∃ C β : ℝ, 0 < C ∧ 0 < β ∧
-    Filter.Tendsto
-      (fun d : ℕ => expectedEmptyVol d (matchRadius p d) / (C * (d : ℝ) ^ (-β)))
-      Filter.atTop (nhds 1) := by
-  sorry
-
-open MeasureTheory in
-lemma asymptotics_expectedFillVol (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    ∃ A γ : ℝ, 0 < A ∧ 0 < γ ∧
-    Filter.Tendsto
-      (fun d : ℕ => expectedFillVol d (matchRadius p d) / (A * (d : ℝ) ^ (-γ)))
-      Filter.atTop (nhds 1) := by
-  sorry
-
-lemma decay_fillingProb (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
-    ∃ B δ : ℝ, 0 < B ∧ 0 < δ ∧
-    Filter.Tendsto
-      (fun d : ℕ => fillingProb p d / (B * (d : ℝ) ^ (-δ)))
-      Filter.atTop (nhds 1) := by
-  sorry
--/
+-- SUPERSEDED (Strategy 1): `asymptotics_expectedEmptyVol`, `asymptotics_expectedFillVol`,
+-- `decay_fillingProb` assumed E[V_f] → 0 polynomially, but Aristotle showed
+-- E[V_f] → L > 0 as d → ∞. Removed 2026-05-19. The Strategy 2 replacements are in the
+-- closed-form chain `geometricCov_eq` / `geometricCov_tendsto_pcubed_compcubed`.
 
 /-! ## Main Theorems -/
 
@@ -578,76 +483,14 @@ lemma cechFilledCount_integrable (n d : ℕ) (r : ℝ) :
 
 /-! ### Helper lemmas for snr_diverges -/
 
-/-- The integral of `cechFilledCount` under `cechMeasure` equals C(n,3)·p·EVf.
-    This is the first component of `moments_cech`. -/
-lemma cechFilledCount_integral (n d : ℕ) (r p : ℝ) (hp : p = euclidBallVol d (2 * r))
-    (hp0 : 0 < p) (hp1 : p < 1) :
-    ∫ s, cechFilledCount s r ∂cechMeasure n d r = (n.choose 3 : ℝ) * p * expectedFillVol d r :=
-  (moments_cech n d r p hp hp0 hp1).1
+-- DEPRECATED (Strategy 1): `cechFilledCount_integral` / `cechFilledCount_variance` were
+-- thin wrappers around the now-deleted `moments_cech`. Removed 2026-05-19 with no
+-- downstream callers. See `moments_cech_signed` for the Strategy 2 mean identity.
 
-/-- The variance of `cechFilledCount` under `cechMeasure`. -/
-lemma cechFilledCount_variance (n d : ℕ) (r p : ℝ) (hp : p = euclidBallVol d (2 * r))
-    (hp0 : 0 < p) (hp1 : p < 1) :
-    ProbabilityTheory.variance (fun s => cechFilledCount s r) (cechMeasure n d r) =
-      (n.choose 3 : ℝ) * p * expectedFillVol d r * (1 - p * expectedFillVol d r) +
-      12 * (n.choose 4 : ℝ) * (p - p ^ 2) * expectedFillVol d r ^ 2 :=
-  (moments_cech n d r p hp hp0 hp1).2
-
-/-
-PROVIDED SOLUTION
-Step 1: Derive hp : p = euclidBallVol d (2 * r).
-  From hr : r = matchRadius p d and matchRadius_spec p d hp0 hp1 : euclidBallVol d (2 * matchRadius p d) = p.
-  So hp : p = euclidBallVol d (2 * r) follows by rw [hr] and symmetry of matchRadius_spec.
-
-Step 2: Get the moments of cechFilledCount from moments_cech.
-  obtain ⟨h_mean, h_var⟩ := moments_cech n d r p hp
-
-Step 3: For the integral part:
-  Show ∫ cechSignedCount = ∫ cechFilledCount - C(n,3)*p^3*q.
-  Unfold cechSignedCount to get cechFilledCount s r - constant.
-  Use MeasureTheory.integral_sub (cechFilledCount_integrable) (integrable_const _)
-  and MeasureTheory.integral_const with the fact that cechMeasure is a probability measure
-  (so μ.real Set.univ = 1, using MeasureTheory.IsProbabilityMeasure.measure_univ).
-  Then ∫ cechSignedCount = h_mean value - C(n,3)*p^3*q = C(n,3)*(p*EVf - p^3*q) by ring.
-
-Step 4: For the variance part:
-  Show variance(cechSignedCount) = variance(cechFilledCount).
-  cechSignedCount s = cechFilledCount s r - c for constant c.
-  By ProbabilityTheory.variance definition and integral linearity:
-  ∫ (X - E[X])^2 is the same for X and X-c since (X-c) - E[X-c] = X - E[X].
-  More concretely, show the functions s ↦ cechSignedCount s - E[cechSignedCount] and
-  s ↦ cechFilledCount s - E[cechFilledCount] are equal (pointwise), hence their L2 norms agree.
-  Then use h_var.
--/
-open MeasureTheory ProbabilityTheory in
-/- DEPRECATED (Strategy 1) — superseded by cech_complement_prob_bound in Strategy 2.
-   No downstream callers; snr_diverges was the Strategy 1 SNR argument.
-/-- **Lemma 7 (SNR of Δ̃_f).** Under the matched pair 2PC(n,p,q*) and Čech(n,r,d):
-      𝔼_Čech[Δ̃_f] = C(n,3)(p·𝔼[V_f] - p³q*)
-      Var_Čech[Δ̃_f] = C(n,3)·p·𝔼[V_f]·(1-p·𝔼[V_f]) + 12·C(n,4)·(p-p²)·𝔼[V_f]²
-    so SNR = 𝔼[Δ̃_f]²/Var[Δ̃_f] → ∞ whenever n·𝔼[V_f](p,d) → 0.
-
-    PROVIDED SOLUTION
-    Mean: 𝔼_Čech[Δ̃_f] = 𝔼_Čech[Δ_f] - 𝔼_2PC[Δ_f] = C(n,3)(p·𝔼[V_f] - p³q*)
-    (use Lemmas 3 and 4).
-    Variance: Var_Čech[Δ̃_f] = Var_Čech[Δ_f] (shifting by a constant); apply Lemma 4.
-    SNR = 𝔼[Δ̃_f]²/Var[Δ̃_f] ~ n²·(p·𝔼[V_f])² / (n⁴·(p-p²)·𝔼[V_f]²) = O(1/n²) when
-    n·𝔼[V_f] → 0... wait, SNR → ∞ when n·𝔼[V_f] → 0 via:
-    SNR ~ [C(n,3)·p·𝔼[V_f]]² / [12·C(n,4)·(p-p²)·𝔼[V_f]²]
-        ~ n⁶·(p·𝔼[V_f])² / [n⁴·𝔼[V_f]²] = Θ(n²·p²) → ∞.
-    More carefully: the numerator 𝔼[Δ̃_f]² ~ C(n,3)²·p²·𝔼[V_f]² (dominant when q* is small)
-    grows faster than Var ~ 12·C(n,4)·(p-p²)·𝔼[V_f]² since C(n,3)²/C(n,4) → ∞ with n. -/
-lemma snr_diverges (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
-    (r : ℝ) (hr : r = matchRadius p d) (q : ℝ) (_hq : q = fillingProb p d) :
-    let μ := cechMeasure n d r
-    let EVf := expectedFillVol d r
-    ∫ s, cechSignedCount n d p q s r ∂μ =
-        (n.choose 3 : ℝ) * (p * EVf - p ^ 3 * q) ∧
-    variance (fun s => cechSignedCount n d p q s r) μ =
-        (n.choose 3 : ℝ) * p * EVf * (1 - p * EVf) +
-        12 * (n.choose 4 : ℝ) * (p - p ^ 2) * EVf ^ 2 := by
-  sorry
--/
+-- DEPRECATED (Strategy 1): `snr_diverges` was the SNR argument under the unsigned
+-- filled-triangle statistic. Superseded by `cech_complement_prob_bound` and the full
+-- Paley–Zygmund chain (`paleyZygmund_cech_prob_tendsto_one`, `phase_transition`).
+-- Removed 2026-05-19; no downstream callers.
 
 /-! ### Strategy 2: Doubly-Signed Statistic -/
 
@@ -902,44 +745,10 @@ lemma p_sq_mu_eq (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d) 
   rw [ show matchRadius p d ^ d * 2 ^ d = p by rw [ ← mul_pow, mul_comm ] ; exact h_match.symm ] ; ring;
   norm_num [ pow_mul', ← mul_pow ] ; ring
 
-/- **Sim-A5 / Job 2, Lemma 4 (8-term collapse).** Closed-form `geometricCov`
-    in the deep regime via the doubly-centered binomial expansion.
-
-    PROVIDED SOLUTION
-    Step 1: Expand `∏_{(ij)}(A_{ij} - p) · (F - q)` into 16 monomials.
-    Step 2: Group by edge-set `S ⊆ {12,13,23}` and fill `u ∈ {0,1}`.
-      Each `EE[A_S F^u] = μ_{S,u}^d` by coordinate factorisation.
-    Step 3: Pair `(S, 0)` with `(S, 1)`. Pair contribution:
-      `(-p)^{3-|S|} μ_{S,0}^d · [(1 - δ_S/μ_{S,0})^d - (1 - δ_∅)^d]`
-      where `δ_S = μ_{S,0} - μ_{S,1}` and `q = (1 - δ_∅)^d`.
-    Step 4 (S=∅): bracket = 0. ✓
-    Step 5 (S=wedge, |S|=2): by `wedge_implies_fill`, `δ_w = 0`. Bracket = 0.
-    Step 6 (S={12,13,23}): all-edges ⟹ fill (by `wedge_implies_fill` twice).
-      So `μ_{S,0} = μ_{S,1} = γ` and contribution is `γ^d · (1 - q)`.
-    Step 7 (S=single edge): `μ_{S,0} = α = 2r`, `μ_{S,1} = μ_e = 7 r²`.
-      `α^d = p`, so contribution per edge is `p² · (μ_e^d - q · α^d) =
-      p² · ((7r²)^d - q · p)`. Summed over 3 edges, and folded with the
-      outer `(-p)^{3-|S|} = p²` and the binomial sign... -- carefully tracked
-      in `analytic_decay_rate.md` §A3.3, lands at `3 p^3 [(7r/2)^d - q]`.
-
-   COMMENTED OUT: The formula below is false. The proof sketch in §A3.3 incorrectly
-   claims the wedge (|S|=2) contributions vanish. In fact, for any wedge S (e.g. S={12,13}),
-   `wedge_implies_fill` gives A_S · F = A_S pointwise, so
-   E[A_S · (F - q)] = (1 - q) · E[A_S] ≠ 0 in general.
-   Since E[A₁₂·A₁₃] = (4r²)^d = p² (where p = (2r)^d), the total wedge contribution is
-   -3p·(1-q)·p² = -3p³(1-q), yielding the corrected formula:
-     geometricCov = (1-q)·(3r²)^d + 3p³·((7r/2)^d - 1)
-   The original formula has `-fillingProb p d` where `-1` should appear.
-   Numerical check: d=1, p=1/4 gives geometricCov = 3/256 ≈ 0.01172,
-   but the formula below gives 51/1024 ≈ 0.04980. -/
-/-
-theorem geometricCov_eq_deep (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 1 ≤ d)
-    (hr : matchRadius p d ≤ 1/4) :
-    geometricCov p d
-    = (1 - fillingProb p d) * (3 * (matchRadius p d) ^ 2) ^ d
-      + 3 * p ^ 3 * ((7 * matchRadius p d / 2) ^ d - fillingProb p d) := by
-  sorry
--/
+-- DEPRECATED (Sim-A5 / Job 2): the original `geometricCov_eq_deep` 8-term-collapse
+-- closed form was disproved (wedge contributions don't vanish; the formula was off by
+-- `-3p^3(1-q)`). Superseded by the session-75 regime-free closed form `geometricCov_eq`
+-- and the headline `geometricCov_tendsto_pcubed_compcubed`. Removed 2026-05-19.
 
 /-! ### Symmetric integral helpers -/
 
