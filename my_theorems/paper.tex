@@ -130,7 +130,7 @@ The paper bundles two complementary instances of this framework, organized by th
 \emph{Helly number} of the ambient space.
 
 \smallskip
-\noindent\textbf{Paper~1 (Helly-2: $\ell^\infty$ torus, Rips clique fill).}
+\noindent\textbf{Instance~1 (Helly-2: $\ell^\infty$ torus, Rips clique fill).}
 On $\TT^d$ with the sup-norm, the Helly-2 property of the circle collapses any \v{C}ech
 existential nerve onto its Rips clique fill, so the natural downward-closed simplicial
 model is the Rips clique complex with $F_{ijk} = A_{ij} A_{ik} A_{jk}$. In this regime
@@ -139,7 +139,7 @@ $\geomCov(p,d) \to p^3(1-p)^3 > 0$ as $d \to \infty$, and detection succeeds for
 fixed~$d$.
 
 \smallskip
-\noindent\textbf{Paper~2 (Helly-$d$: sphere $S^{d-1}$, proper \v{C}ech fill).}
+\noindent\textbf{Instance~2 (Helly-$d$: sphere $S^{d-1}$, proper \v{C}ech fill).}
 On the sphere, Helly's theorem preserves the genuine \v{C}ech-vs.-Rips distinction.
 A Wishart-derived joint Gram-entry density of order $(\det G)^{(d-4)/2}$ gives the
 super-exponential tail
@@ -151,7 +151,7 @@ $d^*(n,p) = 3 \log n / \log\log n$, with universal leading constant~$3$.
 \noindent\textbf{Methodology.} The Helly number of the ambient space is the
 discriminator: Helly-2 ambients exhibit no dimensional barrier (the existential nerve
 collapses), while Helly-$d$ ambients (e.g.\ the sphere) preserve a genuine $d$-dependent
-barrier. The moment chain, the Paley--Zygmund detection bound (Paper~1 headline
+barrier. The moment chain, the Paley--Zygmund detection bound (Instance~1 headline
 \lean{phase\_transition}), and the regime-free Rips closed form
 $\geomCov(p,d) = q[(1-p)^3 + p^3] - q^2$ with limit $p^3(1-p)^3$ are formally verified in
 Lean~4 with Mathlib~\cite{Mathlib2020}, with no sorries in the active proof chain;
@@ -188,10 +188,10 @@ On ambients with Helly number~$d$---such as the sphere $S^{d-1}$---the existenti
 genuinely strengthens the clique condition, and the gap between the two complexes survives
 concentration of measure, supporting a genuine sub-logarithmic dimensional barrier.
 
-This paper bundles the two regimes within a single framework. Paper~1
+This paper bundles the two regimes within a single framework. Instance~1
 (\S\S\ref{sec:linfty-statistic}--\ref{sec:linfty-detection}) handles
 the Helly-2 case: $\ell^\infty$ torus with Rips clique fill, no dimensional barrier,
-$\geomCov \to p^3(1-p)^3 > 0$. Paper~2 (\S\ref{sec:sphere-instance}, with full Wishart
+$\geomCov \to p^3(1-p)^3 > 0$. Instance~2 (\S\ref{sec:sphere-instance}, with full Wishart
 derivation in Appendix~\ref{app:wishart}) handles the Helly-$d$ case: sphere with proper
 \v{C}ech fill, sub-logarithmic threshold $d^*(n,p) = 3 \log n / \log\log n$.
 Section~\ref{sec:helly-discriminator} states the unifying observation: the existence (or
@@ -251,10 +251,10 @@ thresholds in random structures.
 Our work carries this framework into the simplicial setting, where the presence of fill
 indicators introduces an additional layer of geometric dependence beyond edge structure alone.
 The detection landscape splits along the Helly number of the latent ambient. On Helly-2
-ambients (the $\ell^\infty$ torus, Paper~1), the Rips clique fill is structurally aligned
+ambients (the $\ell^\infty$ torus, Instance~1), the Rips clique fill is structurally aligned
 with the edge layer and the per-triangle signal $\geomCov(p,d)$ stabilises at
 $p^3(1-p)^3 > 0$ as $d \to \infty$, giving no $n$-independent barrier and recovering a
-BDER-style SNR threshold. On Helly-$d$ ambients (the sphere, Paper~2), the existential
+BDER-style SNR threshold. On Helly-$d$ ambients (the sphere, Instance~2), the existential
 \v{C}ech fill genuinely strengthens the clique condition and the signal vanishes
 super-exponentially in~$d$, giving the sub-logarithmic $d^*(n,p) = 3\log n / \log\log n$.
 
@@ -307,7 +307,7 @@ The quantity $\geomCov(p,d)$ (Definition~\ref{def:geomcov}) is the per-triangle 
 expectation of this doubly-centered product.
 
 \medskip
-\noindent\textbf{Paper~1: $\ell^\infty$ torus, Rips clique fill (Helly-2).}
+\noindent\textbf{Instance~1: $\ell^\infty$ torus, Rips clique fill (Helly-2).}
 On $\TT^d$ with sup-norm and Rips clique fill $F_{ijk} = A_{ij} A_{ik} A_{jk}$, the
 regime-free closed form
 \[
@@ -323,7 +323,7 @@ The joint-$(n,d)$ strengthening \lean{phase\_transition} extends this under an
 asymptotic-equivalence hypothesis on $\geomCov$.
 
 \medskip
-\noindent\textbf{Paper~2: sphere $S^{d-1}$, proper \v{C}ech fill (Helly-$d$).}
+\noindent\textbf{Instance~2: sphere $S^{d-1}$, proper \v{C}ech fill (Helly-$d$).}
 Under the existential common-cap fill on $S^{d-1}$, the joint Gram-entry density
 $\propto (\det G)^{(d-4)/2}$ (Wishart, Appendix~\ref{app:wishart}) yields the
 super-exponential tail
@@ -805,7 +805,7 @@ Combining the four cases yields $\Var[\tauf] = O(n^3)+O(n^4)+0+0 = O(n^4)$.
 \end{proof}
 
 %% ─────────────────────────────────────────────────────────────────────────────
-\section{Paper~1: Detection on the $\ell^\infty$ Torus (Helly-2)}\label{sec:linfty-detection}\label{sec:detection}
+\section{Instance~1: Detection on the $\ell^\infty$ Torus (Helly-2)}\label{sec:linfty-detection}\label{sec:detection}
 %% ─────────────────────────────────────────────────────────────────────────────
 
 Throughout this section, $\TV(\mu,\nu) = \sup_{A}|\mu(A) - \nu(A)|$ denotes the total
@@ -1051,14 +1051,14 @@ better SNR, remains open.
 
 \subsection{Limitations}
 
-Paper~1 is restricted to the flat torus $\TT^d$ with the sup-norm metric, where the
+Instance~1 is restricted to the flat torus $\TT^d$ with the sup-norm metric, where the
 ball-volume formula $(2r)^d$ yields the explicit matched radius $r(p,d) = p^{1/d}/2$ and
 the Helly-2 structure collapses the existential nerve onto the Rips clique. The detection
 conclusion is a positive statement about $\tauf$ and not a matching lower bound on
 complex-level indistinguishability; lower bounds for $\TV(\PC, \Cech)$ in restricted
 scaling regimes are left open (Remark~\ref{rem:tv-zero-caveat}).
 
-Paper~2 (sphere instance) requires concentration of measure on $S^{d-1}$ with proper
+Instance~2 (sphere instance) requires concentration of measure on $S^{d-1}$ with proper
 \v{C}ech fill, and currently reduces to six explicitly named structural axioms in
 \texttt{Geometry/Sphere.lean}; replacing these with full Mathlib-derived proofs is
 ongoing.
@@ -1158,11 +1158,11 @@ content:
     $\sqrt d \cdot r_d \to \Phi^{-1}(1 - p)$ (Poincaré / Li 2011 limit, deferred).
   \item \texttt{cechFillProb\_compl\_le\_gram\_tail} --- the Wishart Gram-density
     tail bound $1 - q_{\text{\v{C}ech}}(p,d) \le \bigl(3 z_p^2 / d\bigr)^{(d-2)/2}$
-    eventually (Paper~2 structural; see Appendix~\ref{app:wishart}).
+    eventually (Instance~2 structural; see Appendix~\ref{app:wishart}).
   \item \texttt{geomCovCech\_decomp\_ratio\_tendsto} --- the algebraic
     decomposition ratio
     $\geomCov_{\text{\v{C}ech}}(p,d) / \bigl(p^3 (1 - q_{\text{\v{C}ech}}(p,d))\bigr) \to 1$
-    (Paper~2 structural; see Appendix~\ref{app:wishart}).
+    (Instance~2 structural; see Appendix~\ref{app:wishart}).
 \end{itemize}
 The asymptotic headlines \texttt{cechFillProb\_tail\_asymptotic} and
 \texttt{geomCovCech\_asymptotic} are \emph{derived} from these six axioms via
