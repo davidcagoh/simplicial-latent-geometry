@@ -901,8 +901,10 @@ would require bounding the second moment of the likelihood ratio in the spirit o
 \begin{remark}[Convention-specificity]\label{rem:convention-specific}
 The collapse mechanism in part~(b) is specific to David's same-radius \v{C}ech convention.
 Under the Rips reinterpretation $F_{ijk} := A_{ij} A_{ik} A_{jk}$, the algebraic identity
-$F \equiv 1$ above $d^*(p)$ does \emph{not} hold; instead $\geomCov(p,d) =
-q[(1-p)^3 + p^3] - q^2$ with $q = (3 r^2)^d$ in the deep regime $r \le 1/4$, and
+$F \equiv 1$ above $d^*(p)$ does \emph{not} hold; instead, for \emph{all}
+$p \in (0,1)$ and $d \ge 1$, $\geomCov(p,d) = q[(1-p)^3 + p^3] - q^2$ with
+$q = \fillingP(p,d)$ (Lean: \texttt{geometricCov\_eq}, regime-free; in the deep regime
+$r \le 1/4$ one has additionally $q = (3 r^2)^d$), and
 $\geomCov(p,d) \to p^3 (1-p)^3 > 0$ as $d \to \infty$ at fixed $p$. The
 $d^*(p) = |\log p|/\log(3/2)$ headline is therefore a \emph{Helly-2 case study} rather than
 a structural barrier. See the ``Note added in revision'' before Section~\ref{sec:intro} for
@@ -1000,7 +1002,14 @@ Expanding $\geomCov$ into 16 monomials and applying three structural identities 
 The leading term is $\Theta((1-q)\cdot(3/4)^d\cdot p^2)$, decaying exponentially in $d$ but only
 polynomially in $p$. The closed forms in~\eqref{eq:phi-closed},~\eqref{eq:geomcov-deep},
 and the wedge collapse are formally verified in Lean~4
-(\texttt{fillingProb\_eq\_low\_r}, \texttt{geometricCov\_eq\_deep}, \texttt{wedge\_implies\_fill}).
+(\texttt{fillingProb\_eq\_low\_r}, \texttt{geometricCov\_eq\_deep}, \texttt{wedge\_implies\_fill}).%
+\footnote{A subsequent strengthening (Lean: \texttt{geometricCov\_eq}, May~2026, Aristotle job
+\texttt{bc9f57b3}) proves the regime-free identity
+$\geomCov(p,d) = q\bigl[(1-p)^3 + p^3\bigr] - q^2$ with $q = \fillingP(p,d)$ for all
+$p \in (0,1)$ and $d \ge 1$, dropping the deep-regime hypothesis $\matchR(p,d) \le 1/4$
+required by \texttt{geometricCov\_eq\_deep}. The deep-regime
+expansion~\eqref{eq:geomcov-deep} is the specialisation that supplies the explicit
+$(3r^2)^d$ and $(7r/2)^d$ factors used in the sparse-regime corollary.}
 
 Combining~\eqref{eq:geomcov-deep} with the $n^{3/2}$ Paley--Zygmund SNR condition of
 Theorem~\ref{thm:detection} yields a clean sparse-regime corollary.
@@ -1191,11 +1200,43 @@ $\det G = 0$ (Wishart-derived; full derivation in Appendix~\ref{app:wishart}). H
 \]
 giving a sub-logarithmic detection threshold $d^*(n,p) = 3 \log n / \log\log n$.
 
-The Lean catalog for this instance is in \texttt{SimplicialLatentGeometry/Geometry/Sphere.lean}
-with structural axioms for the deep Wishart machinery (named: \texttt{capProb},
-\texttt{normalQuantile}, \texttt{capCLT\_matched\_inversion},
-\texttt{cechFillProb\_compl\_le\_gram\_tail}, \texttt{geomCovCech\_decomp\_ratio\_tendsto});
-the asymptotic headlines are \emph{derived} from these.
+The Lean catalog for this instance is in \texttt{SimplicialLatentGeometry/Geometry/Sphere.lean}.
+As of May~2026 (post-session-77 follow-up, branch \texttt{oq-18-rips}) the file declares
+exactly \textbf{8 named structural axioms}, all documented inline with their mathematical
+content:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \texttt{capProb\_neg\_one}, \texttt{capProb\_one},
+    \texttt{capProb\_continuous} --- endpoint values and continuity of the
+    spherical-cap probability $\Pr_{x \sim \mathrm{Unif}(S^{d-1})}[\langle e_0, x\rangle \ge r]$
+    in the threshold $r$ (the cap measure has been concretised via Mathlib's
+    \texttt{Measure.toSphere}; these three remaining facts await Cauchy--Schwarz
+    norm bounds and the no-atoms property of the inner-product pushforward).
+  \item \texttt{matchedCos\_exists} --- existence of $r \in [-1, 1]$ with
+    $\mathrm{capProb}\,d\,r = p$ (IVT instance, deferred).
+  \item \texttt{normalQuantile} --- the standard-normal quantile constant
+    $\Phi^{-1}$, used as an opaque value pending Mathlib coverage.
+  \item \texttt{capCLT\_matched\_inversion} --- uniform CLT inversion: any
+    sequence $r_d$ with $\mathrm{capProb}\,d\,r_d = p$ satisfies
+    $\sqrt d \cdot r_d \to \Phi^{-1}(1 - p)$ (Poincaré / Li 2011 limit, deferred).
+  \item \texttt{cechFillProb\_compl\_le\_gram\_tail} --- the Wishart Gram-density
+    tail bound $1 - q_{\text{\v{C}ech}}(p,d) \le \bigl(3 z_p^2 / d\bigr)^{(d-2)/2}$
+    eventually (Paper~2 structural; see Appendix~\ref{app:wishart}).
+  \item \texttt{geomCovCech\_decomp\_ratio\_tendsto} --- the algebraic
+    decomposition ratio
+    $\geomCov_{\text{\v{C}ech}}(p,d) / \bigl(p^3 (1 - q_{\text{\v{C}ech}}(p,d))\bigr) \to 1$
+    (Paper~2 structural; see Appendix~\ref{app:wishart}).
+\end{itemize}
+The asymptotic headlines \texttt{cechFillProb\_tail\_asymptotic} and
+\texttt{geomCovCech\_asymptotic} are \emph{derived} from these eight axioms via
+a pure analytic squeeze (\texttt{gram\_tail\_bound\_tendsto\_zero}). The axiom
+count dropped from 17 (session~70) to 12 (session~77 follow-up,
+commits \texttt{b63fc28} concretising \texttt{uniformOnSphere} via
+\texttt{Measure.toSphere} + \texttt{51fa5ff} concretising
+\texttt{cechFillProb}/\texttt{ripsFillProb}/\texttt{geomCovCech} as iid
+product-measure integrals) to the current 8 (commits \texttt{1b1c739} promoting
+\texttt{cechFillProb\_le\_one} to a theorem + \texttt{66ae0c5} concretising
+\texttt{capProb} and closing \texttt{capProb\_mem\_unitInterval} +
+\texttt{capProb\_antitone}).
 
 \subsection{Instance 3: $L^2$ and $\ell^p$ Euclidean ambients (no-go)}\label{sec:lp-nogo}
 
@@ -1423,6 +1464,24 @@ the exact formula~\eqref{eq:geomcov-deep} used in the sparse-regime corollary
   $\prod_{(ij)}(A_{ij}-p)\cdot(F-q)$ and applying the wedge, edge, and fill moment
   results above. This is the primary quantitative result of Track~A.
   Aristotle job \texttt{9d63166a}.
+
+\item \lean{geometricCov\_eq}: \emph{Regime-free strengthening.} The same
+  decomposition holds without the deep-regime hypothesis $r \le 1/4$: for all
+  $p \in (0,1)$ and $d \ge 1$,
+  \[
+    \geomCov(p,d) = q\bigl[(1-p)^3 + p^3\bigr] - q^2, \qquad q = \fillingP(p,d).
+  \]
+  The Aristotle proof (job \texttt{bc9f57b3}, May~2026; cherry-picked as commit
+  \texttt{6be3e1f}) introduces $\sim$480 lines of regime-free helpers
+  (\lean{volume\_edgeSet01}, \lean{volume\_wedgeSet01},
+  \lean{edge\_integral\_free}, \lean{wedge\_integral\_free} with three
+  coordinate-swap symmetries, \lean{centered\_edge\_moment\_free},
+  \lean{centered\_edge\_moment\_fill\_free}) that bypass the $r \le 1/4$
+  restriction by integrating over the full torus geometry rather than the
+  ball-disjoint regime. Downstream headlines
+  \lean{geometricCov\_sub\_closedForm\_tendsto\_zero} and
+  \lean{geometricCov\_tendsto\_pcubed\_compcubed} close as trivial
+  corollaries.
 
 \item \lean{geometricCov\_decay\_rate\_le}: An upper bound on $\geomCov(p,d)$ in the
   deep regime. Aristotle job \texttt{9d63166a}.
