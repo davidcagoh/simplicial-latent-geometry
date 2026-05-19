@@ -2845,7 +2845,9 @@ lemma edge_integral_12_free (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd 
       · exact h_perm.measurable hs;
       · exact fun x => by ext i; fin_cases i <;> rfl;
       · grind;
-  exact?
+  exact Real.ext_cauchy
+    (congrArg Real.cauchy
+      (h_perm fun pts => if dist (pts 1) (pts 2) ≤ matchRadius p d then 1 else 0))
 
 open MeasureTheory in
 lemma volume_wedgeSet01 (r : ℝ) (hr0 : 0 ≤ r) (hr : r < 1 / 2) :
@@ -5075,10 +5077,10 @@ lemma cech_second_moment_bound (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1)
     Key: the Čech pushforward is a probability measure (cechPushforward_isProbabilityMeasure),
     so Chebyshev applies. Use doublySignedFilledCount_cechObservation to relate
     doublySignedFilledCount on TwoParamSample to cechDoublySignedCount on CechSample. -/
-lemma doublySignedFilledCount_memLp (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
+lemma doublySignedFilledCount_memLp (n d : ℕ) (p : ℝ) (_hp0 : 0 < p) (_hp1 : p < 1) :
     MeasureTheory.MemLp (fun s => doublySignedFilledCount p (fillingProb p d) s) 2
-      ((cechMeasure n d (matchRadius p d)).map (cechObservation (matchRadius p d))) := by
-  exact?
+      ((cechMeasure n d (matchRadius p d)).map (cechObservation (matchRadius p d))) :=
+  MeasureTheory.MemLp.of_discrete
 
 /-
 PROBLEM
@@ -5231,7 +5233,14 @@ lemma cech_complement_prob_bound (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p < 
     · exact absurd x.2 ( by exact ne_of_lt ( lt_of_le_of_lt ( Finset.card_le_univ _ ) ( by norm_num ) ) );
   · have := @cech_complement_set_inclusion n d p hp0 hp1 ?_ <;> norm_num at *;
     · refine' le_trans ( ENNReal.toReal_mono _ this ) _;
-      · exact?;
+      · exact MeasureTheory.measure_ne_top
+          (MeasureTheory.Measure.map (cechObservation (matchRadius p d))
+            (cechMeasure n d (matchRadius p d)))
+          {s |
+            ↑(n.choose 3) * geometricCov p d / 2 ≤
+              |doublySignedFilledCount p (fillingProb p d) s -
+                ∫ s', doublySignedFilledCount p (fillingProb p d) s' ∂MeasureTheory.Measure.map
+                    (cechObservation (matchRadius p d)) (cechMeasure n d (matchRadius p d))|}
       · have := @ProbabilityTheory.meas_ge_le_variance_div_sq;
         refine' le_trans ( ENNReal.toReal_mono _ ( this _ _ ) ) _;
         · exact ENNReal.ofReal_ne_top;
