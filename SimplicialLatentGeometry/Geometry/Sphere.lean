@@ -250,12 +250,45 @@ axiom cechFillProb_compl_le_gram_tail (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
       1 - cechFillProb p d ≤
         ((3 * (normalQuantile (1 - p))^2) / (d : ℝ))^(((d : ℝ) - 2) / 2)
 
-/-- **Axiom (cechFillProb ≤ 1).** Each `cechFillProb p d` is a probability (sub-probability
-    when `uniformOnSphere d` is not yet known to be a probability measure for `d ≤ 1`).
-    Provable in principle now that `cechFillProb` is concrete — kept axiomatic pending the
-    Subprobability-measure bound on the product (`(c⁻¹ * c) ≤ 1` cascade through three
-    product factors), which is a non-trivial ENNReal arithmetic chain. -/
-axiom cechFillProb_le_one (p : ℝ) (d : ℕ) : cechFillProb p d ≤ 1
+/-- The uniform sphere measure is always zero-or-probability (it equals the
+    normalized `Measure.toSphere`; if the underlying total mass is 0, the
+    normalization `0⁻¹ • 0 = ⊤ • 0 = 0`, otherwise mass is `c⁻¹ * c = 1`).
+    Concretised 2026-05-19 to replace the axiomatic ENNReal arithmetic chain. -/
+instance uniformOnSphere_isZeroOrProb (d : ℕ) :
+    IsZeroOrProbabilityMeasure (uniformOnSphere d) := by
+  unfold uniformOnSphere
+  set μ : Measure (SpherePoint d) :=
+    (volume : Measure (EuclideanSpace ℝ (Fin d))).toSphere with hμ_def
+  refine ⟨?_⟩
+  rw [Measure.smul_apply, smul_eq_mul]
+  by_cases h : μ Set.univ = 0
+  · left; simp [h]
+  · right
+    have h_finite : μ Set.univ ≠ ⊤ := (measure_lt_top μ Set.univ).ne
+    exact ENNReal.inv_mul_cancel h h_finite
+
+/-- **`cechFillProb p d ≤ 1`** — direct consequence of the iid-product measure being
+    zero-or-probability (`uniformOnSphere_isZeroOrProb`) applied to the underlying
+    integrand set. Concretised 2026-05-19 (was axiomatic). -/
+theorem cechFillProb_le_one (p : ℝ) (d : ℕ) : cechFillProb p d ≤ 1 := by
+  unfold cechFillProb
+  -- The product measure of zero-or-probability measures is again zero-or-probability:
+  -- product instance only fires for IsProbabilityMeasure, so we case-split.
+  -- More directly: `measureReal_le_one` from probability typeclass requires
+  -- `IsZeroOrProbabilityMeasure` on the product. We prove that.
+  have h_inst : IsZeroOrProbabilityMeasure
+      ((uniformOnSphere d).prod ((uniformOnSphere d).prod (uniformOnSphere d))) := by
+    rcases (uniformOnSphere_isZeroOrProb d).measure_univ with h | h
+    · -- uniformOnSphere d = 0 since μ univ = 0 and the measure is finite
+      have h_zero : uniformOnSphere d = 0 := by
+        rw [← Measure.measure_univ_eq_zero]; exact h
+      refine ⟨Or.inl ?_⟩
+      rw [h_zero]; simp
+    · -- uniformOnSphere d is a probability measure
+      haveI : IsProbabilityMeasure (uniformOnSphere d) := ⟨h⟩
+      exact inferInstance
+  exact ENNReal.toReal_le_of_le_ofReal zero_le_one
+    (ENNReal.ofReal_one.symm ▸ prob_le_one)
 
 /-- **Axiom (Rips-Čech algebraic decomposition, sphere).** The geometric covariance
     on the sphere admits the algebraic decomposition
