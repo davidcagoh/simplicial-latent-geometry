@@ -494,6 +494,71 @@ lemma measurableSet_cechSample_hasFill (n d : ℕ) (r : ℝ)
       ((measurable_pi_apply j).comp h_points_meas))
     measurable_const
 
+/-- The Rips observation map `cechObservation r : CechSample n d → TwoParamSample n`
+    is measurable. Since `TwoParamSample n` has the discrete σ-algebra (and is finite,
+    hence countable), it suffices to show that each singleton preimage is measurable;
+    that preimage is a finite intersection of `hasEdge` / `hasFill` sets (and their
+    complements), all of which are measurable in the comap σ-algebra on `CechSample n d`. -/
+lemma cechObservation_measurable {n d : ℕ} (r : ℝ) :
+    Measurable (cechObservation r : CechSample n d → TwoParamSample n) := by
+  classical
+  have h_points_meas : Measurable (CechSample.points : CechSample n d → Fin n → Torus d) :=
+    fun _ hx => ⟨_, hx, rfl⟩
+  have h_hasEdge : ∀ i j : Fin n, MeasurableSet {s : CechSample n d | s.hasEdge r i j} := by
+    intro i j
+    exact measurableSet_le
+      (((measurable_pi_apply i).comp h_points_meas).dist
+        ((measurable_pi_apply j).comp h_points_meas))
+      measurable_const
+  refine measurable_to_countable' (fun x => ?_)
+  have h_eq : (cechObservation r) ⁻¹' {x} =
+      (⋂ i : Fin n, ⋂ j : Fin n,
+        {s : CechSample n d | decide (s.hasEdge r i j) = x.edge i j}) ∩
+      (⋂ t : {σ : Finset (Fin n) // σ.card = 3},
+        {s : CechSample n d | decide (s.hasFill r t) = x.fill t}) := by
+    ext s
+    simp only [Set.mem_preimage, Set.mem_singleton_iff, Set.mem_inter_iff,
+      Set.mem_iInter, Set.mem_setOf_eq]
+    constructor
+    · intro h
+      refine ⟨fun i j => ?_, fun t => ?_⟩
+      · exact congrArg (fun y : TwoParamSample n => y.edge i j) h
+      · exact congrArg (fun y : TwoParamSample n => y.fill t) h
+    · rintro ⟨he, hf⟩
+      cases x with
+      | mk xe xf =>
+        show cechObservation r s = ⟨xe, xf⟩
+        unfold cechObservation
+        congr 1
+        · funext i j; exact he i j
+        · funext t; exact hf t
+  rw [h_eq]
+  refine MeasurableSet.inter ?_ ?_
+  · refine MeasurableSet.iInter (fun i => MeasurableSet.iInter (fun j => ?_))
+    by_cases hb : x.edge i j
+    · have hset : {s : CechSample n d | decide (s.hasEdge r i j) = x.edge i j} =
+          {s | s.hasEdge r i j} := by
+        ext s
+        by_cases hs : s.hasEdge r i j <;> simp [hb, hs]
+      rw [hset]; exact h_hasEdge i j
+    · have hset : {s : CechSample n d | decide (s.hasEdge r i j) = x.edge i j} =
+          {s | s.hasEdge r i j}ᶜ := by
+        ext s
+        by_cases hs : s.hasEdge r i j <;> simp [hb, hs]
+      rw [hset]; exact (h_hasEdge i j).compl
+  · refine MeasurableSet.iInter (fun t => ?_)
+    by_cases hb : x.fill t
+    · have hset : {s : CechSample n d | decide (s.hasFill r t) = x.fill t} =
+          {s | s.hasFill r t} := by
+        ext s
+        by_cases hs : s.hasFill r t <;> simp [hb, hs]
+      rw [hset]; exact measurableSet_cechSample_hasFill n d r t
+    · have hset : {s : CechSample n d | decide (s.hasFill r t) = x.fill t} =
+          {s | s.hasFill r t}ᶜ := by
+        ext s
+        by_cases hs : s.hasFill r t <;> simp [hb, hs]
+      rw [hset]; exact (measurableSet_cechSample_hasFill n d r t).compl
+
 /-- cechFilledCount is integrable under cechMeasure: each triangle indicator is the
     integrable indicator of `measurableSet_cechSample_hasFill` (probability measure
     is finite). -/
@@ -3115,10 +3180,8 @@ Or even simpler: try apply MeasureTheory.Measure.isProbabilityMeasure_map; apply
 -/
 instance cechPushforward_isProbabilityMeasure (n d : ℕ) (r : ℝ) :
     MeasureTheory.IsProbabilityMeasure
-      ((cechMeasure n d r).map (cechObservation r)) := by
-  -- OQ-18: original proof had `exact?` and existential-form `hasFill` measurability.
-  -- Stub pending refactor.
-  sorry
+      ((cechMeasure n d r).map (cechObservation r)) :=
+  MeasureTheory.Measure.isProbabilityMeasure_map (cechObservation_measurable r).aemeasurable
 
 /-
 OLD PROOF BODY:
@@ -3516,9 +3579,12 @@ private lemma integral_over_nu_eq' {n d : ℕ} (r : ℝ) (f : TwoParamSample n �
     ∫ s, f s ∂ν = ∫ pts : Fin n → Torus d,
       f (cechObservation r (CechSample.mk pts))
       ∂MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) := by
-  -- OQ-18: original proof uses `exact?` and existential-form `hasFill` measurability.
-  -- Stub pending refactor.
-  sorry
+  -- Rewrite the pushforward integral via `integral_map`, then use `cech_integral_eq`.
+  show ∫ s, f s ∂((cechMeasure n d r).map (cechObservation r)) = _
+  have hf_meas : Measurable f := fun _ _ => trivial
+  rw [MeasureTheory.integral_map (cechObservation_measurable r).aemeasurable
+        hf_meas.aestronglyMeasurable]
+  exact cech_integral_eq n d r (fun s => f (cechObservation r s))
 
 /-
 OLD PROOF BODY:
