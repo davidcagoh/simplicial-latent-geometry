@@ -155,7 +155,7 @@ barrier. The moment chain, the Paley--Zygmund detection bound (Instance~1 headli
 \lean{phase\_transition}), and the regime-free Rips closed form
 $\geomCov(p,d) = q[(1-p)^3 + p^3] - q^2$ with limit $p^3(1-p)^3$ are formally verified in
 Lean~4 with Mathlib~\cite{Mathlib2020}, with no sorries in the active proof chain;
-the sphere headline reduces to five explicitly named structural axioms.
+the sphere headline reduces to four explicitly named structural axioms.
 \end{abstract}
 
 \maketitle
@@ -364,7 +364,7 @@ $d^*(n,p) = 3 \log n / \log\log n$, with universal leading constant $3$.
   The moment chain, the regime-free Rips closed form, the limit
   $\geomCov(p,d) \to p^3(1-p)^3$, and the detection theorem (TV~$\to 1$) are formally
   verified in Lean~4 with Mathlib, with no remaining sorries in the active proof chain.
-  The sphere headlines reduce to five explicitly named structural axioms in
+  The sphere headlines reduce to four explicitly named structural axioms in
   \texttt{Geometry/Sphere.lean}; see Appendix~\ref{app:lean} for the full catalog.
 \end{enumerate}
 
@@ -1059,7 +1059,7 @@ complex-level indistinguishability; lower bounds for $\TV(\PC, \Cech)$ in restri
 scaling regimes are left open (Remark~\ref{rem:tv-zero-caveat}).
 
 Instance~2 (sphere instance) requires concentration of measure on $S^{d-1}$ with proper
-\v{C}ech fill, and currently reduces to five explicitly named structural axioms in
+\v{C}ech fill, and currently reduces to four explicitly named structural axioms in
 \texttt{Geometry/Sphere.lean}; replacing these with full Mathlib-derived proofs is
 ongoing.
 
@@ -1141,16 +1141,13 @@ giving a sub-logarithmic detection threshold $d^*(n,p) = 3 \log n / \log\log n$.
 
 The Lean catalog for this instance is in \texttt{SimplicialLatentGeometry/Geometry/Sphere.lean}.
 As of May~2026 (post-session-79 follow-up, branch \texttt{oq-18-rips}) the file declares
-exactly \textbf{5 named structural axioms}, all documented inline with their mathematical
-content:
+exactly \textbf{4 named structural axioms}, all documented inline with their mathematical
+content. The earlier analytic obstacles \texttt{capProb\_continuous} (cap probability
+continuous in the threshold via radial-cone Fubini + dominated convergence) and
+\texttt{matchedCos\_exists} (matched threshold by IVT) are now theorems (Aristotle
+\texttt{928ebf69}, commit \texttt{528cec2}, May~2026; \texttt{abeb3eb} for the IVT
+half). The remaining axioms are:
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \texttt{capProb\_continuous} --- continuity of the
-    spherical-cap probability $\Pr_{x \sim \mathrm{Unif}(S^{d-1})}[\langle e_0, x\rangle \ge r]$
-    in the threshold $r$. The endpoint values $\mathrm{capProb}\,d\,(-1) = 1$ and
-    $\mathrm{capProb}\,d\,1 = 0$ are now theorems (commits \texttt{391ef9c} and
-    \texttt{29bfcdf}, May~2026), reducing the axiom count from 8 to~6, and the
-    matched-threshold existence \texttt{matchedCos\_exists} is now a theorem via IVT
-    (commit \texttt{abeb3eb}, May~2026), giving the final 5.
   \item \texttt{normalQuantile} --- the standard-normal quantile constant
     $\Phi^{-1}$, used as an opaque value pending Mathlib coverage.
   \item \texttt{capCLT\_matched\_inversion} --- uniform CLT inversion: any
@@ -1165,7 +1162,7 @@ content:
     (Instance~2 structural; see Appendix~\ref{app:wishart}).
 \end{itemize}
 The asymptotic headlines \texttt{cechFillProb\_tail\_asymptotic} and
-\texttt{geomCovCech\_asymptotic} are \emph{derived} from these five axioms via
+\texttt{geomCovCech\_asymptotic} are \emph{derived} from these four axioms via
 a pure analytic squeeze (\texttt{gram\_tail\_bound\_tendsto\_zero}). The axiom
 count dropped from 17 (session~70) through 12 (session~77, commits
 \texttt{b63fc28} concretising \texttt{uniformOnSphere} via
@@ -1173,11 +1170,15 @@ count dropped from 17 (session~70) through 12 (session~77, commits
 \texttt{cechFillProb}/\texttt{ripsFillProb}/\texttt{geomCovCech} as iid
 product-measure integrals), to 8 (commits \texttt{1b1c739} promoting
 \texttt{cechFillProb\_le\_one} to a theorem and \texttt{66ae0c5} closing
-\texttt{capProb\_mem\_unitInterval} and \texttt{capProb\_antitone}), to 6 (commits
-\texttt{391ef9c} and \texttt{29bfcdf} promoting \texttt{capProb\_neg\_one} and
-\texttt{capProb\_one} from axioms to theorems), and finally to the current 5
-(commit \texttt{abeb3eb} promoting \texttt{matchedCos\_exists} via IVT,
-May~2026).
+\texttt{capProb\_mem\_unitInterval} and \texttt{capProb\_antitone}), to 6
+(commits \texttt{391ef9c} and \texttt{29bfcdf} promoting
+\texttt{capProb\_neg\_one} and \texttt{capProb\_one} from axioms to theorems),
+to 5 (commit \texttt{abeb3eb} promoting \texttt{matchedCos\_exists} via IVT),
+and finally to the current 4 (Aristotle \texttt{928ebf69}, commit
+\texttt{528cec2}, proving \texttt{capProb\_continuous} via the radial-cone
+Fubini argument: codim-1 cones $\{w \mid \langle e_0, w\rangle = c \cdot \|w\|\}$
+have Lebesgue measure zero, level sets push forward to $\mathrm{toSphere}$-null
+sets, and dominated convergence on the cap indicator gives continuity).
 
 \subsection{Instance 3: $L^2$ and $\ell^p$ Euclidean ambients (no-go)}\label{sec:lp-nogo}
 
