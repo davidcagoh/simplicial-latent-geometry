@@ -186,16 +186,38 @@ lemma matchedCos_asymptotic (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
 The triangle (Rips/Čech) probabilities are axiomatized as functions of `(p, d)`; their
 defining integral expressions live in the moonshot proof and are not yet ported. -/
 
-/-- $q_{\text{Čech}}(p, d) = \Pr[\text{sphereCechFill at threshold matchedCos } p d]$. -/
-axiom cechFillProb (p : ℝ) (d : ℕ) : ℝ
+/-- $q_{\text{Čech}}(p, d) = \Pr[\text{sphereCechFill at threshold matchedCos } p d]$.
+    Defined as the measure (under the iid product of `uniformOnSphere d` on three points)
+    of the Čech-fill event at the matched cosine threshold. Concretised 2026-05-19. -/
+noncomputable def cechFillProb (p : ℝ) (d : ℕ) : ℝ :=
+  let r := matchedCos p d
+  let ν := (uniformOnSphere d).prod ((uniformOnSphere d).prod (uniformOnSphere d))
+  (ν {triple : SpherePoint d × SpherePoint d × SpherePoint d |
+    sphereCechFill r triple.1 triple.2.1 triple.2.2}).toReal
 
-/-- Rips clique probability under matched edge $p$. -/
-axiom ripsFillProb (p : ℝ) (d : ℕ) : ℝ
+/-- Rips clique probability under matched edge $p$: probability that all three pairwise
+    edges are present at the matched cosine threshold. -/
+noncomputable def ripsFillProb (p : ℝ) (d : ℕ) : ℝ :=
+  let r := matchedCos p d
+  let ν := (uniformOnSphere d).prod ((uniformOnSphere d).prod (uniformOnSphere d))
+  (ν {triple : SpherePoint d × SpherePoint d × SpherePoint d |
+    sphereEdge r triple.1 triple.2.1 ∧
+    sphereEdge r triple.1 triple.2.2 ∧
+    sphereEdge r triple.2.1 triple.2.2}).toReal
 
+open Classical in
 /-- Geometric covariance under Čech fill on the sphere:
     `E[(A₁₂−p)(A₁₃−p)(A₂₃−p)(F^{Čech}−q_{Čech})]`. Closed form follows the four-moment
     decomposition `q_Rips(1−q_Čech) + 3p²(β−p)` with `β = E[A₁₂ · F^{Čech}]`. -/
-axiom geomCovCech (p : ℝ) (d : ℕ) : ℝ
+noncomputable def geomCovCech (p : ℝ) (d : ℕ) : ℝ :=
+  let r := matchedCos p d
+  let q := cechFillProb p d
+  let ν := (uniformOnSphere d).prod ((uniformOnSphere d).prod (uniformOnSphere d))
+  ∫ triple, ((if sphereEdge r triple.1 triple.2.1 then (1:ℝ) - p else -p) *
+             (if sphereEdge r triple.1 triple.2.2 then (1:ℝ) - p else -p) *
+             (if sphereEdge r triple.2.1 triple.2.2 then (1:ℝ) - p else -p) *
+             (if sphereCechFill r triple.1 triple.2.1 triple.2.2
+                then (1:ℝ) - q else -q)) ∂ν
 
 /-! ### Structural axioms for Paper 2 sphere asymptotics
 
@@ -228,9 +250,11 @@ axiom cechFillProb_compl_le_gram_tail (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
       1 - cechFillProb p d ≤
         ((3 * (normalQuantile (1 - p))^2) / (d : ℝ))^(((d : ℝ) - 2) / 2)
 
-/-- **Axiom (cechFillProb lower bound).** Each `cechFillProb p d` is a probability,
-    hence $\ge 0$. (Structural axiom because `cechFillProb` is itself axiomatized
-    as opaque.) -/
+/-- **Axiom (cechFillProb ≤ 1).** Each `cechFillProb p d` is a probability (sub-probability
+    when `uniformOnSphere d` is not yet known to be a probability measure for `d ≤ 1`).
+    Provable in principle now that `cechFillProb` is concrete — kept axiomatic pending the
+    Subprobability-measure bound on the product (`(c⁻¹ * c) ≤ 1` cascade through three
+    product factors), which is a non-trivial ENNReal arithmetic chain. -/
 axiom cechFillProb_le_one (p : ℝ) (d : ℕ) : cechFillProb p d ≤ 1
 
 /-- **Axiom (Rips-Čech algebraic decomposition, sphere).** The geometric covariance
