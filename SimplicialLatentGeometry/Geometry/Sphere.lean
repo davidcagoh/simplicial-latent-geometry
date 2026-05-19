@@ -348,11 +348,244 @@ theorem capProb_one (d : ℕ) (hd : 2 ≤ d) : capProb d 1 = 0 := by
     · exact zero_le _
   rw [h_zero]; simp
 
-/-- Continuity in the threshold (for `d ≥ 2`). Kept axiomatic pending the
-    no-atoms / continuous-distribution argument on the inner-product
-    pushforward (`r ↦ μ {inner ≥ r}` is continuous iff the pushforward of
-    `inner pole ·` has no atoms, which is the cap density argument). -/
-axiom capProb_continuous (d : ℕ) (hd : 2 ≤ d) : Continuous (capProb d)
+/-
+The radial cone `Ioo 0 1 • (coe '' {x | ⟨pole, x⟩ = r})` is contained in
+    `{w | ⟨pole, w⟩ = r · ‖w‖}`.
+-/
+private lemma cone_subset_inner_eq_mul_norm (d : ℕ) (r : ℝ) :
+    Set.Ioo (0 : ℝ) 1 •
+      (Subtype.val '' {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val = r}) ⊆
+    {w : EuclideanSpace ℝ (Fin d) | inner ℝ (spherePoleVec d) w = r * ‖w‖} := by
+  intro w hw; obtain ⟨ t, ht, x, hx, rfl ⟩ := hw; simp_all +decide [ inner_smul_right ] ;
+  rw [ norm_smul, Real.norm_of_nonneg ht.1.le, hx.2, mul_one, mul_comm ]
+
+/-
+Lebesgue measure of `{w | ⟨pole, w⟩ = c · ‖w‖}` is zero for any `c : ℝ`
+    in dimension `d ≥ 2`.  This is a codimension-1 cone (the zero set of a
+    smooth function with non-vanishing gradient away from the origin).
+-/
+set_option maxHeartbeats 800000 in
+private lemma volume_inner_eq_mul_norm_zero (d : ℕ) (hd : 2 ≤ d) (c : ℝ) :
+    (volume : Measure (EuclideanSpace ℝ (Fin d)))
+      {w : EuclideanSpace ℝ (Fin d) | inner ℝ (spherePoleVec d) w = c * ‖w‖} = 0 := by
+  by_cases hc : c = 0 ∨ |c| > 1 ∨ |c| = 1;
+  · rcases hc with ( rfl | hc | hc );
+    · have h_submodule_zero : (volume : Measure (EuclideanSpace ℝ (Fin d))) (Submodule.span ℝ {(spherePoleVec d : EuclideanSpace ℝ (Fin d))} : Submodule ℝ (EuclideanSpace ℝ (Fin d))).orthogonal = 0 := by
+        have h_orthogonal_submodule : (Submodule.span ℝ {(spherePoleVec d : EuclideanSpace ℝ (Fin d))} : Submodule ℝ (EuclideanSpace ℝ (Fin d))).orthogonal ≠ ⊤ := by
+          simp +decide [ Submodule.eq_top_iff', Submodule.mem_orthogonal ];
+          refine' ⟨ spherePoleVec d, spherePoleVec d, _, _ ⟩ <;> norm_num [ spherePoleVec ];
+          linarith;
+        convert Measure.addHaar_submodule _ _ h_orthogonal_submodule using 1;
+        infer_instance;
+      convert h_submodule_zero using 2 ; ext ; simp +decide [ Submodule.mem_orthogonal_singleton_iff_inner_right ];
+    · have h_zero : ∀ w : EuclideanSpace ℝ (Fin d), inner ℝ (spherePoleVec d) w = c * ‖w‖ → w = 0 := by
+        intro w hw
+        have h_norm : |inner ℝ (spherePoleVec d) w| ≤ ‖w‖ := by
+          have h_norm : ‖spherePoleVec d‖ = 1 := by
+            convert norm_spherePoleVec d ( by linarith ) using 1;
+          simpa [ h_norm ] using abs_real_inner_le_norm ( spherePoleVec d ) w;
+        contrapose! h_norm;
+        rw [ hw, abs_mul, abs_of_nonneg ( norm_nonneg _ ) ] ; nlinarith [ norm_pos_iff.mpr h_norm ];
+      rw [ show { w : EuclideanSpace ℝ ( Fin d ) | inner ℝ ( spherePoleVec d ) w = c * ‖w‖ } = { 0 } from Set.eq_singleton_iff_unique_mem.mpr ⟨ by norm_num, h_zero ⟩ ] ; norm_num;
+      cases d <;> norm_num at *;
+    · -- If $|c| = 1$, then the set $\{w \mid \langle \text{pole}, w \rangle = c \|w\|\}$ is contained in the span of $\text{pole}$.
+      have h_subset_span : {w : EuclideanSpace ℝ (Fin d) | inner ℝ (spherePoleVec d) w = c * ‖w‖} ⊆ Submodule.span ℝ {spherePoleVec d} := by
+        intro w hw
+        have h_eq : ‖w - (inner ℝ (spherePoleVec d) w) • spherePoleVec d‖ = 0 := by
+          have h_eq : ‖w - (inner ℝ (spherePoleVec d) w) • spherePoleVec d‖ ^ 2 = ‖w‖ ^ 2 - (inner ℝ (spherePoleVec d) w) ^ 2 := by
+            rw [ @norm_sub_sq ℝ ];
+            norm_num [ norm_smul, inner_smul_right ];
+            rw [ real_inner_comm ] ; ring;
+            rw [ show ‖spherePoleVec d‖ = 1 from norm_spherePoleVec d ( by linarith ) ] ; norm_num ; ring;
+          grind;
+        exact eq_of_sub_eq_zero ( norm_eq_zero.mp h_eq ) ▸ Submodule.mem_span_singleton.mpr ⟨ _, rfl ⟩;
+      refine' MeasureTheory.measure_mono_null h_subset_span _;
+      convert Measure.addHaar_submodule _ _ _;
+      · infer_instance;
+      · infer_instance;
+      · infer_instance;
+      · have h_finrank : Module.finrank ℝ (Submodule.span ℝ {spherePoleVec d}) = 1 := by
+          rw [ finrank_span_singleton ] ; norm_num [ spherePoleVec ];
+          linarith;
+        exact fun h => by rw [ h ] at h_finrank; norm_num at h_finrank; linarith [ show Module.finrank ℝ ( EuclideanSpace ℝ ( Fin d ) ) = d by simp +decide [ Module.finrank_pi ] ] ;
+  · -- For the remaining case, define f(w) = (w - ⟨pole,w⟩•pole) + (c/√(1-c²)) * ‖w - ⟨pole,w⟩•pole‖ • pole.
+    set f : EuclideanSpace ℝ (Fin d) → EuclideanSpace ℝ (Fin d) := fun w => (w - inner ℝ (spherePoleVec d) w • spherePoleVec d) + (c / Real.sqrt (1 - c^2)) • ‖w - inner ℝ (spherePoleVec d) w • spherePoleVec d‖ • spherePoleVec d;
+    -- Show that $f$ is smooth on the set where $\pi(w) \neq 0$.
+    have h_smooth : ∀ w : EuclideanSpace ℝ (Fin d), w - inner ℝ (spherePoleVec d) w • spherePoleVec d ≠ 0 → DifferentiableAt ℝ f w := by
+      intro w hw_ne_zero
+      have h_inner_diff : DifferentiableAt ℝ (fun w => inner ℝ (spherePoleVec d) w) w := by
+        exact DifferentiableAt.inner ℝ ( differentiableAt_const _ ) ( differentiableAt_id )
+      have h_norm_diff : DifferentiableAt ℝ (fun w => ‖w - inner ℝ (spherePoleVec d) w • spherePoleVec d‖) w := by
+        exact DifferentiableAt.norm ℝ ( differentiableAt_id.sub ( h_inner_diff.smul_const _ ) ) hw_ne_zero
+      have h_f_diff : DifferentiableAt ℝ (fun w => (w - inner ℝ (spherePoleVec d) w • spherePoleVec d) + (c / Real.sqrt (1 - c^2)) • ‖w - inner ℝ (spherePoleVec d) w • spherePoleVec d‖ • spherePoleVec d) w := by
+        fun_prop (disch := norm_num)
+      exact h_f_diff;
+    -- Show that $f$ maps the set $\{w \mid \langle \text{pole}, w \rangle = c \|w\|\}$ to itself.
+    have h_map : ∀ w : EuclideanSpace ℝ (Fin d), inner ℝ (spherePoleVec d) w = c * ‖w‖ → w - inner ℝ (spherePoleVec d) w • spherePoleVec d ≠ 0 → f w = w := by
+      intros w hw hw_ne_zero
+      have h_norm : ‖w - inner ℝ (spherePoleVec d) w • spherePoleVec d‖ = Real.sqrt (1 - c^2) * ‖w‖ := by
+        have h_norm : ‖w - inner ℝ (spherePoleVec d) w • spherePoleVec d‖^2 = (1 - c^2) * ‖w‖^2 := by
+          rw [ @norm_sub_sq ℝ ];
+          simp_all +decide [ norm_smul, inner_smul_right ];
+          rw [ real_inner_comm ] ; rw [ hw ] ; ring;
+          rw [ show ‖spherePoleVec d‖ = 1 from norm_spherePoleVec d ( by linarith ) ] ; norm_num ; ring;
+        rw [ ← Real.sqrt_sq ( norm_nonneg _ ), h_norm, Real.sqrt_mul ( by nlinarith [ abs_lt.mp ( show |c| < 1 from lt_of_le_of_ne ( le_of_not_gt fun h => hc <| Or.inr <| Or.inl h ) fun h => hc <| Or.inr <| Or.inr h ) ] ), Real.sqrt_sq ( norm_nonneg _ ) ];
+      simp +zetaDelta at *;
+      rw [ h_norm ] ; ext ; norm_num ; ring;
+      rw [ mul_inv_cancel_right₀ ( ne_of_gt ( Real.sqrt_pos.mpr ( by cases abs_cases c <;> cases lt_or_gt_of_ne hc.1 <;> cases lt_or_gt_of_ne hc.2.2 <;> nlinarith ) ) ) ] ; rw [ hw ] ; ring;
+    -- Show that the determinant of the derivative of $f$ is zero on the set where $\pi(w) \neq 0$.
+    have h_det_zero : ∀ w : EuclideanSpace ℝ (Fin d), w - inner ℝ (spherePoleVec d) w • spherePoleVec d ≠ 0 → LinearMap.det (fderiv ℝ f w).toLinearMap = 0 := by
+      intro w hw_nonzero
+      have h_deriv_zero : (fderiv ℝ f w) (spherePoleVec d) = 0 := by
+        have h_deriv_zero : ∀ t : ℝ, f (w + t • spherePoleVec d) = f w := by
+          simp +zetaDelta at *;
+          simp +decide [ inner_add_right, inner_smul_right, norm_smul, hw_nonzero ];
+          rw [ show ‖spherePoleVec d‖ = 1 from norm_spherePoleVec d ( by linarith ) ] ; norm_num ; ring;
+          intro t; rw [ show w + t • spherePoleVec d - ( inner ℝ ( spherePoleVec d ) w + t ) • spherePoleVec d = w - inner ℝ ( spherePoleVec d ) w • spherePoleVec d by ext i; simpa using by ring ] ;
+        have h_deriv_zero : HasDerivAt (fun t : ℝ => f (w + t • spherePoleVec d)) ((fderiv ℝ f w) (spherePoleVec d)) 0 := by
+          convert HasFDerivAt.hasDerivAt ( HasFDerivAt.comp 0 ( h_smooth _ _ |> DifferentiableAt.hasFDerivAt ) ( HasFDerivAt.add ( hasFDerivAt_const _ _ ) ( HasFDerivAt.smul ( hasFDerivAt_id 0 ) ( hasFDerivAt_const _ _ ) ) ) ) using 1 ; norm_num;
+          simpa using hw_nonzero;
+        exact h_deriv_zero.deriv.symm.trans ( by rw [ show ( fun t : ℝ => f ( w + t • spherePoleVec d ) ) = fun _ => f w from funext ‹_› ] ; norm_num );
+      have h_deriv_zero : ¬ Function.Injective (fderiv ℝ f w).toLinearMap := by
+        intro h_inj;
+        have := @h_inj ( spherePoleVec d ) 0 ; simp_all +decide [ Function.Injective ];
+        unfold spherePoleVec at this; rcases d with ( _ | _ | d ) <;> norm_num at *;
+      contrapose! h_deriv_zero;
+      exact LinearEquiv.injective ( LinearMap.equivOfDetNeZero _ h_deriv_zero );
+    -- Apply the theorem that states if the determinant of the derivative of a function is zero almost everywhere, then the image of the function has measure zero.
+    have h_image_zero : MeasureTheory.volume (f '' {w : EuclideanSpace ℝ (Fin d) | inner ℝ (spherePoleVec d) w = c * ‖w‖ ∧ w - inner ℝ (spherePoleVec d) w • spherePoleVec d ≠ 0}) = 0 := by
+      have h_image_zero : ∀ {S : Set (EuclideanSpace ℝ (Fin d))}, MeasurableSet S → (∀ w ∈ S, DifferentiableAt ℝ f w) → (∀ w ∈ S, LinearMap.det (fderiv ℝ f w).toLinearMap = 0) → MeasureTheory.volume (f '' S) = 0 := by
+        intros S hS h_diff h_det_zero
+        have h_image_zero : MeasureTheory.volume (f '' S) = 0 := by
+          have h_diff : DifferentiableOn ℝ f S := by
+            exact fun w hw => DifferentiableAt.differentiableWithinAt ( h_diff w hw )
+          have h_det_zero : ∀ w ∈ S, LinearMap.det (fderiv ℝ f w).toLinearMap = 0 := by
+            assumption
+          have := @MeasureTheory.addHaar_image_eq_zero_of_det_fderivWithin_eq_zero;
+          convert this volume ( fun w hw => DifferentiableAt.hasFDerivAt ( by solve_by_elim ) |> HasFDerivAt.hasFDerivWithinAt ) h_det_zero using 1;
+        exact h_image_zero;
+      apply h_image_zero;
+      · refine' MeasurableSet.inter _ _;
+        · exact measurableSet_eq_fun ( by exact Continuous.measurable ( by exact Continuous.inner continuous_const continuous_id' ) ) ( by exact Continuous.measurable ( by exact Continuous.mul continuous_const continuous_norm ) );
+        · refine' MeasurableSet.compl _;
+          refine' measurableSet_eq_fun _ _;
+          · fun_prop (disch := norm_num);
+          · exact measurable_const;
+      · exact fun w hw => h_smooth w hw.2;
+      · exact fun w hw => h_det_zero w hw.2;
+    refine' MeasureTheory.measure_mono_null _ ( MeasureTheory.measure_union_null h_image_zero _ );
+    rotate_left;
+    exact { w : EuclideanSpace ℝ ( Fin d ) | w - inner ℝ ( spherePoleVec d ) w • spherePoleVec d = 0 };
+    · -- The set $\{w \mid w - \langle \text{pole}, w \rangle \cdot \text{pole} = 0\}$ is a subspace of dimension $d-1$.
+      have h_subspace : {w : EuclideanSpace ℝ (Fin d) | w - inner ℝ (spherePoleVec d) w • spherePoleVec d = 0} = Submodule.span ℝ {spherePoleVec d} := by
+        ext w; simp [Submodule.mem_span_singleton];
+        constructor <;> intro h;
+        · exact ⟨ inner ℝ ( spherePoleVec d ) w, sub_eq_zero.mp h ▸ rfl ⟩;
+        · rcases h with ⟨ a, rfl ⟩ ; norm_num [ inner_smul_right, norm_smul, norm_spherePoleVec ] ; ring;
+          rw [ norm_spherePoleVec ] <;> norm_num;
+          linarith;
+      rw [ h_subspace ];
+      have h_subspace_dim : Module.finrank ℝ (Submodule.span ℝ {spherePoleVec d} : Submodule ℝ (EuclideanSpace ℝ (Fin d))) = 1 := by
+        rw [ finrank_span_singleton ] ; norm_num [ spherePoleVec ];
+        linarith;
+      have h_subspace_dim : Module.finrank ℝ (Submodule.span ℝ {spherePoleVec d} : Submodule ℝ (EuclideanSpace ℝ (Fin d))) < d := by
+        linarith;
+      convert MeasureTheory.Measure.addHaar_submodule _ _ _;
+      · infer_instance;
+      · infer_instance;
+      · infer_instance;
+      · exact fun h => h_subspace_dim.ne <| by rw [ h ] ; simp +decide [ finrank_top ] ;
+    · grind
+
+/-
+**Level sets of the inner-product with the pole have `toSphere`-measure zero**
+    (for `d ≥ 2`).  Derived from `cone_subset_inner_eq_mul_norm` and
+    `volume_inner_eq_mul_norm_zero` via `toSphere_apply'`.
+-/
+private lemma toSphere_levelSet_zero (d : ℕ) [hd : Fact (2 ≤ d)] (r : ℝ) :
+    (volume : Measure (EuclideanSpace ℝ (Fin d))).toSphere
+      {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val = r} = 0 := by
+  have h_measure_zero : (volume : Measure (EuclideanSpace ℝ (Fin d))) (Set.Ioo (0 : ℝ) 1 • (Subtype.val '' {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val = r})) = 0 := by
+    exact MeasureTheory.measure_mono_null ( cone_subset_inner_eq_mul_norm d r ) ( volume_inner_eq_mul_norm_zero d hd.out r );
+  convert congr_arg ( fun x : ENNReal => x * ( Module.finrank ℝ ( EuclideanSpace ℝ ( Fin d ) ) : ENNReal ) ) h_measure_zero using 1;
+  · convert Measure.toSphere_apply' _ _ using 1;
+    · exact mul_comm _ _;
+    · infer_instance;
+    · exact measurableSet_eq_fun ( by exact Continuous.measurable ( by exact Continuous.inner continuous_const continuous_subtype_val ) ) measurable_const;
+  · norm_num
+
+/-- The uniform sphere measure of any level set `{x | ⟨pole, x⟩ = r}` is zero. -/
+private lemma uniformOnSphere_levelSet_zero (d : ℕ) [hd : Fact (2 ≤ d)] (r : ℝ) :
+    uniformOnSphere d {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val = r} = 0 := by
+  unfold uniformOnSphere
+  simp only [Measure.smul_apply, smul_eq_mul]
+  rw [toSphere_levelSet_zero]
+  simp
+
+/-
+**`capProb d` equals the measure of the strict-inequality cap.**
+    Follows from `uniformOnSphere_levelSet_zero`: the boundary set
+    `{x | ⟨pole, x⟩ = r}` has measure zero, so `μ{≥ r} = μ{> r}`.
+-/
+private lemma capProb_eq_strict (d : ℕ) (hd : 2 ≤ d) (r : ℝ) :
+    capProb d r =
+      (uniformOnSphere d
+        {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val > r}).toReal := by
+  unfold capProb at *;
+  rw [ show { x : SpherePoint d | r ≤ inner ℝ ( spherePoleVec d ) ( x : EuclideanSpace ℝ ( Fin d ) ) } = { x : SpherePoint d | r < inner ℝ ( spherePoleVec d ) ( x : EuclideanSpace ℝ ( Fin d ) ) } ∪ { x : SpherePoint d | inner ℝ ( spherePoleVec d ) ( x : EuclideanSpace ℝ ( Fin d ) ) = r } from ?_, MeasureTheory.measure_union ];
+  · rw [ show ( uniformOnSphere d ) { x : SpherePoint d | inner ℝ ( spherePoleVec d ) x.val = r } = 0 from ?_ ] ; norm_num;
+    convert uniformOnSphere_levelSet_zero d r using 1;
+    exact ⟨ hd ⟩;
+  · grind;
+  · exact measurableSet_eq_fun ( by exact Continuous.measurable <| by exact Continuous.inner continuous_const <| by exact continuous_subtype_val ) measurable_const;
+  · ext; simp [le_iff_lt_or_eq];
+    rw [ eq_comm ]
+
+/-
+Continuity in the threshold (for `d ≥ 2`).  Proved from
+    `uniformOnSphere_levelSet_zero`: the level-set `{x | ⟨pole, x⟩ = r}` has
+    measure zero for every `r`, so the map `r ↦ μ{⟨pole, ·⟩ ≥ r}` is both
+    left-continuous (continuity of measure from above on the decreasing family
+    `{⟨pole, ·⟩ ≥ s}` as `s ↑ r`) and right-continuous (continuity from below
+    on `{⟨pole, ·⟩ ≥ s}` as `s ↓ r`, combined with `μ{= r} = 0`).
+-/
+theorem capProb_continuous (d : ℕ) (hd : 2 ≤ d) : Continuous (capProb d) := by
+  refine' continuous_iff_continuousAt.mpr _;
+  intro r
+  unfold capProb;
+  -- We'll use the fact that if the measure of the set {x | inner ℝ (spherePoleVec d) x.val ≥ r} is continuous, then the function itself is continuous.
+  have h_cont : ContinuousAt (fun r => (uniformOnSphere d {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val ≥ r})) r := by
+    have h_cont : ∀ᵐ x ∂(uniformOnSphere d), ContinuousAt (fun r => if inner ℝ (spherePoleVec d) x.val ≥ r then (1 : ℝ) else 0) r := by
+      have h_cont : ∀ᵐ x ∂(uniformOnSphere d), inner ℝ (spherePoleVec d) x.val ≠ r := by
+        have h_cont_at : uniformOnSphere d {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val = r} = 0 := by
+          convert uniformOnSphere_levelSet_zero d r using 1;
+          exact ⟨ hd ⟩;
+        exact MeasureTheory.measure_eq_zero_iff_ae_notMem.mp h_cont_at;
+      filter_upwards [ h_cont ] with x hx;
+      cases lt_or_gt_of_ne hx <;> [ exact ContinuousAt.congr ( continuousAt_const ) ( Filter.EventuallyEq.symm <| Filter.eventuallyEq_of_mem ( Ioi_mem_nhds ‹_› ) fun y hy => if_neg hy.out.not_ge ) ; exact ContinuousAt.congr ( continuousAt_const ) ( Filter.EventuallyEq.symm <| Filter.eventuallyEq_of_mem ( Iio_mem_nhds ‹_› ) fun y hy => if_pos hy.out.le ) ];
+    have h_cont : Filter.Tendsto (fun r => ∫ x : SpherePoint d, (if inner ℝ (spherePoleVec d) x.val ≥ r then (1 : ℝ) else 0) ∂(uniformOnSphere d)) (nhds r) (nhds (∫ x : SpherePoint d, (if inner ℝ (spherePoleVec d) x.val ≥ r then (1 : ℝ) else 0) ∂(uniformOnSphere d))) := by
+      refine' MeasureTheory.tendsto_integral_filter_of_dominated_convergence _ _ _ _ _;
+      refine' fun x => 1;
+      · refine' Filter.Eventually.of_forall fun n => Measurable.aestronglyMeasurable _;
+        refine' Measurable.ite _ measurable_const measurable_const;
+        exact measurableSet_le measurable_const ( Continuous.measurable ( by exact Continuous.inner ( continuous_const ) ( continuous_subtype_val ) ) );
+      · exact Filter.Eventually.of_forall fun n => Filter.Eventually.of_forall fun x => by split_ifs <;> norm_num;
+      · apply_rules [ MeasureTheory.integrable_const ];
+      · exact h_cont.mono fun x hx => hx.tendsto;
+    convert h_cont using 1;
+    constructor <;> intro h <;> simp_all +decide [ ContinuousAt ];
+    convert ENNReal.tendsto_ofReal h using 1;
+    · ext r; rw [ MeasureTheory.integral_congr_ae, MeasureTheory.integral_indicator ];
+      change ( uniformOnSphere d ) { x : SpherePoint d | r ≤ inner ℝ ( spherePoleVec d ) x.val } = ENNReal.ofReal ( ∫ x in { x : SpherePoint d | r ≤ inner ℝ ( spherePoleVec d ) x.val }, 1 ∂uniformOnSphere d );
+      · simp +decide [ MeasureTheory.measureReal_def ];
+      · exact measurableSet_le measurable_const ( Continuous.measurable ( by exact Continuous.inner continuous_const <| by exact continuous_subtype_val ) );
+      · norm_num [ Filter.EventuallyEq, Set.indicator ];
+    · rw [ MeasureTheory.integral_congr_ae, MeasureTheory.integral_indicator ];
+      change nhds ( uniformOnSphere d { x : SpherePoint d | r ≤ inner ℝ ( spherePoleVec d ) x.val } ) = nhds ( ENNReal.ofReal ( ∫ x in { x : SpherePoint d | r ≤ inner ℝ ( spherePoleVec d ) x.val }, 1 ∂uniformOnSphere d ) );
+      · simp +decide [ MeasureTheory.measureReal_def ];
+      · exact measurableSet_le measurable_const ( Continuous.measurable ( by exact Continuous.inner ( continuous_const ) ( continuous_subtype_val ) ) );
+      · norm_num [ Filter.EventuallyEq, Set.indicator ];
+  exact ENNReal.continuousAt_toReal ( by aesop ) |> ContinuousAt.comp <| h_cont
 
 /-! ## Matched threshold
 
