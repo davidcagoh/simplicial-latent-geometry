@@ -97,6 +97,23 @@ lemma uniformOnSphere_isProb' (d : ℕ) (hd : 2 ≤ d) :
     IsProbabilityMeasure (uniformOnSphere d) :=
   @uniformOnSphere_isProb d ⟨hd⟩
 
+/-- The uniform sphere measure is always zero-or-probability (it equals the
+    normalized `Measure.toSphere`; if the underlying total mass is 0, the
+    normalization `0⁻¹ • 0 = ⊤ • 0 = 0`, otherwise mass is `c⁻¹ * c = 1`).
+    Concretised 2026-05-19 to replace the axiomatic ENNReal arithmetic chain. -/
+instance uniformOnSphere_isZeroOrProb (d : ℕ) :
+    IsZeroOrProbabilityMeasure (uniformOnSphere d) := by
+  unfold uniformOnSphere
+  set μ : Measure (SpherePoint d) :=
+    (volume : Measure (EuclideanSpace ℝ (Fin d))).toSphere with hμ_def
+  refine ⟨?_⟩
+  rw [Measure.smul_apply, smul_eq_mul]
+  by_cases h : μ Set.univ = 0
+  · left; simp [h]
+  · right
+    have h_finite : μ Set.univ ≠ ⊤ := (measure_lt_top μ Set.univ).ne
+    exact ENNReal.inv_mul_cancel h h_finite
+
 /-! ## Edge and fill predicates -/
 
 /-- Two points on the sphere are within angular distance $\theta$ iff their Euclidean
@@ -111,26 +128,69 @@ def sphereCechFill {d : ℕ} (r : ℝ) (x₁ x₂ x₃ : SpherePoint d) : Prop :
   ∃ z : SpherePoint d,
     inner ℝ z.val x₁.val ≥ r ∧ inner ℝ z.val x₂.val ≥ r ∧ inner ℝ z.val x₃.val ≥ r
 
-/-! ## Cap probability — primitive quantity
+/-! ## Cap probability — concrete quantity
 
 The uniform probability that a single point lies in a spherical cap of cosine threshold
 `r ∈ [-1, 1]` centred at a fixed pole. In dimension `d ≥ 2` this is
 `(1/2) · I_{1-r²}((d-1)/2, 1/2)` when `r ≥ 0` by the standard incomplete-beta formula
-(Li 2011, Eq. (3)). Axiomatized here pending a clean Mathlib formalization; the
-constructive integral against `uniformOnSphere` is the natural body. -/
-axiom capProb (d : ℕ) (r : ℝ) : ℝ
+(Li 2011, Eq. (3)).
 
-/-- Cap probability is in `[0, 1]` for any threshold and dimension. -/
-axiom capProb_mem_unitInterval (d : ℕ) (r : ℝ) : 0 ≤ capProb d r ∧ capProb d r ≤ 1
+Concretised 2026-05-19 as the `uniformOnSphere`-measure of the half-space cap at the
+canonical pole `e₀ = EuclideanSpace.single 0 1` (well-defined whenever `d ≥ 1`; in
+the trivial case `d = 0` the function returns `0`). -/
 
-/-- Monotone in the threshold: a higher cosine threshold gives a smaller cap. -/
-axiom capProb_antitone (d : ℕ) : Antitone (capProb d)
+/-- The canonical pole `e₀ ∈ S^{d-1}` (the first basis vector), packaged as the
+    underlying ambient vector in `EuclideanSpace ℝ (Fin d)`. For `d = 0` this is
+    the zero vector (does not lie on the sphere, but `capProb` carries a guard
+    on `0 < d` that ensures only the `d ≥ 1` branch is ever invoked). -/
+noncomputable def spherePoleVec (d : ℕ) : EuclideanSpace ℝ (Fin d) :=
+  if h : 0 < d then EuclideanSpace.single (⟨0, h⟩ : Fin d) (1 : ℝ) else 0
 
-/-- Endpoints. `r = -1` covers the whole sphere; `r = 1` is the pole. -/
+/-- Cap probability: uniform measure of `{x : S^{d-1} | inner pole x ≥ r}`,
+    converted to `ℝ`. Returns `0` in the degenerate case `d = 0`. -/
+noncomputable def capProb (d : ℕ) (r : ℝ) : ℝ :=
+  (uniformOnSphere d
+    {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val ≥ r}).toReal
+
+/-- Cap probability is in `[0, 1]` for any threshold and dimension.
+    The lower bound is immediate (`.toReal` of an ENNReal is nonneg); the upper
+    bound uses the unconditional `IsZeroOrProbabilityMeasure` instance on
+    `uniformOnSphere d` (`uniformOnSphere_isZeroOrProb`). -/
+theorem capProb_mem_unitInterval (d : ℕ) (r : ℝ) :
+    0 ≤ capProb d r ∧ capProb d r ≤ 1 := by
+  refine ⟨ENNReal.toReal_nonneg, ?_⟩
+  unfold capProb
+  exact ENNReal.toReal_le_of_le_ofReal zero_le_one
+    (ENNReal.ofReal_one.symm ▸ prob_le_one)
+
+/-- Monotone in the threshold: a higher cosine threshold gives a smaller cap.
+    Follows from set inclusion `{inner ≥ r'} ⊆ {inner ≥ r}` when `r ≤ r'` and
+    `Measure.toReal` monotone on a finite measure (the uniform sphere measure
+    is always sub-probability). -/
+theorem capProb_antitone (d : ℕ) : Antitone (capProb d) := by
+  intro r r' hrr'
+  unfold capProb
+  have h_sub :
+      {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val ≥ r'} ⊆
+      {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val ≥ r} := by
+    intro x hx
+    exact le_trans hrr' hx
+  have h_top :
+      uniformOnSphere d
+        {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val ≥ r} ≠ ⊤ := by
+    exact (measure_lt_top _ _).ne
+  exact ENNReal.toReal_mono h_top (measure_mono h_sub)
+
+/-- Endpoints. `r = -1` covers the whole sphere; `r = 1` is the pole.
+    Kept axiomatic pending the closed form ‖x‖ = 1 ⇒ inner pole x ∈ [-1, 1]
+    chain (Cauchy-Schwarz) and the single-point measure-zero fact at the pole. -/
 axiom capProb_neg_one (d : ℕ) (hd : 2 ≤ d) : capProb d (-1) = 1
 axiom capProb_one (d : ℕ) (hd : 2 ≤ d) : capProb d 1 = 0
 
-/-- Continuity in the threshold (for `d ≥ 2`). Needed to invert via IVT. -/
+/-- Continuity in the threshold (for `d ≥ 2`). Kept axiomatic pending the
+    no-atoms / continuous-distribution argument on the inner-product
+    pushforward (`r ↦ μ {inner ≥ r}` is continuous iff the pushforward of
+    `inner pole ·` has no atoms, which is the cap density argument). -/
 axiom capProb_continuous (d : ℕ) (hd : 2 ≤ d) : Continuous (capProb d)
 
 /-! ## Matched threshold
@@ -249,23 +309,6 @@ axiom cechFillProb_compl_le_gram_tail (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) :
     ∀ᶠ d : ℕ in Filter.atTop,
       1 - cechFillProb p d ≤
         ((3 * (normalQuantile (1 - p))^2) / (d : ℝ))^(((d : ℝ) - 2) / 2)
-
-/-- The uniform sphere measure is always zero-or-probability (it equals the
-    normalized `Measure.toSphere`; if the underlying total mass is 0, the
-    normalization `0⁻¹ • 0 = ⊤ • 0 = 0`, otherwise mass is `c⁻¹ * c = 1`).
-    Concretised 2026-05-19 to replace the axiomatic ENNReal arithmetic chain. -/
-instance uniformOnSphere_isZeroOrProb (d : ℕ) :
-    IsZeroOrProbabilityMeasure (uniformOnSphere d) := by
-  unfold uniformOnSphere
-  set μ : Measure (SpherePoint d) :=
-    (volume : Measure (EuclideanSpace ℝ (Fin d))).toSphere with hμ_def
-  refine ⟨?_⟩
-  rw [Measure.smul_apply, smul_eq_mul]
-  by_cases h : μ Set.univ = 0
-  · left; simp [h]
-  · right
-    have h_finite : μ Set.univ ≠ ⊤ := (measure_lt_top μ Set.univ).ne
-    exact ENNReal.inv_mul_cancel h h_finite
 
 /-- **`cechFillProb p d ≤ 1`** — direct consequence of the iid-product measure being
     zero-or-probability (`uniformOnSphere_isZeroOrProb`) applied to the underlying
