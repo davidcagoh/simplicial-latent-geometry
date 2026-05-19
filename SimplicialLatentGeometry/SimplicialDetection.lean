@@ -3758,6 +3758,20 @@ private noncomputable def triangleIndicator' {n d : ℕ} (p q r : ℝ)
     (if s.edge e.1 e.2 then (1 : ℝ) - p else -p)) *
   (if s.fill t then (1 : ℝ) - q else -q)
 
+/-- Measurability of the triangle indicator. Moved up from below so that downstream
+    covariance lemmas (vertex-sharing / disjoint cases) can cite it. -/
+private lemma triangleIndicator'_measurable {n d : ℕ} (p q r : ℝ)
+    (t : {σ : Finset (Fin n) // σ.card = 3}) :
+    Measurable (fun pts : Fin n → Torus d => triangleIndicator' p q r t pts) := by
+  unfold triangleIndicator' cechObservation
+  simp only [CechSample.hasEdge, CechSample.hasFill]
+  refine Measurable.mul ?_ ?_
+  · exact Finset.measurable_prod _ fun e _ => by
+      exact Measurable.ite (by simp only [decide_eq_true_eq]; exact measurableSet_le (Measurable.dist (measurable_pi_apply _) (measurable_pi_apply _)) measurable_const) measurable_const measurable_const
+  · refine Measurable.ite ?_ measurable_const measurable_const
+    simp only [decide_eq_true_eq]
+    exact measurableSet_hasFill r t
+
 private lemma triangleIndicator'_translate {n d : ℕ} (p q r : ℝ)
     (t : {σ : Finset (Fin n) // σ.card = 3})
     (pts : Fin n → Torus d) (h : Torus d) :
@@ -4479,9 +4493,67 @@ private lemma doublySignedTriangle_cov_vertex_sharing_zero {n d : ℕ} (p : ℝ)
          ((∏ e ∈ triangleEdges t',
             (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
           (if s.fill t' then (1:ℝ) - q else -q)) ∂ν = g ^ 2 := by
-  -- OQ-18: relies on `vertex_sharing_indepFun'` (which uses `triangleIndicator'_factor_coord_diffs`,
-  -- now stubbed) and the existential-form `hasFill` measurability. Stub pending refactor.
-  sorry
+  classical
+  -- Same chain as `doublySignedTriangle_cov_disjoint_eq_gsq`: indepFun via
+  -- `vertex_sharing_indepFun'` (vertex-sharing case factors through disjoint
+  -- coord-differences) replaces the disjoint variant; everything else identical.
+  set r : ℝ := matchRadius p d with hr_def
+  set q : ℝ := fillingProb p d with hq_def
+  set g : ℝ := geometricCov p d with hg_def
+  show
+    ∫ s, (∏ e ∈ triangleEdges t,
+            (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
+          (if s.fill t then (1:ℝ) - q else -q) *
+         ((∏ e ∈ triangleEdges t',
+            (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
+          (if s.fill t' then (1:ℝ) - q else -q))
+      ∂((cechMeasure n d r).map (cechObservation r)) = g ^ 2
+  rw [integral_over_nu_eq' r (fun s =>
+        (∏ e ∈ triangleEdges t,
+          (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
+        (if s.fill t then (1:ℝ) - q else -q) *
+        ((∏ e ∈ triangleEdges t',
+          (if s.edge e.1 e.2 then (1:ℝ) - p else -p)) *
+        (if s.fill t' then (1:ℝ) - q else -q)))]
+  set μ : MeasureTheory.Measure (Fin n → Torus d) :=
+    MeasureTheory.Measure.pi
+      (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d))) with hμ_def
+  have h_integrand : ∀ pts : Fin n → Torus d,
+      (∏ e ∈ triangleEdges t,
+          (if (cechObservation r (CechSample.mk pts)).edge e.1 e.2
+            then (1:ℝ) - p else -p)) *
+        (if (cechObservation r (CechSample.mk pts)).fill t then (1:ℝ) - q else -q) *
+      ((∏ e ∈ triangleEdges t',
+          (if (cechObservation r (CechSample.mk pts)).edge e.1 e.2
+            then (1:ℝ) - p else -p)) *
+        (if (cechObservation r (CechSample.mk pts)).fill t' then (1:ℝ) - q else -q))
+      = triangleIndicator' p q r t pts * triangleIndicator' p q r t' pts := by
+    intro pts; unfold triangleIndicator'; rfl
+  rw [show
+    (∫ pts : Fin n → Torus d,
+      (∏ e ∈ triangleEdges t,
+          (if (cechObservation r (CechSample.mk pts)).edge e.1 e.2
+            then (1:ℝ) - p else -p)) *
+        (if (cechObservation r (CechSample.mk pts)).fill t then (1:ℝ) - q else -q) *
+      ((∏ e ∈ triangleEdges t',
+          (if (cechObservation r (CechSample.mk pts)).edge e.1 e.2
+            then (1:ℝ) - p else -p)) *
+        (if (cechObservation r (CechSample.mk pts)).fill t' then (1:ℝ) - q else -q))
+      ∂μ) =
+    ∫ pts, triangleIndicator' p q r t pts * triangleIndicator' p q r t' pts ∂μ from
+    MeasureTheory.integral_congr_ae (Filter.Eventually.of_forall h_integrand)]
+  have h_indep := vertex_sharing_indepFun' (n := n) (d := d) p hp0 hp1 t t' htt' hshare
+  have hT_meas : Measurable (fun pts : Fin n → Torus d => triangleIndicator' p q r t pts) :=
+    triangleIndicator'_measurable p q r t
+  have hT'_meas : Measurable (fun pts : Fin n → Torus d => triangleIndicator' p q r t' pts) :=
+    triangleIndicator'_measurable p q r t'
+  rw [h_indep.integral_fun_mul_eq_mul_integral hT_meas.aestronglyMeasurable
+        hT'_meas.aestronglyMeasurable]
+  have h_t := single_triangle_integral_eq_g' (n := n) (d := d) p hp0 hp1 t
+  have h_t' := single_triangle_integral_eq_g' (n := n) (d := d) p hp0 hp1 t'
+  rw [show (∫ pts, triangleIndicator' p q r t pts ∂μ) = g from h_t,
+      show (∫ pts, triangleIndicator' p q r t' pts ∂μ) = g from h_t']
+  ring
 
 /-
 OLD PROOF BODY:
@@ -4607,17 +4679,7 @@ private lemma doublySignedTriangle_cov_edge_sharing_le_sq {n d : ℕ} (p : ℝ)
   exact h
 
 set_option maxHeartbeats 800000 in
-private lemma triangleIndicator'_measurable {n d : ℕ} (p q r : ℝ)
-    (t : {σ : Finset (Fin n) // σ.card = 3}) :
-    Measurable (fun pts : Fin n → Torus d => triangleIndicator' p q r t pts) := by
-  unfold triangleIndicator' cechObservation
-  simp only [CechSample.hasEdge, CechSample.hasFill]
-  refine Measurable.mul ?_ ?_
-  · exact Finset.measurable_prod _ fun e _ => by
-      exact Measurable.ite (by simp only [decide_eq_true_eq]; exact measurableSet_le (Measurable.dist (measurable_pi_apply _) (measurable_pi_apply _)) measurable_const) measurable_const measurable_const
-  · refine Measurable.ite ?_ measurable_const measurable_const
-    simp only [decide_eq_true_eq]
-    exact measurableSet_hasFill r t
+-- Moved earlier; see definition above (`triangleIndicator'_measurable`).
 
 /-- Independence of triangle indicators for disjoint triangles (sharing 0 vertices). -/
 private lemma disjoint_triangles_indepFun {n d : ℕ} (p : ℝ)
