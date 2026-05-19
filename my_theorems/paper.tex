@@ -1100,8 +1100,6 @@ $\geomCov \geq c(1-q)(3r^2)^d$ holds when $(1-q)(3r^2)^d \gtrsim p^3(7r/2)^d$,
 i.e.\ when $1-q \gtrsim p\cdot(7/(6r))^d$. This is \emph{not} uniform across the
 deep regime: as $r\to 0$ the lower-bound threshold tightens. Identifying the exact
 sub-regime in which the rate is $\Theta$, not just $O$, is open.
-The lower bounds $\geomCov \geq (1-q)(3/4)^d p^2 - 3p^3$ are currently being
-verified in Lean~4 (Aristotle job~\texttt{133c7aac} in progress).
 
 \subsubsection*{Higher-dimensional simplices}
 The construction generalizes to $k$-simplices for $k\geq 2$ via a multiply-signed
@@ -1492,20 +1490,6 @@ The results \lean{matchRadius\_spec} and \lean{matchRadius\_tendsto\_half} (job
 \texttt{069b1a71}) use \texttt{Real.rpow\_mul} and \texttt{Filter.Tendsto.rpow} from
 Mathlib to formalize the algebraic identity $(p^{1/d})^d = p$ and the limit $p^{1/d}\to 1$.
 \end{remark}
-
-\smallskip\noindent\textit{OQ-16 Track B — sparse-regime lower bounds (Aristotle job
-\texttt{133c7aac}, May~2026).}
-
-\begin{itemize}[leftmargin=*, itemsep=4pt]
-\item \lean{geometricCov\_lower\_bound}: $\geomCov(p,d) \geq (1-q)\,\gamma(r)^d - 3p^3$,
-  proved by applying \lean{geometricCov\_eq\_deep} and using positivity of $3p^3$ together
-  with $(7r/2)^d \leq 1$ for $r \leq 1/4$.
-
-\item \lean{geometricCov\_lower\_bound\_explicit}:
-  $\geomCov(p,d) \geq (1-q)\,(3/4)^d\,p^2 - 3p^3$,
-  derived from \lean{geometricCov\_lower\_bound} via the matchRadius identity $(2r)^d = p$,
-  which gives $(3r^2)^d = (3/4)^d p^2$.
-\end{itemize}
 
 \smallskip\noindent\textit{OQ-16 Track C — fill-pair joint probability (Aristotle job
 \texttt{12474171}, May~2026).}
