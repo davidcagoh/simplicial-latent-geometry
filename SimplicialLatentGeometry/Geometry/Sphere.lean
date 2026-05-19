@@ -366,10 +366,23 @@ The matched threshold `matchedCos p d` is the unique `r ∈ [-1, 1]` with
 noncomputable def matchedCos (p : ℝ) (d : ℕ) : ℝ :=
   Classical.epsilon (fun r : ℝ => -1 ≤ r ∧ r ≤ 1 ∧ capProb d r = p)
 
-/-- Existence of a matched threshold. Follows from IVT applied to the continuous
-    monotone `capProb d` between values `1` at `-1` and `0` at `1`. -/
-axiom matchedCos_exists (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 2 ≤ d) :
-    ∃ r : ℝ, -1 ≤ r ∧ r ≤ 1 ∧ capProb d r = p
+/-- Existence of a matched threshold. IVT (`intermediate_value_Icc'`, antitone-endpoint
+    variant) applied to the continuous `capProb d` on `[-1, 1]`, using
+    `capProb_neg_one d hd = 1` and `capProb_one d hd = 0`. Concretised 2026-05-19
+    (was axiomatic; downgraded to theorem dependent on `capProb_continuous` only). -/
+theorem matchedCos_exists (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 2 ≤ d) :
+    ∃ r : ℝ, -1 ≤ r ∧ r ≤ 1 ∧ capProb d r = p := by
+  have h_cont : ContinuousOn (capProb d) (Set.Icc (-1 : ℝ) 1) :=
+    (capProb_continuous d hd).continuousOn
+  have h_neg_one : capProb d (-1) = 1 := capProb_neg_one d hd
+  have h_one : capProb d 1 = 0 := capProb_one d hd
+  have h_le : (-1 : ℝ) ≤ 1 := by norm_num
+  have h_image : Set.Icc (capProb d 1) (capProb d (-1)) ⊆ capProb d '' Set.Icc (-1 : ℝ) 1 :=
+    intermediate_value_Icc' h_le h_cont
+  rw [h_neg_one, h_one] at h_image
+  have hp_mem : p ∈ Set.Icc (0 : ℝ) 1 := ⟨le_of_lt hp0, le_of_lt hp1⟩
+  obtain ⟨r, hr_mem, hr_eq⟩ := h_image hp_mem
+  exact ⟨r, hr_mem.1, hr_mem.2, hr_eq⟩
 
 /-- The specification realized by `matchedCos`. -/
 lemma matchedCos_spec (p : ℝ) (d : ℕ) (hp0 : 0 < p) (hp1 : p < 1) (hd : 2 ≤ d) :
