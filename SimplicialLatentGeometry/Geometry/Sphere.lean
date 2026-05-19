@@ -44,6 +44,7 @@ Aristotle dispatch. The asymptotic claims are stated against the math-precheck v
 namespace SphereGeometry
 
 open MeasureTheory
+open scoped Pointwise
 
 /-! ## Point space: unit sphere in $\mathbb{R}^d$ -/
 
@@ -113,6 +114,86 @@ instance uniformOnSphere_isZeroOrProb (d : ℕ) :
   · right
     have h_finite : μ Set.univ ≠ ⊤ := (measure_lt_top μ Set.univ).ne
     exact ENNReal.inv_mul_cancel h h_finite
+
+/-- **No atoms on `Measure.toSphere`** (for `d ≥ 2`).
+    A singleton `{x}` on the sphere pulls back via `toSphere_apply'` to
+    `dim · vol(Ioo 0 1 • {x.val})`. The latter set is contained in the 1-dimensional
+    submodule `ℝ ∙ x.val`, which is a strict subspace whenever the ambient dimension
+    `d ≥ 2`. By `addHaar_submodule`, strict subspaces have Lebesgue measure zero.
+    Concretised 2026-05-19 to discharge `capProb_one`, `capProb_continuous`,
+    `matchedCos_exists` (see wiki/INDEX.md session 78). -/
+instance toSphere_noAtoms (d : ℕ) [hd : Fact (2 ≤ d)] :
+    MeasureTheory.NoAtoms
+      ((volume : Measure (EuclideanSpace ℝ (Fin d))).toSphere) := by
+  refine ⟨fun x => ?_⟩
+  have hd2 : (2 : ℕ) ≤ d := hd.out
+  -- Step 1: rewrite singleton-measure via `toSphere_apply'`.
+  have h_meas : MeasurableSet ({x} : Set (Metric.sphere (0 : EuclideanSpace ℝ (Fin d)) 1)) :=
+    measurableSet_singleton x
+  rw [Measure.toSphere_apply' _ h_meas]
+  -- Goal: `dim * volume (Ioo 0 1 • ((↑) '' {x})) = 0`.
+  -- It suffices to show the inner volume is 0.
+  have h_image : ((↑) : Metric.sphere (0 : EuclideanSpace ℝ (Fin d)) 1 →
+      EuclideanSpace ℝ (Fin d)) '' {x} = {(x : EuclideanSpace ℝ (Fin d))} := by
+    simp
+  rw [h_image]
+  -- Now: `dim * volume (Ioo 0 1 • {x.val}) = 0`.
+  -- Show: `Ioo 0 1 • {x.val} ⊆ Submodule.span ℝ {x.val}`.
+  have h_sub :
+      (Set.Ioo (0 : ℝ) 1 • {(x : EuclideanSpace ℝ (Fin d))} : Set _) ⊆
+        (Submodule.span ℝ {(x : EuclideanSpace ℝ (Fin d))} : Set _) := by
+    intro y hy
+    rcases hy with ⟨r, _hr, v, hv, rfl⟩
+    rw [Set.mem_singleton_iff] at hv
+    subst hv
+    exact Submodule.smul_mem _ r (Submodule.mem_span_singleton_self _)
+  -- The submodule `ℝ ∙ x.val` is strict (has finrank 1 < d).
+  have hx_ne : (x : EuclideanSpace ℝ (Fin d)) ≠ 0 := by
+    intro hzero
+    have hx_norm : ‖(x : EuclideanSpace ℝ (Fin d))‖ = 1 :=
+      mem_sphere_zero_iff_norm.mp x.2
+    rw [hzero, norm_zero] at hx_norm
+    exact zero_ne_one hx_norm
+  have h_finrank_span : Module.finrank ℝ
+      (Submodule.span ℝ {(x : EuclideanSpace ℝ (Fin d))}) = 1 :=
+    finrank_span_singleton hx_ne
+  have h_finrank_amb :
+      Module.finrank ℝ (EuclideanSpace ℝ (Fin d)) = d := by
+    rw [finrank_euclideanSpace, Fintype.card_fin]
+  have h_strict :
+      Submodule.span ℝ {(x : EuclideanSpace ℝ (Fin d))} ≠ ⊤ := by
+    intro htop
+    -- If span = ⊤, then finrank = d, contradicting finrank_span_singleton = 1 and d ≥ 2.
+    have hcong : Module.finrank ℝ
+        (Submodule.span ℝ {(x : EuclideanSpace ℝ (Fin d))}) =
+          Module.finrank ℝ (EuclideanSpace ℝ (Fin d)) := by
+      rw [htop]; exact finrank_top _ _
+    rw [h_finrank_span, h_finrank_amb] at hcong
+    omega
+  -- `volume` is an additive Haar measure on `EuclideanSpace`; strict submodules have measure 0.
+  have h_submodule_zero :
+      (volume : Measure (EuclideanSpace ℝ (Fin d)))
+        (Submodule.span ℝ {(x : EuclideanSpace ℝ (Fin d))}) = 0 :=
+    Measure.addHaar_submodule (volume : Measure (EuclideanSpace ℝ (Fin d)))
+      (Submodule.span ℝ {(x : EuclideanSpace ℝ (Fin d))}) h_strict
+  have h_inner_zero :
+      (volume : Measure (EuclideanSpace ℝ (Fin d)))
+        (Set.Ioo (0 : ℝ) 1 • {(x : EuclideanSpace ℝ (Fin d))}) = 0 :=
+    measure_mono_null h_sub h_submodule_zero
+  rw [h_inner_zero, mul_zero]
+
+/-- The uniform measure on the sphere has no atoms (for `d ≥ 2`).
+    Follows from `toSphere_noAtoms` and the fact that scalar-multiplying a measure
+    preserves the no-atoms property. -/
+instance uniformOnSphere_noAtoms (d : ℕ) [hd : Fact (2 ≤ d)] :
+    MeasureTheory.NoAtoms (uniformOnSphere d) := by
+  refine ⟨fun x => ?_⟩
+  unfold uniformOnSphere
+  rw [Measure.smul_apply, smul_eq_mul]
+  haveI : MeasureTheory.NoAtoms
+      ((volume : Measure (EuclideanSpace ℝ (Fin d))).toSphere) :=
+    toSphere_noAtoms d
+  rw [MeasureTheory.measure_singleton, mul_zero]
 
 /-! ## Edge and fill predicates -/
 
@@ -220,11 +301,52 @@ theorem capProb_neg_one (d : ℕ) (hd : 2 ≤ d) : capProb d (-1) = 1 := by
   simp
 
 /-- **Endpoint `r = 1`: cap is the single pole point, measure-zero.**
-    Kept axiomatic pending the no-atoms property of `Measure.toSphere` (singletons on
-    the sphere are measure-zero in dimensions `d ≥ 2`). The set-theoretic side is
-    closeable (cap reduces to `{x | x.val = pole}` via Cauchy-Schwarz equality case),
-    but the measure-zero conclusion requires a no-atoms result not yet in Mathlib. -/
-axiom capProb_one (d : ℕ) (hd : 2 ≤ d) : capProb d 1 = 0
+    By Cauchy-Schwarz equality on unit vectors, `{x : S^{d-1} | ⟨pole, x⟩ ≥ 1}` is the
+    singleton `{pole}`. Combined with `uniformOnSphere_noAtoms` (concretised 2026-05-19
+    via radial pushforward + `addHaar_submodule`), the uniform measure of any singleton
+    is zero. Concretised 2026-05-19 (was axiomatic). -/
+theorem capProb_one (d : ℕ) (hd : 2 ≤ d) : capProb d 1 = 0 := by
+  unfold capProb
+  haveI : Fact (2 ≤ d) := ⟨hd⟩
+  -- Step 1: pole vector has norm 1.
+  have h_pole_norm : ‖spherePoleVec d‖ = 1 := norm_spherePoleVec d (by linarith)
+  -- Step 2: the cap set is contained in the singleton `{pole}` (as a sphere point).
+  have h_pole_mem : spherePoleVec d ∈ Metric.sphere (0 : EuclideanSpace ℝ (Fin d)) 1 := by
+    rw [mem_sphere_zero_iff_norm]; exact h_pole_norm
+  let polePt : SpherePoint d := ⟨spherePoleVec d, h_pole_mem⟩
+  have h_set_sub :
+      {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val ≥ 1} ⊆ {polePt} := by
+    intro x hx
+    simp only [Set.mem_setOf_eq] at hx
+    have hx_norm : ‖x.val‖ = 1 := mem_sphere_zero_iff_norm.mp x.2
+    -- Cauchy-Schwarz: |⟨pole, x.val⟩| ≤ 1, with hx: ⟨pole, x.val⟩ ≥ 1.
+    have h_le : inner ℝ (spherePoleVec d) x.val ≤ 1 := by
+      have := abs_inner_spherePoleVec_le_one d (by linarith) x
+      exact (abs_le.mp this).2
+    have h_eq : inner ℝ (spherePoleVec d) x.val = 1 := le_antisymm h_le hx
+    -- inner_eq_norm_mul_iff_real with both norms 1 gives x.val = pole.
+    have h_eq' : inner ℝ (spherePoleVec d) x.val =
+        ‖spherePoleVec d‖ * ‖x.val‖ := by
+      rw [h_pole_norm, hx_norm, h_eq, mul_one]
+    have h_smul : ‖x.val‖ • spherePoleVec d = ‖spherePoleVec d‖ • x.val :=
+      (inner_eq_norm_mul_iff_real (x := spherePoleVec d) (y := x.val)).mp h_eq'
+    rw [h_pole_norm, hx_norm, one_smul, one_smul] at h_smul
+    -- So `spherePoleVec d = x.val`, i.e. x = polePt.
+    apply Set.mem_singleton_iff.mpr
+    apply Subtype.ext
+    exact h_smul.symm
+  -- Step 3: measure of singleton is zero (NoAtoms).
+  have h_singleton :
+      uniformOnSphere d ({polePt} : Set (SpherePoint d)) = 0 :=
+    MeasureTheory.measure_singleton (μ := uniformOnSphere d) polePt
+  have h_le := measure_mono (μ := uniformOnSphere d) h_set_sub
+  have h_zero :
+      uniformOnSphere d
+        {x : SpherePoint d | inner ℝ (spherePoleVec d) x.val ≥ 1} = 0 := by
+    apply le_antisymm
+    · rw [h_singleton] at h_le; exact h_le
+    · exact zero_le _
+  rw [h_zero]; simp
 
 /-- Continuity in the threshold (for `d ≥ 2`). Kept axiomatic pending the
     no-atoms / continuous-distribution argument on the inner-product
