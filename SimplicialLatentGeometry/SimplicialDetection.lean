@@ -3880,9 +3880,71 @@ private lemma single_triangle_integral_eq_g' {n d : ℕ} (p : ℝ) (hp0 : 0 < p)
       triangleIndicator' p q r t pts
       ∂MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d)))
     = geometricCov p d := by
-  -- OQ-18: depends on `cechDoublySigned_triangle_integral` (now stubbed) and the
-  -- `CechSample.hasFill` form. Stub pending refactor.
-  sorry
+  classical
+  -- Pull back the (already-proved) cechMeasure-side identity via `cech_integral_eq`.
+  have key :
+      ∫ s, ((∏ e ∈ triangleEdges t,
+          (if s.hasEdge (matchRadius p d) e.1 e.2 then (1 : ℝ) - p else -p)) *
+        (if s.hasFill (matchRadius p d) t
+          then (1 : ℝ) - fillingProb p d else -fillingProb p d))
+        ∂cechMeasure n d (matchRadius p d) = geometricCov p d :=
+    cechDoublySigned_triangle_integral n d p hp0 hp1 t
+  rw [cech_integral_eq n d (matchRadius p d)
+    (fun s => (∏ e ∈ triangleEdges t,
+        (if s.hasEdge (matchRadius p d) e.1 e.2
+          then (1 : ℝ) - p else -p)) *
+      (if s.hasFill (matchRadius p d) t
+        then (1 : ℝ) - fillingProb p d else -fillingProb p d))] at key
+  -- Now `key`: ∫ pts ∂Measure.pi, Prop-if integrand on ⟨pts⟩.hasEdge/⟨pts⟩.hasFill = geometricCov.
+  -- Show the `triangleIndicator'` integrand (Bool-if via cechObservation) equals it pointwise.
+  refine Eq.trans (MeasureTheory.integral_congr_ae
+    (Filter.Eventually.of_forall (fun pts => ?_))) key
+  -- pointwise bridge: Bool-if = Prop-if
+  show triangleIndicator' p (fillingProb p d) (matchRadius p d) t pts =
+      (∏ e ∈ triangleEdges t,
+          (if (⟨pts⟩ : CechSample n d).hasEdge (matchRadius p d) e.1 e.2
+            then (1 : ℝ) - p else -p)) *
+        (if (⟨pts⟩ : CechSample n d).hasFill (matchRadius p d) t
+          then (1 : ℝ) - fillingProb p d else -fillingProb p d)
+  unfold triangleIndicator'
+  simp only
+  -- Edge factor: cechObservation.edge i j = decide (hasEdge ...). Branch on hasEdge to swap.
+  have h_edge_eq : ∀ e : Fin n × Fin n,
+      (if (cechObservation (matchRadius p d) ⟨pts⟩).edge e.1 e.2 = true
+        then (1 : ℝ) - p else -p) =
+      (if (⟨pts⟩ : CechSample n d).hasEdge (matchRadius p d) e.1 e.2
+        then (1 : ℝ) - p else -p) := by
+    intro e
+    by_cases he : (⟨pts⟩ : CechSample n d).hasEdge (matchRadius p d) e.1 e.2
+    · have hb : (cechObservation (matchRadius p d)
+          (⟨pts⟩ : CechSample n d)).edge e.1 e.2 = true := by
+        show decide ((⟨pts⟩ : CechSample n d).hasEdge (matchRadius p d) e.1 e.2) = true
+        exact decide_eq_true he
+      rw [if_pos hb, if_pos he]
+    · have hb : (cechObservation (matchRadius p d)
+          (⟨pts⟩ : CechSample n d)).edge e.1 e.2 ≠ true := by
+        show decide ((⟨pts⟩ : CechSample n d).hasEdge (matchRadius p d) e.1 e.2) ≠ true
+        simp [decide_eq_true_iff, he]
+      rw [if_neg hb, if_neg he]
+  have h_fill_eq :
+      (if (cechObservation (matchRadius p d) ⟨pts⟩).fill t = true
+        then (1 : ℝ) - fillingProb p d else -fillingProb p d) =
+      (if (⟨pts⟩ : CechSample n d).hasFill (matchRadius p d) t
+        then (1 : ℝ) - fillingProb p d else -fillingProb p d) := by
+    by_cases hf : (⟨pts⟩ : CechSample n d).hasFill (matchRadius p d) t
+    · have hb : (cechObservation (matchRadius p d)
+          (⟨pts⟩ : CechSample n d)).fill t = true := by
+        show decide ((⟨pts⟩ : CechSample n d).hasFill (matchRadius p d) t) = true
+        exact decide_eq_true hf
+      rw [if_pos hb, if_pos hf]
+    · have hb : (cechObservation (matchRadius p d)
+          (⟨pts⟩ : CechSample n d)).fill t ≠ true := by
+        show decide ((⟨pts⟩ : CechSample n d).hasFill (matchRadius p d) t) ≠ true
+        simp [decide_eq_true_iff, hf]
+      rw [if_neg hb, if_neg hf]
+  -- The triangleIndicator' uses `if Bool then ... else ...` which desugars via `cond`.
+  -- After `simp only` above, the Bool-form should already match `if · = true`.
+  rw [Finset.prod_congr rfl (fun e _ => h_edge_eq e), h_fill_eq]
 set_option maxHeartbeats 400000 in
 private lemma shear_measurePreserving_vertex {n d : ℕ} (i : Fin n) :
     let μ := MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d)))
