@@ -30,6 +30,16 @@
 %% ── Enumitem for tighter lists ───────────────────────────────────────────────
 \usepackage{enumitem}
 
+%% ── Block-style \paragraph (override LaTeX run-in default) ──────────────────
+%% Default \paragraph{Foo.} is a bold lead-in inline with the following text.
+%% Redefine to display style on its own line so paragraph headers pop.
+\makeatletter
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}%
+  {1.0ex \@plus .2ex \@minus .1ex}%
+  {0.3ex \@plus .1ex}%
+  {\normalfont\normalsize\bfseries}}
+\makeatother
+
 %% ── Figures ──────────────────────────────────────────────────────────────────
 \usepackage{tikz}
 
@@ -117,45 +127,24 @@
   phase transition, Lean 4, formal verification}
 
 \begin{abstract}
-We study the geometry detection problem for random 2-dimensional simplicial complexes:
-distinguish the \emph{2-parameter null} $\PC(n,p,q)$---in which edges and triangle fills
-are independent---from a geometric alternative built on $n$ iid points in a latent ambient
-space, with edges and fills determined by proximity. We introduce the
-\emph{doubly-signed filled triangle statistic} $\tauf$, the natural simplicial analogue of
-the BDER signed triangle, centered with respect to both edge and fill indicators. Under
-$\PC$, $\tauf$ has mean zero and variance $\Theta(n^3)$; under any matched geometric model,
-$\EE[\tauf] = \binom{n}{3}\cdot\geomCov(p,d)$.
-
-The paper bundles two complementary instances of this framework, organized by the
-\emph{Helly number} of the ambient space.
-
-\smallskip
-\noindent\textbf{Instance~1 (Helly-2: $\ell^\infty$ torus, Rips clique fill).}
-On $\TT^d$ with the sup-norm, the Helly-2 property of the circle collapses any \v{C}ech
-existential nerve onto its Rips clique fill, so the natural downward-closed simplicial
-model is the Rips clique complex with $F_{ijk} = A_{ij} A_{ik} A_{jk}$. In this regime
-there is \emph{no $n$-independent dimensional barrier}: for fixed $p \in (0,1)$,
-$\geomCov(p,d) \to p^3(1-p)^3 > 0$ as $d \to \infty$, and detection succeeds for every
-fixed~$d$.
-
-\smallskip
-\noindent\textbf{Instance~2 (Helly-$d$: sphere $S^{d-1}$, proper \v{C}ech fill).}
-On the sphere, Helly's theorem preserves the genuine \v{C}ech-vs.-Rips distinction.
-A Wishart-derived joint Gram-entry density of order $(\det G)^{(d-4)/2}$ gives the
-super-exponential tail
-$1 - q_{\text{\v{C}ech}}(p,d) \sim (3 z_p^2 / d)^{(d-2)/2}$, where $z_p = \Phi^{-1}(1-p)$.
-The detection threshold is sub-logarithmic:
-$d^*(n,p) = 3 \log n / \log\log n$, with universal leading constant~$3$.
-
-\smallskip
-\noindent\textbf{Methodology.} The Helly number of the ambient space is the
-discriminator: Helly-2 ambients exhibit no dimensional barrier (the existential nerve
-collapses), while Helly-$d$ ambients (e.g.\ the sphere) preserve a genuine $d$-dependent
-barrier. The moment chain, the Paley--Zygmund detection bound (Instance~1 headline
-\lean{phase\_transition}), and the regime-free Rips closed form
-$\geomCov(p,d) = q[(1-p)^3 + p^3] - q^2$ with limit $p^3(1-p)^3$ are formally verified in
-Lean~4 with Mathlib~\cite{Mathlib2020}, with no sorries in the active proof chain;
-the sphere headline reduces to four explicitly named structural axioms.
+We study detection of latent geometry in random 2-dimensional simplicial complexes:
+distinguish a null model in which edges and triangle fills are placed independently from
+a geometric alternative built on $n$ iid points in a latent ambient. The natural
+simplicial analogue of the BDER signed triangle is a \emph{doubly-signed filled-triangle
+statistic} $\tauf$, centered with respect to both edge and fill indicators, with
+$\Theta(n^3)$ variance under the null. Our main result is a sub-logarithmic dimensional
+threshold on the sphere: at matched-radius \v{C}ech fill on $S^{d-1}$, $\tauf$ detects
+the geometric model whenever $d \le 3\log n / \log\log n$, driven by a super-exponential
+tail $1 - q_{\text{\v{C}ech}}(p,d) \sim (3 z_p^2/d)^{(d-2)/2}$ ($z_p = \Phi^{-1}(1-p)$)
+that we derive from the joint Wishart density of pairwise inner products. The same
+framework on the $\ell^\infty$ torus collapses to a random geometric graph problem via
+Helly-2 (no $n$-independent barrier); on centered iid-coord Euclidean / $\ell^p$
+ambients it trivialises via an origin-witness collapse. Among standard homogeneous
+ambients the sphere is the only one admitting a genuine $d$-dependent threshold at fixed
+$p$, because it has no interior reference point. The torus instance, the moment chain,
+and the Paley--Zygmund detection bound are formally verified in Lean~4 with
+Mathlib~\cite{Mathlib2020}; the sphere analytic content reduces to four explicitly named
+structural primitives, listed inline with literature pointers.
 \end{abstract}
 
 \maketitle
@@ -164,239 +153,148 @@ the sphere headline reduces to four explicitly named structural axioms.
 \section{Introduction}\label{sec:intro}
 %% ─────────────────────────────────────────────────────────────────────────────
 
-\subsection{Background and Motivation}
+Topological data analysis builds simplicial complexes on point clouds and reads off
+homology. Any finite cloud produces some higher faces by chance, so a basic question is
+whether observed topological features reflect genuine latent geometry or arise as artifacts
+of the sampling. We formulate this as a two-sample testing problem and identify the
+sharp dimensional threshold at which the geometric signal becomes detectable.
 
-Topological data analysis (TDA) infers the shape of data by building simplicial complexes on
-point clouds and measuring their homology. The foundational pipeline---sample $n$ points, form
-the \v{C}ech or Vietoris-Rips complex at radius $r$, read off Betti numbers or persistent
-homology---rests on the assumption that observed topological features reflect genuine geometry
-in the underlying data. But any finite point cloud will produce some triangles and higher faces
-by chance; the practical question is whether those topological features are signal or noise.
+\paragraph{The problem.}
+Fix $n \ge 3$ and $p, q \in (0,1)$. The \emph{2-parameter null}
+$\PC(n, p, q)$ is the random 2-dimensional simplicial complex on $[n]$ in which each edge
+appears independently with probability $p$ and each completed triangle is filled
+independently with probability $q$ (Definition~\ref{def:twopc}). The \emph{geometric
+alternative} samples $n$ iid points $x_1, \dots, x_n$ from a latent ambient $(\Omega,
+d_\Omega)$, connects pairs within distance $r$, and fills triples either by the \v{C}ech
+existential nerve ($\bigcap_\ell B(x_\ell, r) \neq \emptyset$) or by the Rips clique
+condition ($A_{ij} = A_{ik} = A_{jk} = 1$), with $r$ matched so that edge and fill
+marginals agree with the null. The detection question is whether, given the complex
+alone, one can tell which model generated it.
 
-\medskip
-\noindent\textbf{The Helly-discriminator framing.}
-The detection landscape for geometric simplicial complexes depends sharply on the
-\emph{Helly number} of the latent ambient space. The \v{C}ech complex is defined by the
-existential nerve criterion (a triple fills when its three balls share a common point);
-the Rips complex is defined by the clique criterion (a triple fills when all three pairwise
-edges are present). On ambients with Helly number~$2$---such as the circle, hence the
-$\ell^\infty$ torus by coordinatewise factorisation---these two definitions
-\emph{coincide as set complexes}: a triple of pairwise-intersecting balls necessarily has a
-common point. The natural downward-closed simplicial model in this regime is the Rips
-clique complex, and there is no $n$-independent dimensional barrier on $\TT^d$.
-On ambients with Helly number~$d$---such as the sphere $S^{d-1}$---the existential nerve
-genuinely strengthens the clique condition, and the gap between the two complexes survives
-concentration of measure, supporting a genuine sub-logarithmic dimensional barrier.
+\paragraph{The statistic.}
+The natural simplicial analogue of the BDER signed triangle~\cite{Bubeck2016} is the
+\emph{doubly-signed filled-triangle statistic}
+\[
+  \tauf = \sum_{\{i,j,k\}\in\binom{[n]}{3}}
+    (A_{ij} - p)(A_{ik} - p)(A_{jk} - p)(F_{ijk} - q),
+\]
+which centers both edge and fill indicators. Under $\PC$, $\EE[\tauf] = 0$ and
+$\Var[\tauf] = \binom{n}{3} p^3 (1-p)^3 q(1-q)$ (Proposition~\ref{prop:moments-twopc});
+under the matched geometric alternative, $\EE[\tauf] = \binom{n}{3} \cdot \geomCov(p, d)$
+for a per-triangle covariance $\geomCov(p, d)$ that depends on the ambient
+(Proposition~\ref{prop:moments-cech}). Single-centered alternatives (the unsigned
+variance gap, or any product centered with respect to only edges) fail at high $d$:
+they retain $\Theta(1)$ noise floors that mask the geometric signal.
 
-This paper bundles the two regimes within a single framework. Instance~1
-(\S\S\ref{sec:linfty-statistic}--\ref{sec:linfty-detection}) handles
-the Helly-2 case: $\ell^\infty$ torus with Rips clique fill, no dimensional barrier,
-$\geomCov \to p^3(1-p)^3 > 0$. Instance~2 (\S\ref{sec:sphere-instance}, with full Wishart
-derivation in Appendix~\ref{app:wishart}) handles the Helly-$d$ case: sphere with proper
-\v{C}ech fill, sub-logarithmic threshold $d^*(n,p) = 3 \log n / \log\log n$.
-Section~\ref{sec:helly-discriminator} states the unifying observation: the existence (or
-absence) of an $n$-independent dimensional barrier is determined by whether the ambient
-admits a \emph{global candidate witness} for the \v{C}ech existential.
+\paragraph{Main result.}
+Our principal theorem identifies the sphere $S^{d-1}$ as the canonical ambient where the
+\v{C}ech-vs-Rips distinction drives a sub-logarithmic dimensional threshold.
 
-\paragraph{Acknowledgment of reframe.}
-An earlier draft of the $\ell^\infty$-torus instance was formulated around a same-radius
-``\v{C}ech'' fill (triple-ball intersection at radius $r$) which is not downward-closed
-when edges are defined by $d_\infty \le r$. N.~Cook (May~2026) diagnosed this as a
-Helly-2 algebraic collapse rather than a structural barrier; the present bundle follows
-his diagnosis by replacing the existential nerve with the Rips clique on the torus while
-preserving the existential nerve on the sphere, where Helly-$d$ keeps it honest.
+\begin{theorem}[Sphere detection threshold; Theorem~\ref{thm:sphere-detection}]
+\label{thm:sphere-headline}
+Let $n$ iid points be sampled uniformly on $S^{d-1}$ and form the \v{C}ech complex at
+the matched radius $r_d = r(p, d)$. Then the doubly-signed test based on $\tauf$
+detects the geometric model against the matched $\PC$ null whenever
+$d \le 3 \log n / \log \log n$, and the test fails when this inequality reverses.
+\end{theorem}
 
-Kahle~\cite{Kahle2011} systematically studied the expected topology of \v{C}ech and
-Vietoris-Rips complexes built on i.i.d.\ random points in $\RR^d$, establishing connectivity
-and component-count thresholds as higher-dimensional analogues of results for random geometric
-graphs. A central motivation, surveyed in Bobrowski and Kahle~\cite{Bobrowski2018}, is the
-need for probabilistic null hypotheses against which TDA test statistics can be calibrated;
-the random geometric complex on i.i.d.\ uniform points is the natural geometric alternative
-to such a null.
+The threshold is driven by a super-exponential vanishing of the \v{C}ech triple-cover
+probability,
+$1 - q_{\text{\v{C}ech}}(p, d) \sim (3 z_p^2 / d)^{(d-2)/2}$ with $z_p = \Phi^{-1}(1-p)$,
+which we obtain from the joint Wishart density $\propto (\det G)^{(d-4)/2}$ of the
+$3 \times 3$ Gram matrix of pairwise inner products on the sphere
+(Appendix~\ref{app:wishart}).
 
-The simplest null model for 2-dimensional complexes is the \emph{2-parameter complex}
-$\PC(n,p,q)$: place $n$ vertices, insert each edge independently with probability $p$, and
-fill each completed triangle independently with probability $q$ (see also the multi-parameter
-model of Kahle~\cite{Kahle2016}). This encodes no geometry---all events are mutually
-independent. The geometric alternative on the flat torus $\TT^d$ samples $n$ points uniformly,
-connects two points within sup-norm distance $r$, and fills a triangle whenever all three
-pairwise edges are present (Rips clique fill). The traditional \v{C}ech existential
-$F_{ijk} = \mathbf{1}[\bigcap_\ell B(x_\ell, r) \neq \emptyset]$ would seem to be a stronger
-geometric condition, but on the $\ell^\infty$ torus the Helly-2 structure (1D Helly per
-coordinate) collapses the existential nerve onto the Rips clique fill at the matched-radius
-regime (Remark~\ref{rem:helly2-collapse}); we work directly with the Rips clique form
-throughout. We retain the symbol $\Cech(n,r,d)$ for continuity with the literature
-\cite{Bjorner1995}; see also Figure~\ref{fig:models}. The fundamental detection question is:
-given only the observed simplicial complex, can one tell which model generated it?
+\paragraph{Why the sphere is canonical.}
+The same framework on the $\ell^\infty$ torus reduces to a random geometric graph
+problem: under matched-radius edges the Helly-2 structure forces the natural
+downward-closed model to be the Rips clique complex, the geometric covariance has the
+closed form $\geomCov(p, d) = q[(1-p)^3 + p^3] - q^2$ with limit $p^3(1-p)^3 > 0$
+(Lemma~\ref{lem:radius-asymptotics}), and no $n$-independent dimensional
+barrier exists. On centered iid-coord Euclidean and $\ell^p$ ambients the obstruction
+is different: at fixed $p$ the matched radius $r_d$ eventually exceeds the typical
+sample-to-origin distance, so the origin serves as a free \v{C}ech witness for every
+triple and $q_{\text{\v{C}ech}} \to 1$ (Proposition~\ref{prop:lp-nogo}). The Jung gap
+between \v{C}ech and Rips, real at fixed $d$, is washed out by concentration of measure.
+The sphere escapes both obstructions because it has no interior reference point: every
+candidate \v{C}ech witness is itself a sample-like point. Among standard homogeneous
+ambients, $S^{d-1}$ is the only one supporting a $d$-dependent threshold at fixed $p$
+(\S\ref{sec:canonicity}).
+
+\paragraph{Formal verification.}
+The full proof chain for the $\ell^\infty$-torus calibrating instance --- moments,
+geometric covariance closed form, SNR calculation, Paley--Zygmund Chebyshev pair, total
+variation conclusion --- is formally verified in Lean~4 with Mathlib~\cite{Mathlib2020},
+with no remaining sorries (Appendix~\ref{app:lean}). On the sphere side, the analytic
+content reduces to four explicitly named structural primitives in
+\texttt{Geometry/Sphere.lean}: the standard-normal quantile, a cap-CLT inversion
+(Poincar\'e / Li~\cite{Li2011} limit), the Wishart Gram-density tail bound
+(Appendix~\ref{app:wishart}), and an algebraic decomposition ratio. Each carries an
+inline literature pointer; the asymptotic headlines
+\texttt{cechFillProb\_tail\_asymptotic} and \texttt{geomCovCech\_asymptotic} are
+derived from these primitives by a pure analytic squeeze inside
+Lean.\footnote{The development of this paper was assisted by Claude
+Code~\cite{ClaudeCode2025} (Anthropic) and the Aristotle API~\cite{Aristotle2025}
+(Harmonic.fun) across both the mathematical and formal layers over approximately 45
+formalization rounds. The authors are responsible for all mathematical content,
+following the approach of Jang and Ryu~\cite{JangRyu2026} in extending AI assistance to
+mathematical exploration beyond formal verification.}
+
+\paragraph{Organization.}
+Section~\ref{sec:setup} defines the models, the matched radius, and the doubly-signed
+statistic $\tauf$; moment computations are stated with proofs deferred to
+Appendix~\ref{app:variance-bound}. Section~\ref{sec:sphere-detection} proves the main
+theorem on the sphere using the Wishart tail of Appendix~\ref{app:wishart}.
+Section~\ref{sec:torus-calibration} carries out the closed-form torus computation as a
+calibrating foil. Section~\ref{sec:canonicity} establishes the $\ell^p$ trivialisation
+and explains why the sphere is canonical. Section~\ref{sec:lean} summarises the Lean~4
+formalisation and the named-primitive convention. Section~\ref{sec:discussion} compares
+with BDER, discusses the sparse regime, fill-pair improvements, and open problems.
 
 \subsection{Related Work}\label{sec:related}
 
-\subsubsection*{Geometry testing for random graphs}
-Bubeck, Ding, Eldan, and R\'acz~\cite{Bubeck2016} introduced the signed triangle statistic
-for testing $G(n,p)$ vs.\ $\RGG(n,p,d)$ on $\Sph^{d-1}$, establishing the $d\asymp n^3$
-phase transition: random geometric graphs are detectable when $d\ll n^3$ and
-indistinguishable from Erd\H{o}s--R\'enyi when $d\gg n^3$. Bangachev and
-Bresler~\cite{BangachevBresler2024} studied the low-degree Fourier coefficients of random
-geometric graphs on $\Sph^{d-1}$, showing that the signed triangle statistic is
-computationally optimal for this testing problem and characterizing the Fourier coefficient
-behavior across the full range of densities. Liu, Mohanty, Schramm, and Yang~\cite{Liu2022}
-obtained sharp detection thresholds for sparse random geometric graphs via the low-degree
-polynomial framework; their methods provide a model for sharpening the SNR condition below the
-detection threshold. Brennan, Bresler, and Huang~\cite{Brennan2022} extended BDER to
-anisotropic latent geometries; a complementary line due to Litvak, Michielan, and
-Stegehuis~\cite{Litvak2022} shows that triangle-count statistics are insufficient to detect
-\emph{hyperbolic} geometry in networks, underscoring that the power of triangle-based tests
-is geometry-dependent. Perkins~\cite{Perkins2024} surveys recent progress on sharp
-thresholds in random structures.
-Our work carries this framework into the simplicial setting, where the presence of fill
-indicators introduces an additional layer of geometric dependence beyond edge structure alone.
-The detection landscape splits along the Helly number of the latent ambient. On Helly-2
-ambients (the $\ell^\infty$ torus, Instance~1), the Rips clique fill is structurally aligned
-with the edge layer and the per-triangle signal $\geomCov(p,d)$ stabilises at
-$p^3(1-p)^3 > 0$ as $d \to \infty$, giving no $n$-independent barrier and recovering a
-BDER-style SNR threshold. On Helly-$d$ ambients (the sphere, Instance~2), the existential
-\v{C}ech fill genuinely strengthens the clique condition and the signal vanishes
-super-exponentially in~$d$, giving the sub-logarithmic $d^*(n,p) = 3\log n / \log\log n$.
+The signed triangle statistic on $\Sph^{d-1}$ originates with Bubeck, Ding, Eldan, and
+R\'acz~\cite{Bubeck2016}, who established the $d \asymp n^3$ phase transition for $G(n,p)$
+versus the random geometric graph $\RGG(n,p,d)$ on the sphere. Bangachev and
+Bresler~\cite{BangachevBresler2024} showed that the signed triangle is computationally
+optimal in this setting via a low-degree Fourier analysis; Liu, Mohanty, Schramm, and
+Yang~\cite{Liu2022} obtained sharp detection thresholds in the sparse regime; Brennan,
+Bresler, and Huang~\cite{Brennan2022} extended the framework to anisotropic latent
+geometries. Litvak, Michielan, and Stegehuis~\cite{Litvak2022} show that triangle-count
+statistics are insufficient to detect hyperbolic geometry, underscoring that the power
+of triangle-based tests is geometry-dependent. Perkins~\cite{Perkins2024} surveys recent
+progress on sharp thresholds in random structures. Our work carries this framework into
+the simplicial setting, where the fill layer introduces geometric dependence beyond the
+edge graph. The detection landscape splits along a refined geometric criterion (whether
+the ambient admits a global candidate witness for the \v{C}ech existential), not the
+Helly number alone: $\ell^\infty$ torus (Helly~2) and centered Euclidean $\ell^p$ (Helly
+$d{+}1$) both trivialise, by structurally different mechanisms, and only the sphere
+supports a $d$-dependent threshold.
 
-\subsubsection*{Hypergraph detection}
+In topological data analysis, Kahle~\cite{Kahle2011} established homology thresholds for
+\v{C}ech and Vietoris-Rips complexes on iid points in $\RR^d$, and~\cite{Kahle2016}
+surveys the multi-parameter random simplicial complex of which our $\PC(n, p, q)$ is a
+special case. Bobrowski and Kahle~\cite{Bobrowski2018} survey random geometric complexes
+in connection with null hypotheses for topological statistics. Tem\v{c}inas, Nanda, and
+Reinert~\cite{Temcinas2025} develop goodness-of-fit tests for the multi-parameter
+$\mathbf{X}(n, \mathbf{p})$ in the dense regime via multivariate CLTs from Stein's
+method; their setting is one-sample goodness-of-fit against unspecified alternatives,
+ours is two-sample detection of a specific geometric alternative. A technical point of
+contact: their raw subcomplex counts have rank-one limiting covariance, which prompts
+their use of critical simplex counts from discrete Morse theory; our doubly-signed
+$\tauf$ sidesteps this degeneracy by centering both layers.
+
 Dhawan, Mao, and Wein~\cite{DhawanMaoWein2023} study detection of planted dense
-subhypergraphs via low-degree polynomials in $r$-uniform hypergraphs, establishing sharp
-thresholds in the log-density regime. Their setting is combinatorial (planted structure in an
-Erd\H{o}s--R\'enyi null) rather than geometric, but the low-degree framework and the
-connection between hyperedge counting statistics and the structure of test polynomials is
-closely related to our context. We view their analysis as the combinatorial cousin of our
-geometric detection problem: the 2PC null here plays the role of their Erd\H{o}s--R\'enyi
-hypergraph, and the \v{C}ech complex plays the role of their planted dense substructure,
-but the source of dependence (latent torus positions rather than a planted clique) is
-qualitatively different and yields a different class of tests.
-
-\subsubsection*{Random geometric complexes and TDA}
-Kahle~\cite{Kahle2011} established homology thresholds for \v{C}ech and Vietoris-Rips
-complexes on random points in $\RR^d$, motivated by the need for null models in TDA.
-Kahle~\cite{Kahle2016} surveys the multi-parameter model $X(n;p_1,p_2,\ldots)$ (of which
-our $\PC(n,p,q)$ is a special case) and the connection to persistent homology.
-Bobrowski and Kahle~\cite{Bobrowski2018} survey random geometric complexes, explicitly
-connecting the topology of such complexes to null hypotheses for topological statistics.
-Tem\v{c}inas, Nanda, and Reinert~\cite{Temcinas2025} develop goodness-of-fit tests for
-the multi-parameter random simplicial complex $\mathbf{X}(n,\mathbf{p})$ in the dense
-regime, using multivariate CLTs for subcomplex counts proved via Stein's method.
-Their setting and ours are complementary: they test a single null
-$\mathbf{X}(n,\mathbf{p})$ against unspecified alternatives (one-sample goodness-of-fit),
-while we formulate a two-sample detection problem between a combinatorial null
-($\PC$) and a geometric alternative ($\Cech$). A technical point of contact is their
-observation that raw subcomplex counts in $\mathbf{X}(n,\mathbf{p})$ have rank-one
-limiting covariance, which motivates their switch to critical simplex counts from
-discrete Morse theory; our doubly-signed $\tauf$ sidesteps this degeneracy directly
-by centering both edge and fill indicators, yielding non-degenerate
-$\Theta(n^3)$ variance under $\PC$ (Proposition~\ref{prop:moments-twopc}).
-Tem\v{c}inas et al.\ also empirically demonstrate that their test can distinguish
-$\mathbf{X}(n,\mathbf{p})$ from selected geometric simplicial complex models;
-the present work gives a theoretical analogue with detection bounds on $\TT^d$
-(Helly-2, no $n$-independent barrier) and a sub-logarithmic dimensional threshold
-on $S^{d-1}$ (Helly-$d$).
-
-\subsection{Main Results and Contributions}\label{sec:mainresults}
-
-The key tool is the \emph{doubly-signed filled triangle statistic}
-\begin{equation}\label{eq:tauf}
-  \tauf = \sum_{\{i,j,k\}\in\binom{[n]}{3}}
-    \Bigl[\prod_{e\in\partial\{i,j,k\}}(A_e - p)\Bigr](F_{ijk} - q),
-\end{equation}
-centered with respect to both edge and fill variability (Definition~\ref{def:tauf}).
-The quantity $\geomCov(p,d)$ (Definition~\ref{def:geomcov}) is the per-triangle geometric-model
-expectation of this doubly-centered product.
-
-\medskip
-\noindent\textbf{Instance~1: $\ell^\infty$ torus, Rips clique fill (Helly-2).}
-On $\TT^d$ with sup-norm and Rips clique fill $F_{ijk} = A_{ij} A_{ik} A_{jk}$, the
-regime-free closed form
-\[
-  \geomCov(p,d) = q\bigl[(1-p)^3 + p^3\bigr] - q^2, \qquad q = \fillingP(p,d),
-\]
-holds for all $p \in (0,1)$ and $d \ge 1$ (\lean{geometricCov\_eq}), giving the limit
-$\geomCov(p,d) \to p^3 (1-p)^3 > 0$ as $d \to \infty$ at fixed $p$
-(\lean{geometricCov\_tendsto\_pcubed\_compcubed}). Combined with the SNR calculation
-(Lemma~\ref{lem:snr}) and the Paley--Zygmund Chebyshev pair, this yields the
-detection theorem (Theorem~\ref{thm:detection}, \lean{detection\_lower\_bound\_fixed\_d}):
-for every fixed $d \ge 1$, $\TV(\PC, \Cech_{\mathrm{Rips}}) \to 1$ as $n \to \infty$.
-The joint-$(n,d)$ strengthening \lean{phase\_transition} extends this under an
-asymptotic-equivalence hypothesis on $\geomCov$.
-
-\medskip
-\noindent\textbf{Instance~2: sphere $S^{d-1}$, proper \v{C}ech fill (Helly-$d$).}
-Under the existential common-cap fill on $S^{d-1}$, the joint Gram-entry density
-$\propto (\det G)^{(d-4)/2}$ (Wishart, Appendix~\ref{app:wishart}) yields the
-super-exponential tail
-\[
-  1 - q_{\text{\v{C}ech}}(p,d)
-  \sim \Bigl(\frac{3 z_p^2}{d}\Bigr)^{(d-2)/2},
-  \qquad z_p = \Phi^{-1}(1-p),
-\]
-together with $\geomCov_{\text{\v{C}ech}}(p,d) = p^3 (1 - q_{\text{\v{C}ech}}(p,d))(1+o(1))$.
-The detection threshold is sub-logarithmic:
-$d^*(n,p) = 3 \log n / \log\log n$, with universal leading constant $3$.
-
-\medskip
-\noindent\textbf{Contributions.}
-\begin{enumerate}[label=(\arabic*)]
-\item \textbf{The doubly-signed statistic} (Definition~\ref{def:tauf}). The natural
-  simplicial analogue of the BDER signed triangle statistic, centering both edge and
-  fill variability.
-
-\item \textbf{Moment computations} (Propositions~\ref{prop:moments-twopc}
-  and~\ref{prop:moments-cech}).
-  Under $\PC(n,p,q)$, $\EE[\tauf] = 0$ and
-  $\Var[\tauf] = \binom{n}{3}p^3(1-p)^3 q(1-q)$.
-  Under the matched geometric model,
-  $\EE[\tauf] = \binom{n}{3}\cdot\geomCov(p,d)$.
-
-\item \textbf{Helly-2 closed form and no-barrier conclusion}
-  (Theorem~\ref{thm:detection}). On the $\ell^\infty$ torus with Rips clique fill,
-  the regime-free identity $\geomCov(p,d) = q[(1-p)^3 + p^3] - q^2$ gives the limit
-  $p^3(1-p)^3 > 0$ and detection succeeds at every fixed $d$.
-
-\item \textbf{Helly-$d$ sub-logarithmic barrier} (\S\ref{sec:sphere-instance},
-  Appendix~\ref{app:wishart}). On the sphere with proper \v{C}ech fill, the
-  Wishart Gram-density tail drives the sub-logarithmic threshold
-  $d^*(n,p) = 3 \log n / \log\log n$.
-
-\item \textbf{Lean~4 verification.}
-  The moment chain, the regime-free Rips closed form, the limit
-  $\geomCov(p,d) \to p^3(1-p)^3$, and the detection theorem (TV~$\to 1$) are formally
-  verified in Lean~4 with Mathlib, with no remaining sorries in the active proof chain.
-  The sphere headlines reduce to four explicitly named structural axioms in
-  \texttt{Geometry/Sphere.lean}; see Appendix~\ref{app:lean} for the full catalog.
-\end{enumerate}
-
-\subsection{Paper Organization}
-
-Section~\ref{sec:models} defines the models and parameter matching, including the
-clique-form Rips fill used on the torus and the Helly-2 collapse fact that justifies it.
-Section~\ref{sec:linfty-statistic} introduces $\tauf$ and proves its moments under both
-models. Section~\ref{sec:linfty-detection} carries out the detection analysis on the
-$\ell^\infty$ torus and proves Theorem~\ref{thm:detection}.
-Section~\ref{sec:sphere-instance} develops the sphere instance with its sub-logarithmic
-barrier; the Wishart derivation is in Appendix~\ref{app:wishart}.
-Section~\ref{sec:helly-discriminator} states the unifying Helly-discriminator observation.
-Appendix~\ref{app:lean} is a catalog of all formally verified Lean~4 results;
-in-text annotations of the form \lean{lemma\_name} throughout the paper link to the
-corresponding entries there.
-
-\subsection{AI-Assisted Mathematical Development}\label{sec:ai}
-
-The development of this paper was assisted by two AI tools. The authors are responsible for its mathematical content, using the BDER analogy as a guiding framework for the formulation of the doubly-signed statistic~$\tauf$. \textbf{Claude Code}~\cite{ClaudeCode2025} (Anthropic) and \textbf{Aristotle API}~\cite{Aristotle2025} (Harmonic.fun) contributed at both the mathematical and formal levels, including the phase transition analysis, as well as proof
-architecture, tactic selection, and Lean~4 syntax over approximately~45 formalization rounds. Formally completed proofs were reviewed and cherry-picked into the codebase by the authors.
-
-This work follows the approach of Jang and Ryu~\cite{JangRyu2026}, who employed ChatGPT in
-the \emph{discovery} of their proof of point convergence of Nesterov's accelerated gradient
-method. As in that work, AI assistance extended beyond the formal verification layer into
-mathematical exploration. The authors are responsible for all mathematical content.
+subhypergraphs via low-degree polynomials in $r$-uniform hypergraphs. Their setting is
+combinatorial (planted structure in an Erd\H{o}s--R\'enyi null) rather than geometric;
+the low-degree framework connects to our open problem of full optimality for $\tauf$ in
+the simplicial setting (\S\ref{sec:open}).
 
 %% ─────────────────────────────────────────────────────────────────────────────
-\section{Models and Parameter Matching}\label{sec:models}
+\section{Setup}\label{sec:setup}\label{sec:models}
 %% ─────────────────────────────────────────────────────────────────────────────
 
-\subsection{Two Random Models of Simplicial Complexes}
+\subsection{Two Random Models}
 
 \begin{definition}[2-parameter complex]\label{def:twopc}
 The \emph{2-parameter complex} $\PC(n,p,q)$ is the random 2-dimensional simplicial complex
@@ -443,13 +341,17 @@ $\le 2r$, whereas the clique condition requires pairwise distance $\le r$. Howev
 edges are defined by $d_\infty \le r$, the existential nerve produces a 2-complex that is
 \emph{not} downward-closed (a filled triangle need not have all three edges present),
 which is the wrong simplicial object to use as a null alternative. The Rips clique form
-in~\eqref{eq:fill-clique} is downward-closed by construction, and the Helly-2 structure
-of $\TT^d$ (1D Helly per coordinate; Lemma~\ref{lem:helly}) ensures the converse
-implication on the torus: whenever all three pairwise edges are present (clique condition),
-the existential nerve is automatically satisfied (\lean{wedge\_implies\_fill}). The
-distinction between the two notions becomes a genuine source of
-signal only on Helly-$d$ ambients, where the existential nerve cannot be collapsed onto
-the clique; this is the setting of \S\ref{sec:sphere-instance}.
+in~\eqref{eq:fill-clique} is downward-closed by construction, and the converse direction
+on the torus is trivial: whenever all three pairwise edges are present (clique condition)
+at radius $r$, any clique vertex $x_\ell$ itself certifies the existential nerve at
+radius $r$ via $d_\infty(x_\ell, x_m) \le r$ for $m \in \{i,j,k\}$
+(\lean{wedge\_implies\_fill}). The Helly-2 structure of $\TT^d$ (1D Helly per coordinate;
+Lemma~\ref{lem:helly}) enters in the matched-radius convention (balls of radius $r/2$,
+edges at $d_\infty \le r$), where pairwise existential intersections imply a common point
+and the two complexes coincide as set complexes; here we use the equivalent
+downward-closed Rips clique form directly. The distinction between the two notions becomes
+a genuine source of signal only on Helly-$d$ ambients, where the existential nerve cannot
+be collapsed onto the clique; this is the setting of \S\ref{sec:sphere-detection}.
 \end{remark}
 
 \begin{figure}[t]
@@ -575,11 +477,11 @@ relative to its matched marginal. Under the Rips clique fill on $\TT^d$, the reg
 closed form of Lemma~\ref{lem:radius-asymptotics}(b) determines $\geomCov$ in terms of
 $p$ and $q = \fillingP(p,d)$ alone, with the limit $p^3(1-p)^3 > 0$ giving an
 $n$-independent positive signal at every dimension. Under proper \v{C}ech fill on the
-sphere (\S\ref{sec:sphere-instance}), the existential nerve genuinely strengthens the
+sphere (\S\ref{sec:sphere-detection}), the existential nerve genuinely strengthens the
 clique condition and $\geomCov_{\text{\v{C}ech}}$ vanishes super-exponentially in~$d$,
 giving the sub-logarithmic dimensional barrier.
 
-\subsection{Asymptotic Properties of the Matched Parameters}
+\subsection{Asymptotics of the Matched Parameters}
 
 We record a 1D Helly-type lemma on the circle. This is the structural fact that justifies
 identifying the Rips clique fill with the existential nerve on $\TT^d$ in the matched-radius
@@ -658,22 +560,15 @@ $p^3[(1-p)^3 + p^3] - p^6 = p^3 (1-p)^3$. \qedhere
 \end{proof}
 
 %% ─────────────────────────────────────────────────────────────────────────────
-\section{The Doubly-Signed Statistic}\label{sec:statistic}\label{sec:linfty-statistic}
-%% ─────────────────────────────────────────────────────────────────────────────
+\subsection{The Doubly-Signed Statistic}\label{sec:statistic}\label{sec:linfty-statistic}
 
-Two natural simplicial analogues of the BDER signed triangle statistic suggest themselves,
-and neither is quite right. Centering only the edge indicators (as BDER does for graphs)
-gives a statistic sensitive to graph geometry but blind to fill structure; centering only
-the fill indicator leaves the edge layer unsigned, so the expectation under $\PC$ picks up
-a systematic bias from the correlation between edges and fills. The construction below
-centers all four indicators simultaneously: we replace each $A_e$ by $A_e - p$ and
-$F_{ijk}$ by $F_{ijk} - q$. This doubly-centered product vanishes in expectation under
-$\PC$ (by independence) and isolates the geometric dependence introduced by the
-\v{C}ech model.
-
-Let $A_{ij}\in\{0,1\}$ denote the indicator that edge $\{i,j\}$ is present, and let
-$F_{ijk}\in\{0,1\}$ denote the indicator that triangle $\{i,j,k\}$ is filled (zero if any
-edge is absent). Fix parameters $p,q$ from the null model.
+Single-centered analogues of the BDER signed triangle fail in the simplicial setting:
+centering only the edges (as BDER does for graphs) is blind to fill structure, while
+centering only the fill indicator leaves a systematic edge-fill bias under
+$\PC$. The construction below centers all four indicators simultaneously and isolates the
+geometric dependence introduced by the \v{C}ech alternative. Let $A_{ij} \in \{0, 1\}$
+denote the indicator that edge $\{i, j\}$ is present and $F_{ijk} \in \{0, 1\}$ the
+indicator that triangle $\{i, j, k\}$ is filled (zero if any edge is absent).
 
 \begin{definition}[Doubly-signed statistic]\label{def:tauf}
 The \emph{doubly-signed filled triangle statistic} is
@@ -704,33 +599,11 @@ Under $\PC(n,p,q)$:
 \hfill \leanverified{moments\_twoParam\_signed}
 \end{proposition}
 
-\begin{proof}
-\textit{Part~(a).} Under $\PC$, all four indicators $A_{ij}, A_{ik}, A_{jk}, F_{ijk}$ are
-mutually independent. Hence
-\[
-  \EE[Z_t] = \EE[A_{ij}-p]\cdot\EE[A_{ik}-p]\cdot\EE[A_{jk}-p]\cdot\EE[F_{ijk}-q] = 0,
-\]
-since $\EE[A_{ij}-p] = 0$. Summing over all $\binom{n}{3}$ triangles gives $\EE[\tauf]=0$.
-
-\textit{Part~(b), off-diagonal terms.} For distinct triangles $t\neq t'$, we show
-$\EE[Z_t Z_{t'}] = 0$. Under $\PC$, all edge and fill indicators are mutually independent.
-Any edge $e \in \partial t \setminus \partial t'$ that appears in $t$ but not $t'$ contributes
-an independent factor $(A_e - p)$ to $Z_t$ which is independent of $Z_{t'}$; since
-$\EE[A_e-p]=0$, the product $\EE[Z_t Z_{t'}]=0$. The same argument applies if $t,t'$
-share all three edges (impossible for distinct triangles) or if the fill $F_t$ is unshared.
-More precisely: whenever any indicator in the product $Z_t Z_{t'}$ appears in exactly one of
-$Z_t, Z_{t'}$, it contributes a mean-zero factor independent of the rest, killing the
-expectation. One checks case by case that for any two distinct triangles (sharing 0, 1, 2, or
-3 vertices), at least one such unshared indicator exists.
-
-\textit{Part~(b), diagonal terms.} By mutual independence in $\PC$,
-\begin{align*}
-  \Var[Z_t] = \EE[Z_t^2]
-  &= \EE[(A_{ij}-p)^2]\cdot\EE[(A_{ik}-p)^2]\cdot\EE[(A_{jk}-p)^2]\cdot\EE[(F_{ijk}-q)^2]\\
-  &= p(1-p)\cdot p(1-p)\cdot p(1-p)\cdot q(1-q).
-\end{align*}
-Since the $\binom{n}{3}$ diagonal terms are uncorrelated, summing gives
-$\Var[\tauf] = \binom{n}{3}\cdot p^3(1-p)^3 q(1-q)$.
+\begin{proof}[Proof sketch] Mutual independence of all edge and fill indicators under
+$\PC$ collapses $\EE[Z_t]$ to a product of mean-zero factors and forces off-diagonal
+covariances to vanish; the diagonal contribution is the product of marginal variances
+$p(1-p) \cdot p(1-p) \cdot p(1-p) \cdot q(1-q)$. Full computation in
+Appendix~\ref{app:variance-bound}.
 \end{proof}
 
 Under the \v{C}ech model the three vertices of a triangle are coupled through their
@@ -747,66 +620,91 @@ Under $\Cech(n,r,d)$ with $r = r(p,d)$ and matched $q = \fillingP(p,d)$:
 \end{enumerate}
 \end{proposition}
 
-\begin{proof}
-\textit{Part~(a).}
-Write $Z_t = (A_{ij}-p)(A_{ik}-p)(A_{jk}-p)(F_{ijk}-q)$ for triangle $t = \{i,j,k\}$.
-Under the \v{C}ech model, the joint law of $(A_{ij}, A_{ik}, A_{jk}, F_t)$ is determined by
-the triple $(x_i,x_j,x_k)$ drawn uniformly on $(\TT^d)^3$. By definition of
-$\geomCov(p,d)$~\eqref{eq:geomcov-def}, we have $\EE[Z_t] = \geomCov(p,d)$ for each
-triangle. Since all $\binom{n}{3}$ triangles are identically distributed,
-$\EE[\tauf] = \binom{n}{3}\cdot\geomCov(p,d)$.
-
-\textit{Part~(b).}
-Expand $\Var[\tauf] = \sum_{t,t'} \Cov(Z_t, Z_{t'})$ and classify pairs $(t,t')$ by the number
-$s\in\{0,1,2,3\}$ of shared vertices ($s=3$ corresponds to the diagonal $t=t'$). The
-contribution from each class is summarized by the following counts:
-\begin{center}
-\renewcommand{\arraystretch}{1.1}
-\begin{tabular}{c|c|c|c}
-shared vertices $s$ & $\#\{(t,t')\}$ & $\Cov(Z_t, Z_{t'})$ per pair & total \\
-\hline
-$s=3$ (diagonal) & $\binom{n}{3} = \Theta(n^3)$ & $\leq\Var[Z_t]\leq 1$ & $O(n^3)$ \\
-$s=2$ (shared edge) & $\binom{n}{2}(n-2)(n-3) = \Theta(n^4)$ & $O(1)$ & $O(n^4)$ \\
-$s=1$ (shared vertex) & $n\binom{n-1}{2}\binom{n-3}{2} = \Theta(n^5)$ & $0$ & $0$ \\
-$s=0$ (disjoint) & $\binom{n}{3}\binom{n-3}{3} = \Theta(n^6)$ & $0$ & $0$ \\
-\end{tabular}
-\end{center}
-
-Since $|Z_t|\leq 1$ by construction, all per-pair covariances are bounded by $O(1)$. The
-$s=0$ case is immediate from the independence of the six distinct sampled points. The $s=1$
-and $s=2$ cases require the conditioning arguments sketched below; the full derivation is
-given in Appendix~\ref{app:variance-bound}.
-
-\smallskip
-\noindent\emph{Case $s=1$ (zero contribution).} Suppose $t=\{i,j,k\}$ and $t'=\{i,j',k'\}$
-share only the vertex~$i$. Condition on $x_i$ and apply the law of total covariance:
-\[
-  \Cov(Z_t,Z_{t'}) \;=\; \underbrace{\EE\!\bigl[\Cov(Z_t,Z_{t'}\mid x_i)\bigr]}_{\text{first term}}
-  \;+\; \underbrace{\Cov\!\bigl(\EE[Z_t\mid x_i],\EE[Z_{t'}\mid x_i]\bigr)}_{\text{second term}}.
-\]
-The first term vanishes by \emph{conditional independence}: given $x_i$, the points
-$(x_j,x_k)$ are independent of $(x_{j'},x_{k'})$ (four independent uniform draws on $\TT^d$),
-so $Z_t$ and $Z_{t'}$ are conditionally independent and their conditional covariance is $0$.
-The second term vanishes by \emph{translation invariance}: under the uniform measure on
-$\TT^d$, the law of $(x_j - x_i, x_k - x_i)\pmod 1$ is uniform on $(\TT^d)^2$ regardless
-of the value of $x_i$. Hence the conditional law of $Z_t$ given $x_i$ does not depend on
-$x_i$; in particular $\EE[Z_t\mid x_i] = \EE[Z_t]$ is a constant, and symmetrically for $t'$.
-A covariance of two constants is zero.
-
-\smallskip
-\noindent\emph{Case $s=2$ (the only nontrivial contribution, $O(n^4)$).} For triangles
-$t=\{i,j,k\}$ and $t'=\{i,j,k'\}$ sharing edge $\{i,j\}$, condition on $(x_i,x_j)$; the
-remaining points $x_k, x_{k'}$ are then conditionally iid uniform on $\TT^d$, so $Z_t$ and
-$Z_{t'}$ become conditionally independent functions of $(x_i,x_j)$. The Cauchy--Schwarz-type
-bound $|\Cov(Z_t,Z_{t'})|\leq 1$ combines with the count $\Theta(n^4)$ to give the leading
-$O(n^4)$ term.
-
-Combining the four cases yields $\Var[\tauf] = O(n^3)+O(n^4)+0+0 = O(n^4)$.
+\begin{proof}[Proof sketch] Part (a) is immediate from the definition of
+$\geomCov(p, d)$~\eqref{eq:geomcov-def} together with identical distribution of all
+$\binom{n}{3}$ triangles. For part (b), classify covariance pairs by shared vertices
+$s \in \{0, 1, 2, 3\}$. Translation invariance on $\TT^d$ kills the $s = 1$ contribution
+(conditional on the shared vertex, the two triangles are independent of common
+randomness); independence of disjoint sample tuples kills the $s = 0$ contribution. Only
+the diagonal $s = 3$ ($O(n^3)$) and shared-edge $s = 2$ ($O(n^4)$) classes contribute.
+Full derivation in Appendix~\ref{app:variance-bound}.
 \end{proof}
 
 %% ─────────────────────────────────────────────────────────────────────────────
-\section{Instance~1: Detection on the $\ell^\infty$ Torus (Helly-2)}\label{sec:linfty-detection}\label{sec:detection}
+\section{Sphere detection: the sub-logarithmic threshold}\label{sec:sphere-detection}
 %% ─────────────────────────────────────────────────────────────────────────────
+
+On the sphere $S^{d-1}$, Helly's theorem has Helly number $d$, and (unlike the
+$\ell^\infty$ torus or any centered iid-coord Euclidean ambient) the existential
+\v{C}ech nerve does not collapse to the Rips clique. Pairwise inner products of three
+iid uniform points on the sphere have a joint Wishart-type density proportional to
+$(\det G)^{(d-4)/2}$, and the vanishing of this density on the Gram boundary
+$\det G = 0$ drives a super-exponential tail on the complement triple-cover
+probability (Appendix~\ref{app:wishart}).
+
+\paragraph{Matched cosine threshold.}
+On $S^{d-1}$ the edge condition $\langle x_i, x_j \rangle \ge r$ defines a spherical
+cap. The matched cosine $r_d := r(p, d)$ is chosen so that the cap probability under the
+uniform measure on $S^{d-1}$ equals $p$. By the cap-CLT (Poincar\'e / Li~\cite{Li2011}),
+$\sqrt d \cdot r_d \to z_p := \Phi^{-1}(1 - p)$ as $d \to \infty$.
+
+\paragraph{Tail and decomposition.}
+Under matched-radius \v{C}ech fill, the complement triple-cover probability satisfies
+\[
+  1 - q_{\text{\v{C}ech}}(p, d) \;\sim\; \Bigl(\frac{3 z_p^2}{d}\Bigr)^{(d-2)/2}
+  \qquad (d \to \infty),
+\]
+and the geometric covariance decomposes as
+\[
+  \geomCov_{\text{\v{C}ech}}(p, d)
+    \;=\; q_{\text{Rips}}(p, d) \cdot (1 - q_{\text{\v{C}ech}}(p, d))
+        \,+\, 3 p^2 (\beta(p, d) - p),
+\]
+where $\beta(p, d) = \EE[A_{12} F^{\text{\v{C}ech}}]$ is the wedge--\v{C}ech joint
+moment. Surface concentration drives $\beta - p \to 0$ at a sub-leading rate
+(Appendix~\ref{app:wishart-cd}), so
+$\geomCov_{\text{\v{C}ech}}(p, d) / (p^3 (1 - q_{\text{\v{C}ech}}(p, d))) \to 1$, giving
+the headline asymptotic
+\[
+  \geomCov_{\text{\v{C}ech}}(p, d) \;\sim\; p^3 \cdot \Bigl(\frac{3 z_p^2}{d}\Bigr)^{(d-2)/2}.
+\]
+
+\begin{theorem}[Sphere detection threshold]\label{thm:sphere-detection}
+Let $n \to \infty$ with $d = d(n) \to \infty$, and let $\Cech_{S^{d-1}}(n, p)$ be the
+matched-radius \v{C}ech complex on $n$ iid uniform points on $S^{d-1}$. The
+doubly-signed test based on $\tauf$ separates $\PC(n, p, q)$ from
+$\Cech_{S^{d-1}}(n, p)$ in total variation whenever
+\[
+  d \;\le\; \frac{3 \log n}{\log \log n}\,(1 - o(1)),
+\]
+and the SNR vanishes when $d \ge (3 \log n / \log \log n)(1 + o(1))$. In particular
+the sub-logarithmic threshold is $d^*(n, p) = 3 \log n / \log \log n$, with universal
+leading constant $3$.
+\end{theorem}
+
+\begin{proof}[Proof sketch] By Proposition~\ref{prop:moments-twopc},
+$\Var[\tauf \mid \PC] = \Theta(n^3)$. By Proposition~\ref{prop:moments-cech}(a) and the
+headline asymptotic above, $\EE[\tauf \mid \Cech_{S^{d-1}}] = \binom{n}{3} \cdot p^3
+(3 z_p^2 / d)^{(d-2)/2}(1 + o(1))$. The SNR ratio
+$\EE[\tauf]^2 / \Var[\tauf \mid \PC]$ exceeds any constant precisely when
+$n^3 (3 z_p^2 / d)^{d-2} \to \infty$, which is equivalent to
+$d \log \log d \le 3 \log n (1 - o(1))$, i.e.\ $d \le 3 \log n / \log \log n (1 - o(1))$.
+The Paley--Zygmund Chebyshev pair, combined with the second-moment bound under the
+\v{C}ech model (the sphere analogue of Appendix~\ref{app:variance-bound}), upgrades the
+SNR separation to a total variation separation. The reverse direction is a routine SNR
+calculation. Full derivation in Appendix~\ref{app:wishart-threshold}.
+\end{proof}
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Torus calibration: the $\ell^\infty$/Rips closed form}\label{sec:torus-calibration}\label{sec:linfty-detection}\label{sec:detection}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+The same framework on the $\ell^\infty$ torus admits a closed-form computation that
+exhibits the Helly-2 collapse and serves as the calibrating instance: the moment
+chain, the SNR calculation, and the total variation conclusion here are exactly the
+operations that recur on the sphere (where the analytic content is harder), and they
+provide the testbed for the Lean~4 formalisation
+(\S\ref{sec:lean}).
 
 Throughout this section, $\TV(\mu,\nu) = \sup_{A}|\mu(A) - \nu(A)|$ denotes the total
 variation distance between probability measures $\mu$ and $\nu$.
@@ -895,7 +793,7 @@ $\TV(\PC,\Cech) \geq \TV(\mathrm{law}_{\PC}(\tauf), \mathrm{law}_{\Cech}(\tauf))
 $\TV(\PC,\Cech)\to 1$.
 \end{proof}
 
-\subsection{No-Barrier Regime: Joint $(n,d)$ Detection}
+\subsection{No-Barrier Regime: Joint $(n, d)$ Detection}
 
 Theorem~\ref{thm:detection} combined with Lemma~\ref{lem:radius-asymptotics}(c) gives
 the headline conclusion: on the $\ell^\infty$ torus with Rips clique fill, there is
@@ -923,12 +821,114 @@ The headline ``no $n$-independent dimensional barrier'' is a statement about the
 doubly-signed statistic $\tauf$ on the Rips clique fill: detection succeeds via $\tauf$ at
 every fixed $d \ge 1$. It does not preclude lower-bound results in extreme scaling regimes
 or for richer test statistics; we leave matching impossibility bounds open. The sphere
-instance (\S\ref{sec:sphere-instance}) gives a structurally different setting where a
+instance (\S\ref{sec:sphere-detection}) gives a structurally different setting where a
 genuine $d$-dependent barrier emerges via the Helly-$d$ structure of $S^{d-1}$.
 \end{remark}
 
 %% ─────────────────────────────────────────────────────────────────────────────
-\section{Discussion}\label{sec:discussion}
+\section{Canonicity of the sphere}\label{sec:canonicity}\label{sec:sister-instances}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+The sphere headline of \S\ref{sec:sphere-detection} and the torus calibration of
+\S\ref{sec:torus-calibration} sit at opposite ends of a small landscape: on the torus the
+Helly-2 collapse erases the \v{C}ech--Rips distinction, on the sphere it survives. Between
+these two natural alternatives sit centered iid-coord Euclidean ambients ($\RR^d$,
+$\ell^p$ with $p \in [1, \infty)$), which one might hope would also support a barrier.
+They do not, and the obstruction has a different shape from the torus case: not Helly
+collapse, but concentration of measure.
+
+\begin{proposition}[$\ell^p$ centered-ambient trivialisation]\label{prop:lp-nogo}
+Let $X \in \RR$ be a non-degenerate symmetric random variable with $\mu_p := \EE[|X|^p] <
+\infty$ and $\tilde\mu_p := \EE[|X_1 - X_2|^p] < \infty$ for iid copies $X_1, X_2$. Let
+$x_1, \dots, x_n \in \RR^d$ be iid with iid coordinates from $X$, and let $r_d$ satisfy
+$\Pr[\|x_1 - x_2\|_p \le r_d] = p_{\mathrm{edge}}$ for fixed $p_{\mathrm{edge}} \in (0,
+1)$. Then for all sufficiently large $d$, the origin lies within $\ell^p$-distance $r_d$
+of every sample $x_i$ with high probability; consequently $q_{\text{\v{C}ech}}^{(p)}(p_{\mathrm{edge}},
+d) \to 1$ and no dimensional barrier materialises.\label{sec:lp-nogo}
+\end{proposition}
+
+\begin{proof}[Sketch] By the CLT applied to $\|x_i\|_p^p$ and $\|x_1 - x_2\|_p^p$
+(both scaled by $d$), the ratio $r_d / \|x_i\|_p$ converges to
+$g(p) := (\tilde\mu_p / \mu_p)^{1/p}$ as $d \to \infty$. Conditional Jensen gives
+$\tilde\mu_p \ge \mu_p$ for symmetric $X$, strict for $p \ge 2$ and (by the symmetric
+argument) also for $p = 1$. Hence $g(p) > 1$, so $r_d > \|x_i\|_p$ eventually with high
+probability, making the origin a free \v{C}ech witness for every triple.
+\end{proof}
+
+\begin{remark}[Explicit ratios]\label{rmk:lp-ratios}
+For $X \sim \mathrm{Uniform}[-1, 1]$, $g(p) = (2^{p+1}/(p+2))^{1/p}$, monotone increasing
+from $4/3$ at $p = 1$ to $2$ as $p \to \infty$. For $X \sim \mathcal N(0, 1)$, $g(p) \equiv
+\sqrt 2$ for all $p \ge 1$. For $X \in \{\pm 1\}$ uniform, $g(p) = 2 / 2^{1/p}$, from $1$
+at $p = 1$ to $2$. In all three families $g(p) > 1$ for $p > 1$.
+\end{remark}
+
+\paragraph{The global-candidate-witness criterion.}
+The torus collapses because of Helly-2 (1D Helly per coordinate forces clique
+$\Leftrightarrow$ existential at matched radius); the $\ell^p$ ambients trivialise because
+every sample has a common nearby reference point (the origin) at matched radius. The
+sphere escapes both: it is not a product of Helly-2 spaces, and it has no interior
+reference point. Every candidate \v{C}ech witness $z \in S^{d-1}$ is itself a sample-like
+point, with distance to other samples comparable to typical pairwise distance.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l|c|c|c}
+\textbf{Ambient} & \textbf{Helly \#} & \textbf{Threshold at fixed $p$} & \textbf{Mechanism} \\\hline
+$\ell^\infty$ torus / Rips & $2$ & none (no barrier) & Helly-2 clique-$=$-existential \\
+$\Sph^{d-1}$ / \v{C}ech & $d$ & $3 \log n / \log\log n$ & Wishart Gram-density tail \\
+$\ell^p$ centered Euclidean & $d{+}1$ & none (trivialised) & origin-witness collapse \\
+\end{tabular}
+\end{center}
+
+\noindent The Helly number alone does not capture the right criterion: $\ell^p$ centered
+ambients have the largest Helly number and the most permissive existential nerve, yet
+they trivialise. The structural feature that matters is whether the ambient admits a
+\emph{global candidate witness} for the \v{C}ech existential. The sphere is the unique
+standard homogeneous ambient with no such global witness, and the only one admitting a
+$d$-dependent threshold at fixed $p$.
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Formal verification}\label{sec:lean}
+%% ─────────────────────────────────────────────────────────────────────────────
+
+The full proof chain for the torus calibrating instance (\S\ref{sec:torus-calibration})
+is formalised in Lean~4 with Mathlib~\cite{Mathlib2020}, sorry-free: from the closed-form
+identity $\geomCov(p, d) = q[(1-p)^3 + p^3] - q^2$ (\lean{geometricCov\_eq}) through the
+moment chain (\lean{moments\_twoParam\_signed}, \lean{moments\_cech\_signed}), the SNR
+calculation, the Paley--Zygmund Chebyshev pair, and the total variation conclusion
+(\lean{detection\_lower\_bound\_fixed\_d}, \lean{phase\_transition}).
+
+The sphere headlines (\lean{cechFillProb\_tail\_asymptotic} and
+\lean{geomCovCech\_asymptotic}) are formalised in
+\texttt{SimplicialLatentGeometry/Geometry/Sphere.lean} and \emph{derived} via a pure
+analytic squeeze from four named structural primitives. Each primitive corresponds to a
+standard fact in the literature, used in the Lean development as a named hypothesis
+analogous to how CompCert axiomatises IEEE-754 floating-point semantics without verifying
+them:
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \texttt{normalQuantile} --- the standard-normal quantile $\Phi^{-1}$, an opaque
+    constant pending Mathlib coverage of $\mathrm{erf}^{-1}$.
+  \item \texttt{capCLT\_matched\_inversion} --- the cap-CLT inversion: any sequence
+    $r_d$ with $\mathrm{capProb}\,d\,r_d = p$ satisfies $\sqrt d \cdot r_d \to
+    \Phi^{-1}(1 - p)$ (Poincar\'e / Li~\cite{Li2011}).
+  \item \texttt{cechFillProb\_compl\_le\_gram\_tail} --- the Wishart Gram-density tail
+    bound $1 - q_{\text{\v{C}ech}}(p, d) \le (3 z_p^2 / d)^{(d-2)/2}$ eventually
+    (Appendix~\ref{app:wishart-tail}).
+  \item \texttt{geomCovCech\_decomp\_ratio\_tendsto} --- the algebraic decomposition
+    ratio $\geomCov_{\text{\v{C}ech}}(p, d) / (p^3 (1 - q_{\text{\v{C}ech}}(p, d))) \to 1$
+    (Appendix~\ref{app:wishart-cd}).
+\end{itemize}
+
+Other geometric facts on the sphere were originally axiomatic but have since been
+promoted to theorems: cap probability continuity (radial-cone Fubini + dominated
+convergence), existence of the matched cosine (IVT), cap-probability bounds, and
+$\mathrm{noAtoms}$ properties of the uniform measure on $S^{d-1}$. The catalogue lives in
+Appendix~\ref{app:lean}; in-text annotations of the form \lean{lemma\_name} link to
+entries there.
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Discussion and open problems}\label{sec:discussion}
 %% ─────────────────────────────────────────────────────────────────────────────
 
 \subsection{Comparison with BDER}\label{sec:comparison-bder}
@@ -949,7 +949,7 @@ fill, the Helly-2 structure of the ambient ensures $\geomCov \to p^3(1-p)^3 > 0$
 $p$ (Lemma~\ref{lem:radius-asymptotics}(c)), so the detection regime is qualitatively
 BDER-like: signal is preserved at every finite $d$ and the SNR condition determines
 the joint $(n, d)$ threshold (Theorem~\ref{thm:phase-transition}). The Helly-$d$ sphere
-instance of \S\ref{sec:sphere-instance} is genuinely different: there the existential
+instance of \S\ref{sec:sphere-detection} is genuinely different: there the existential
 \v{C}ech nerve cannot be collapsed onto the clique, and a sub-logarithmic dimensional
 barrier emerges.
 
@@ -964,7 +964,7 @@ function of the three edge indicators, so this covariance reduces to the closed 
 Lemma~\ref{lem:radius-asymptotics}(b); the relative magnitude vs.\ the BDER signed edge
 product is set by the difference $q[(1-p)^3 + p^3] - q^2$ vs.\ the matched edge moment.
 
-\subsection{Quantitative deep-regime expansion and the sparse regime}\label{sec:quantitative}
+\subsection{Quantitative Deep-Regime Expansion and the Sparse Regime}\label{sec:quantitative}
 
 The 1D primitive $\phi(r) = \PP[\text{three iid arcs of length }2r\text{ on }\TT^1\text{ pairwise
 agree}]$ admits the closed form $\phi(r) = 12 r^2$ for $r \in [0, 1/4]$ via
@@ -1002,7 +1002,7 @@ $\Sph^{d-1}$.
 $d_n\log(4/3) + 2|\!\log p_n| \ll (3/2)\log n$, opening a three-dimensional detectable region
 in $(n,d,p)$-space.
 
-\subsection{The fill-pair statistic}\label{sec:fillfill}
+\subsection{The Fill-Pair Statistic}\label{sec:fillfill}
 
 In the graph detection problem on $\Sph^{d-1}$, the signed triangle statistic is optimal among
 low-degree polynomial tests (Bangachev--Bresler~\cite{BangachevBresler2024}). The simplicial
@@ -1051,17 +1051,15 @@ better SNR, remains open.
 
 \subsection{Limitations}
 
-Instance~1 is restricted to the flat torus $\TT^d$ with the sup-norm metric, where the
-ball-volume formula $(2r)^d$ yields the explicit matched radius $r(p,d) = p^{1/d}/2$ and
-the Helly-2 structure collapses the existential nerve onto the Rips clique. The detection
-conclusion is a positive statement about $\tauf$ and not a matching lower bound on
-complex-level indistinguishability; lower bounds for $\TV(\PC, \Cech)$ in restricted
-scaling regimes are left open (Remark~\ref{rem:tv-zero-caveat}).
-
-Instance~2 (sphere instance) requires concentration of measure on $S^{d-1}$ with proper
-\v{C}ech fill, and currently reduces to four explicitly named structural axioms in
-\texttt{Geometry/Sphere.lean}; replacing these with full Mathlib-derived proofs is
-ongoing.
+The torus calibration of \S\ref{sec:torus-calibration} is restricted to the flat
+$\TT^d$ with sup-norm, where the explicit ball-volume formula $(2r)^d$ and the Helly-2
+collapse together force the Rips clique form; the detection conclusion is a positive
+statement about $\tauf$ and not a matching lower bound on complex-level
+indistinguishability. Lower bounds for $\TV(\PC, \Cech)$ in restricted scaling regimes
+are left open (Remark~\ref{rem:tv-zero-caveat}). The sphere headline of
+\S\ref{sec:sphere-detection} reduces to four explicitly named structural primitives
+(\S\ref{sec:lean}), each tied to a standard fact in the literature; replacing the
+primitives with full Mathlib-derived proofs is ongoing.
 
 \subsection{Open Problems}\label{sec:open}
 
@@ -1084,7 +1082,7 @@ centering all $\binom{k+1}{2}$ boundary edges together with the $k$-face fill
 $F_\sigma$. Under the Rips clique fill $F_\sigma = \prod_e A_e$, the moment chain
 and no-barrier analysis are expected to carry over with an SNR exponent that
 grows in $k$. On the sphere with proper $k$-face \v{C}ech fill, we expect the
-sub-logarithmic dimensional barrier of \S\ref{sec:sphere-instance} to persist,
+sub-logarithmic dimensional barrier of \S\ref{sec:sphere-detection} to persist,
 with a leading constant determined by a $k$-dimensional extension of the
 Wishart calculation of Appendix~\ref{app:wishart}. A precise formulation of
 either generalisation is left open.
@@ -1100,159 +1098,12 @@ degree-$\leq D$ Fourier contributions to the \v{C}ech--$2\PC$ likelihood ratio i
 natural next step.
 
 \subsubsection*{Beyond the flat torus and the sphere}
-Two natural extensions of the present framework are developed in
-\S\ref{sec:sister-instances}: the sphere instance (\S\ref{sec:sphere-instance}), giving
-the sub-logarithmic $d^*(n,p) = 3 \log n / \log\log n$ threshold, and the
-$\ell^p$-centered-ambient no-go result (\S\ref{sec:lp-nogo}), which shows that the
-dimensional-barrier story trivialises on any centered iid-coordinate ambient
-(Gaussian, uniform, Bernoulli) under any $\ell^p$ metric. Extensions to other latent
-geometries, e.g.\ anisotropic~\cite{Brennan2022} or hyperbolic~\cite{Litvak2022},
-where triangle-based tests behave differently, remain open.
-
-%% ─────────────────────────────────────────────────────────────────────────────
-\section{Sister Instances: A Unified Three-Instance Framework}\label{sec:sister-instances}
-%% ─────────────────────────────────────────────────────────────────────────────
-
-The detection problem of \S\ref{sec:intro} is parameterized by the choice of latent
-ambient $(\Omega, d_\Omega)$ and complex type (\v{C}ech vs.\ Rips). Three natural
-choices give qualitatively different detection landscapes, unified by the Helly
-number of the ambient space.
-
-\subsection{Instance 1: $\ell^\infty$ torus / Rips (this paper)}\label{sec:linfty-instance}
-
-The main subject of this paper. Helly number $2$ (1D Helly lemma on the circle).
-Detection theorem~\ref{thm:detection} succeeds for every $d \ge 1$ at fixed $p$;
-$\geomCov(p,d) \to p^3(1-p)^3 > 0$. \emph{No dimensional barrier.}
-
-\subsection{Instance 2: Sphere $S^{d-1}$ / \v{C}ech (sphere instance)}\label{sec:sphere-instance}
-
-Helly number $d$ (Helly's theorem on $\Sph^{d-1}$ with spherical caps). At fixed $p$,
-the matched cosine threshold $r_d = \cos\theta_d$ satisfies $\sqrt{d} \cdot r_d \to \Phi^{-1}(1-p)$
-by CLT on cap probability (Lean: \texttt{matchedCos\_asymptotic}, sphere instance
-file \texttt{Geometry/Sphere.lean}). The Rips clique probability $q_{\text{Rips}}(p,d) \to p^3$,
-while \v{C}ech triple-cover saturates: $q_{\text{\v{C}ech}}(p,d) \to 1$
-super-exponentially with tail $1 - q_{\text{\v{C}ech}}(p,d) \sim (3 z_p^2 / d)^{(d-2)/2}$,
-driven by the joint Gram-entry density $\propto (\det G)^{(d-4)/2}$ singularity at
-$\det G = 0$ (Wishart-derived; full derivation in Appendix~\ref{app:wishart}). Headline:
-\[
-  \geomCov_{\text{\v{C}ech}}(p,d) \sim p^3 \cdot (3 z_p^2 / d)^{(d-2)/2}
-\]
-giving a sub-logarithmic detection threshold $d^*(n,p) = 3 \log n / \log\log n$.
-
-The Lean catalog for this instance is in \texttt{SimplicialLatentGeometry/Geometry/Sphere.lean}.
-As of May~2026 (post-session-79 follow-up, branch \texttt{oq-18-rips}) the file declares
-exactly \textbf{4 named structural axioms}, all documented inline with their mathematical
-content. The earlier analytic obstacles \texttt{capProb\_continuous} (cap probability
-continuous in the threshold via radial-cone Fubini + dominated convergence) and
-\texttt{matchedCos\_exists} (matched threshold by IVT) are now theorems (Aristotle
-\texttt{928ebf69}, commit \texttt{528cec2}, May~2026; \texttt{abeb3eb} for the IVT
-half). The remaining axioms are:
-\begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \texttt{normalQuantile} --- the standard-normal quantile constant
-    $\Phi^{-1}$, used as an opaque value pending Mathlib coverage.
-  \item \texttt{capCLT\_matched\_inversion} --- uniform CLT inversion: any
-    sequence $r_d$ with $\mathrm{capProb}\,d\,r_d = p$ satisfies
-    $\sqrt d \cdot r_d \to \Phi^{-1}(1 - p)$ (Poincaré / Li 2011 limit, deferred).
-  \item \texttt{cechFillProb\_compl\_le\_gram\_tail} --- the Wishart Gram-density
-    tail bound $1 - q_{\text{\v{C}ech}}(p,d) \le \bigl(3 z_p^2 / d\bigr)^{(d-2)/2}$
-    eventually (Instance~2 structural; see Appendix~\ref{app:wishart}).
-  \item \texttt{geomCovCech\_decomp\_ratio\_tendsto} --- the algebraic
-    decomposition ratio
-    $\geomCov_{\text{\v{C}ech}}(p,d) / \bigl(p^3 (1 - q_{\text{\v{C}ech}}(p,d))\bigr) \to 1$
-    (Instance~2 structural; see Appendix~\ref{app:wishart}).
-\end{itemize}
-The asymptotic headlines \texttt{cechFillProb\_tail\_asymptotic} and
-\texttt{geomCovCech\_asymptotic} are \emph{derived} from these four axioms via
-a pure analytic squeeze (\texttt{gram\_tail\_bound\_tendsto\_zero}). The axiom
-count dropped from 17 (session~70) through 12 (session~77, commits
-\texttt{b63fc28} concretising \texttt{uniformOnSphere} via
-\texttt{Measure.toSphere} and \texttt{51fa5ff} concretising
-\texttt{cechFillProb}/\texttt{ripsFillProb}/\texttt{geomCovCech} as iid
-product-measure integrals), to 8 (commits \texttt{1b1c739} promoting
-\texttt{cechFillProb\_le\_one} to a theorem and \texttt{66ae0c5} closing
-\texttt{capProb\_mem\_unitInterval} and \texttt{capProb\_antitone}), to 6
-(commits \texttt{391ef9c} and \texttt{29bfcdf} promoting
-\texttt{capProb\_neg\_one} and \texttt{capProb\_one} from axioms to theorems),
-to 5 (commit \texttt{abeb3eb} promoting \texttt{matchedCos\_exists} via IVT),
-and finally to the current 4 (Aristotle \texttt{928ebf69}, commit
-\texttt{528cec2}, proving \texttt{capProb\_continuous} via the radial-cone
-Fubini argument: codim-1 cones $\{w \mid \langle e_0, w\rangle = c \cdot \|w\|\}$
-have Lebesgue measure zero, level sets push forward to $\mathrm{toSphere}$-null
-sets, and dominated convergence on the cap indicator gives continuity).
-
-\subsection{Instance 3: $L^2$ and $\ell^p$ Euclidean ambients (no-go)}\label{sec:lp-nogo}
-
-For any centered iid-coord ambient on $\mathbb R^d$ with finite moments, under any
-$\ell^p$ metric with $p \in [1, \infty)$, the fixed-$p$ matched radius eventually exceeds
-the typical sample-to-origin distance, and the dimensional-barrier story trivialises.
-
-\begin{proposition}[$\ell^p$ centered-ambient trivialisation]\label{prop:lp-nogo}
-  Let $X \in \mathbb R$ be a non-degenerate symmetric random variable with
-  $\mu_p := \mathbb E[|X|^p] < \infty$ and
-  $\tilde\mu_p := \mathbb E[|X_1 - X_2|^p] < \infty$
-  for some $p \ge 1$, where $X_1, X_2$ are iid copies of $X$. Let
-  $x_1, \dots, x_n \in \mathbb R^d$ be iid with iid coordinates from $X$, and let $r_d$
-  satisfy $\Pr[\|x_1 - x_2\|_p \le r_d] = p_{\mathrm{edge}}$ for fixed $p_{\mathrm{edge}} \in (0,1)$.
-  Then there exists $d_0$ such that for all $d \ge d_0$, with high probability the origin
-  lies within $\ell^p$-distance $r_d$ of every sample $x_i$; consequently
-  $q_{\text{\v{C}ech}}^{(p)}(p_{\mathrm{edge}}, d) \to 1$ and the dimensional barrier
-  does not materialise.
-\end{proposition}
-
-\begin{proof}[Sketch]
-  By CLT applied to $\|x\|_p^p = \sum_{j=1}^d |X_j|^p$ and
-  $\|x_1 - x_2\|_p^p = \sum_{j=1}^d |X_{1j} - X_{2j}|^p$, both scaled by $d$, the typical
-  values satisfy
-  \[
-    \|x_i\|_p \sim (d\mu_p)^{1/p}, \qquad
-    \|x_i - x_j\|_p \sim (d\tilde\mu_p)^{1/p}.
-  \]
-  Hence $r_d / \|x_i\|_p \to g(p) := (\tilde\mu_p / \mu_p)^{1/p}$ as $d \to \infty$.
-  By Jensen's inequality applied conditionally
-  ($\mathbb E[|X_1 - c|^p] \ge \mathbb E[|X - \mathbb E[X]|^p]$ for $p \ge 1$, with equality
-  iff $X$ is degenerate), $\tilde\mu_p \ge \mu_p$ for symmetric $X$. The inequality is strict
-  for $p \ge 2$ (Jensen strict for strictly convex functions on non-degenerate $X$) and
-  also holds for $p = 1$ by the same symmetric argument. Hence $g(p) > 1$, so eventually
-  $r_d > \|x_i\|_p$ for all $i \le n$ with high probability, making the origin a free
-  \v{C}ech witness for every triple. The triple-cover probability saturates:
-  $q_{\text{\v{C}ech}}^{(p)} \to 1$.
-\end{proof}
-
-\begin{remark}[Explicit ratios]\label{rmk:lp-ratios}
-  For coords $X \sim \mathrm{Uniform}[-1,1]$: $g(p) = (2^{p+1}/(p+2))^{1/p}$, monotone
-  increasing from $4/3$ (at $p = 1$) to $2$ (as $p \to \infty$). For coords
-  $X \sim \mathcal N(0, 1)$: $g(p) \equiv \sqrt 2$ for all $p \ge 1$, since
-  $|X_1 - X_2| \stackrel{d}{=} \sqrt 2 |X|$. For coords $X \in \{\pm 1\}$ uniform:
-  $g(p) = 2 / 2^{1/p}$, from $1$ (at $p = 1$) to $2$. In all three families
-  $g(p) > 1$ for $p > 1$.
-\end{remark}
-
-\begin{remark}[Why the sphere construction is essentially canonical]
-  The trivialisation in Proposition~\ref{prop:lp-nogo} hinges on the existence of a
-  global reference point (the origin) within typical-sample-norm distance. The sphere
-  $\Sph^{d-1}$ escapes precisely because it has no interior reference point: every
-  candidate witness $z \in \Sph^{d-1}$ is itself a sample-like point, with distances
-  to other samples comparable to typical pairwise distance. Hence among standard
-  homogeneous Euclidean-style ambients, the sphere is the only one supporting a
-  non-trivial dimensional-barrier theorem at fixed $p$.
-\end{remark}
-
-\subsection{Unifying observation: Helly number as discriminator}\label{sec:helly-discriminator}
-
-\begin{center}
-\begin{tabular}{l|c|c|c}
-\textbf{Instance} & \textbf{Helly \#} & \textbf{Detection threshold} & \textbf{Mechanism} \\\hline
-$\ell^\infty$ torus / Rips & $2$ & none (no barrier) & 1D Helly collapse \\
-$\Sph^{d-1}$ / \v{C}ech & $d$ & $d^*(n,p) = 3\log n / \log\log n$ & Wishart Gram-density tail \\
-$\ell^p$ centered Euclidean & $d{+}1$ & none (trivialised) & origin-witness collapse \\
-\end{tabular}
-\end{center}
-
-The Helly number alone does not determine whether a dimensional barrier exists: $\ell^\infty$
-(Helly $2$) trivialises via 1D Helly, $\ell^p$ centered (Helly $d{+}1$) trivialises via
-the origin-witness, and only the sphere (Helly $d$, no interior reference point) supports
-a genuine barrier. The structural feature that matters is whether the ambient admits a
-\emph{global candidate witness} for the \v{C}ech existential.
+The canonicity analysis of \S\ref{sec:canonicity} maps three natural ambients --- the
+$\ell^\infty$ torus (no barrier, Helly-2 collapse), the sphere (sub-logarithmic
+barrier), and centered iid-coord Euclidean / $\ell^p$ (no barrier, origin-witness
+trivialisation). Extensions to other latent geometries where triangle-based tests
+behave differently --- e.g.\ anisotropic~\cite{Brennan2022} or
+hyperbolic~\cite{Litvak2022} --- remain open.
 
 %% ─────────────────────────────────────────────────────────────────────────────
 \section*{Acknowledgments}
@@ -1273,7 +1124,7 @@ The formalization lives in \texttt{SimplicialLatentGeometry/SimplicialDetection.
 (approximately 3750~lines), built against Lean~4 v4.28.0 and
 Mathlib~v4.28.0~\cite{deMoura2021,Mathlib2020}. The Lean proof development and individual
 lemma completions were assisted by the Aristotle~API~\cite{Aristotle2025} over approximately
-45~submission rounds; see Section~\ref{sec:ai} for the AI disclosure.
+45~submission rounds; see the footnote in \S\ref{sec:intro} for the AI disclosure.
 Throughout the main paper, each result that has been formally verified carries an in-text
 annotation \lean{lemma\_name} pointing to its entry here.
 
@@ -1348,12 +1199,9 @@ The following results carry complete, sorry-free Lean~4 proofs.
   \leanverified{disjoint\_triangles\_indepFun}
 \end{itemize}
 
-\smallskip\noindent\textit{OQ-16 Track A — geometric covariance expansion (Aristotle jobs
-\texttt{43761387}, \texttt{b28b078b}, \texttt{0bc2c753}, \texttt{9d63166a}, \texttt{c00e2fe7},
-April--May~2026).}
-These results close the open question on the quantitative decay of $\geomCov$ and supply
-the exact formula~\eqref{eq:geomcov-deep} used in the sparse-regime corollary
-(Corollary~\ref{cor:sparse}).
+\smallskip\noindent\textit{Geometric covariance expansion.}
+These results supply the exact formula~\eqref{eq:geomcov-deep} used in the sparse-regime
+corollary (Corollary~\ref{cor:sparse}).
 
 \begin{itemize}[leftmargin=*, itemsep=4pt]
 \item \lean{fillingProb\_eq\_low\_r}: $\fillingP(p,d) = (12r^2)^d$ for $r \leq 1/4$,
@@ -1413,17 +1261,14 @@ the exact formula~\eqref{eq:geomcov-deep} used in the sparse-regime corollary
   \[
     \geomCov(p,d) = q\bigl[(1-p)^3 + p^3\bigr] - q^2, \qquad q = \fillingP(p,d).
   \]
-  The Aristotle proof (job \texttt{bc9f57b3}, May~2026; cherry-picked as commit
-  \texttt{6be3e1f}) introduces $\sim$480 lines of regime-free helpers
+  The proof introduces a family of regime-free helpers
   (\lean{volume\_edgeSet01}, \lean{volume\_wedgeSet01},
-  \lean{edge\_integral\_free}, \lean{wedge\_integral\_free} with three
-  coordinate-swap symmetries, \lean{centered\_edge\_moment\_free},
-  \lean{centered\_edge\_moment\_fill\_free}) that bypass the $r \le 1/4$
-  restriction by integrating over the full torus geometry rather than the
-  ball-disjoint regime. Downstream headlines
+  \lean{edge\_integral\_free}, \lean{wedge\_integral\_free},
+  \lean{centered\_edge\_moment\_free}, \lean{centered\_edge\_moment\_fill\_free})
+  that bypass the $r \le 1/4$ restriction by integrating over the full torus
+  geometry rather than the ball-disjoint regime. Downstream headlines
   \lean{geometricCov\_sub\_closedForm\_tendsto\_zero} and
-  \lean{geometricCov\_tendsto\_pcubed\_compcubed} close as trivial
-  corollaries.
+  \lean{geometricCov\_tendsto\_pcubed\_compcubed} close as corollaries.
 
 \item \lean{geometricCov\_decay\_rate\_le}: An upper bound on $\geomCov(p,d)$ in the
   deep regime. Aristotle job \texttt{9d63166a}.
@@ -1435,8 +1280,7 @@ The results \lean{matchRadius\_spec} and \lean{matchRadius\_tendsto\_half} (job
 Mathlib to formalize the algebraic identity $(p^{1/d})^d = p$ and the limit $p^{1/d}\to 1$.
 \end{remark}
 
-\smallskip\noindent\textit{OQ-16 Track C — fill-pair joint probability (Aristotle job
-\texttt{12474171}, May~2026).}
+\smallskip\noindent\textit{Fill-pair joint probability.}
 
 \begin{itemize}[leftmargin=*, itemsep=4pt]
 \item \lean{doubleFill\_joint\_prob}:
@@ -1522,7 +1366,7 @@ Proposition~\ref{prop:moments-cech}(b).
 
 This appendix derives the asymptotic rate
 $1 - q_{\text{\v{C}ech}}(p, d) \sim (3 z_p^2 / d)^{(d-2)/2}$
-that drives the sphere instance of \S\ref{sec:sphere-instance}, and verifies that
+that drives the sphere instance of \S\ref{sec:sphere-detection}, and verifies that
 the geometric covariance satisfies
 $\geomCov_{\text{\v{C}ech}}(p, d) = p^3 (1 - q_{\text{\v{C}ech}}(p, d)) (1 + o(1))$.
 The derivation is pen-and-paper; in the Lean formalisation, two of the steps
@@ -1563,7 +1407,7 @@ The qualitative behaviour at the boundary $\det G = 0$ is:
 For the asymptotic regime $d \to \infty$ at fixed $p \in (0, 1)$, only $d \ge 5$
 matters.
 
-\subsection{Tail computation}\label{app:wishart-tail}
+\subsection{Tail Computation}\label{app:wishart-tail}
 
 The \v{C}ech triple-cover condition $F^{\text{\v{C}ech}} = 1$ is equivalent to the
 existence of a witness point $z \in S^{d-1}$ within angular distance $\rho$ of all
@@ -1599,7 +1443,7 @@ This is super-exponential at rate $\sim d^{-d/2}$ in $d$ — sharper than any
 single-exponential large-deviation rate, because the density's vanishing factor
 at $\det G = 0$ kills the boundary configurations beyond the LDP rate.
 
-\subsection{Surface concentration and sub-leading $c_d$}\label{app:wishart-cd}
+\subsection{Surface Concentration and Sub-Leading $c_d$}\label{app:wishart-cd}
 
 The geometric covariance admits the algebraic decomposition
 \begin{equation}\label{eq:geomCov-decomp}
@@ -1646,7 +1490,7 @@ The sign is positive, the leading coefficient $p^3$ is universal, and the $c_d$
 correction is sub-leading at every order needed for the detection-threshold
 calculation.
 
-\subsection{Detection threshold}\label{app:wishart-threshold}
+\subsection{Detection Threshold}\label{app:wishart-threshold}
 
 The detection criterion $n^{3/2} \cdot |\geomCov_{\text{\v{C}ech}}(p, d)| \to \infty$
 combined with \eqref{eq:cech-tail} and \eqref{eq:geomCov-final} reduces to
@@ -1664,7 +1508,7 @@ second order through $z_p$. This is the sub-logarithmic dimensional barrier for
 the sphere instance, sharper than the $\Theta(\log n)$ scaling that would arise
 from any single-exponential rate.
 
-\subsection{Monte Carlo sanity check}\label{app:wishart-mc}
+\subsection{Monte Carlo Sanity Check}\label{app:wishart-mc}
 
 The three load-bearing claims --- the Gram density tail \eqref{eq:detG-tail},
 the decomposition \eqref{eq:geomCov-decomp}, and the asymptotic
