@@ -56,21 +56,18 @@ lemma indepFun_of_disjoint_dep
 /-! ## Measurability of the fill condition -/
 
 /-
-The set of point configurations where three points have a common r-ball is measurable.
-    This is the fill condition for a triangle in the Čech complex.
+Under the Rips convention (OQ-18 reframe), the fill condition is
+`∀ i j ∈ t.val, dist (pts i) (pts j) ≤ r` — a finite intersection of measurable
+sets, no longer requiring the projection-of-closed-set argument for an
+existential.
 -/
 lemma measurableSet_hasFill {n d : ℕ} (r : ℝ)
     (t : {σ : Finset (Fin n) // σ.card = 3}) :
-    MeasurableSet {pts : Fin n → Torus' d | ∃ z : Torus' d, ∀ i ∈ t.val, dist (pts i) z ≤ r} := by
-  -- The set {pts | ∃ z, ∀ i ∈ t.val, dist (pts i) z ≤ r} is the image of a closed set under a continuous projection.
-  have h_closed : IsClosed {pts : (Fin n → Torus' d) × Torus' d | ∀ i ∈ t.val, dist (pts.1 i) pts.2 ≤ r} := by
-    simp +decide only [Set.setOf_forall];
-    refine' isClosed_biInter fun i hi => isClosed_le _ _;
-    · fun_prop;
-    · fun_prop;
-  -- The projection of a closed set in a compact space is closed.
-  have h_proj_closed : IsClosed (Set.image (fun pts : (Fin n → Torus' d) × Torus' d => pts.1) {pts : (Fin n → Torus' d) × Torus' d | ∀ i ∈ t.val, dist (pts.1 i) pts.2 ≤ r}) := by
-    apply_rules [ IsCompact.isClosed, IsCompact.image ];
-    · exact IsClosed.isCompact h_closed;
-    · exact continuous_fst;
-  convert h_proj_closed.measurableSet using 1 ; aesop
+    MeasurableSet {pts : Fin n → Torus' d | ∀ i ∈ t.val, ∀ j ∈ t.val,
+      dist (pts i) (pts j) ≤ r} := by
+  simp only [Set.setOf_forall]
+  refine MeasurableSet.iInter fun i => MeasurableSet.iInter fun _ =>
+        MeasurableSet.iInter fun j => MeasurableSet.iInter fun _ => ?_
+  exact measurableSet_le
+    (Measurable.dist (measurable_pi_apply i) (measurable_pi_apply j))
+    measurable_const

@@ -17,5 +17,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+      - name: Install elan
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Update Lake packages (first pass — may fail on ProofWidgets prune)
+        run: lake update || true
+      - name: Pre-create ProofWidgets build dir (workaround for cache prune bug)
+        run: mkdir -p .lake/packages/proofwidgets/.lake/build/lib
+      - name: Update Lake packages (second pass — now succeeds)
+        run: lake update
+      - name: Get Mathlib cache
+        run: lake exe cache get
       - uses: leanprover/lean-action@v1
-      - uses: leanprover-community/docgen-action@v1
+        with:
+          use-mathlib-cache: false
