@@ -1,6 +1,7 @@
 import Mathlib
 import SimplicialLatentGeometry.Geometry.Common
-import SimplicialLatentGeometry.SimplicialDetection
+import SimplicialLatentGeometry.Detection.Core.Types
+import SimplicialLatentGeometry.Detection.DeepRegime.GeometricCov
 
 set_option linter.style.longLine false
 set_option linter.style.whitespace false
