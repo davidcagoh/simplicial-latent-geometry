@@ -6,6 +6,7 @@ import SimplicialLatentGeometry.TorusIntegrals
 import SimplicialLatentGeometry.Detection.Core.MeasureScaffold
 import SimplicialLatentGeometry.Detection.Core.Types
 import SimplicialLatentGeometry.Detection.DeepRegime.GeometricCov
+import SimplicialLatentGeometry.Detection.DeepRegime.CechDoublySigned
 import SimplicialLatentGeometry.Detection.Independence.TriangleIndicators
 import SimplicialLatentGeometry.Detection.Independence.VertexIndep
 
@@ -66,8 +67,8 @@ lemma edge_sharing_integral_eq' {n d : ℕ} (p : ℝ)
     let μ := MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d)))
     |∫ pts, triangleIndicator' p q r t pts * triangleIndicator' p q r t' pts ∂μ| ≤ 1 := by
   intro r q μ
-  have hq0 : 0 ≤ q := fillingProb_nonneg' p hp0 hp1 d
-  have hq1 : q ≤ 1 := fillingProb_le_one' p hp0 hp1 d
+  have hq0 : 0 ≤ q := fillingProb_nonneg p d
+  have hq1 : q ≤ 1 := fillingProb_le_one p d
   -- The product measure is a probability measure
   have h_prob : MeasureTheory.IsProbabilityMeasure μ := by
     constructor

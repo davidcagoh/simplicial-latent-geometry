@@ -6,6 +6,7 @@ import SimplicialLatentGeometry.TorusIntegrals
 import SimplicialLatentGeometry.Detection.Core.MeasureScaffold
 import SimplicialLatentGeometry.Detection.Core.Types
 import SimplicialLatentGeometry.Detection.DeepRegime.GeometricCov
+import SimplicialLatentGeometry.Detection.DeepRegime.CechDoublySigned
 import SimplicialLatentGeometry.Detection.Independence.EdgeSharing
 import SimplicialLatentGeometry.Detection.Independence.TriangleIndicators
 
@@ -65,7 +66,7 @@ OLD PROOF BODY:
           convert h_measurable using 1;
           ext; simp [cechObservation];
           exact?);
-      · exact Filter.Eventually.of_forall fun x => triangleIndicator'_bound' p ( fillingProb p d ) ( matchRadius p d ) hp0 hp1 ( fillingProb_nonneg' p hp0 hp1 d ) ( fillingProb_le_one' p hp0 hp1 d ) t x |> le_trans <| by norm_num;)
+      · exact Filter.Eventually.of_forall fun x => triangleIndicator'_bound' p ( fillingProb p d ) ( matchRadius p d ) hp0 hp1 ( fillingProb_nonneg p d ) ( fillingProb_le_one p d ) t x |> le_trans <| by norm_num;)
     generalize_proofs at *; (
     exact ⟨ h_integrable t, h_integrable t' ⟩);
   have h_integral : ∫ pts, (triangleIndicator' p (fillingProb p d) (matchRadius p d) t pts) * (triangleIndicator' p (fillingProb p d) (matchRadius p d) t' pts) ∂(MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d)))) = (∫ pts, triangleIndicator' p (fillingProb p d) (matchRadius p d) t pts ∂(MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d))))) * (∫ pts, triangleIndicator' p (fillingProb p d) (matchRadius p d) t' pts ∂(MeasureTheory.Measure.pi (fun _ : Fin n => (MeasureTheory.volume : MeasureTheory.Measure (Torus d))))) := by
@@ -112,11 +113,11 @@ lemma cech_second_moment_structured (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p
         · refine' le_trans ( mul_le_of_le_one_left ( abs_nonneg _ ) _ ) _;
           · rw [ Finset.abs_prod ];
             exact Finset.prod_le_one ( fun _ _ => abs_nonneg _ ) fun _ _ => by split_ifs <;> exact abs_le.mpr ⟨ by linarith, by linarith ⟩ ;
-          · refine' abs_le.mpr ⟨ _, _ ⟩ <;> linarith [ show 0 ≤ fillingProb p d from fillingProb_nonneg' p hp0 hp1 d, show fillingProb p d ≤ 1 from fillingProb_le_one' p hp0 hp1 d ];
+          · refine' abs_le.mpr ⟨ _, _ ⟩ <;> linarith [ show 0 ≤ fillingProb p d from fillingProb_nonneg p d, show fillingProb p d ≤ 1 from fillingProb_le_one p d ];
         · refine' le_trans ( mul_le_of_le_one_left ( abs_nonneg _ ) _ ) _;
           · simp +decide [ Finset.prod_filter, Finset.prod_product ];
             split_ifs <;> exact abs_le.mpr ⟨ by nlinarith [ mul_nonneg hp0.le ( sq_nonneg p ), mul_nonneg hp0.le ( sq_nonneg ( 1 - p ) ) ], by nlinarith [ mul_nonneg hp0.le ( sq_nonneg p ), mul_nonneg hp0.le ( sq_nonneg ( 1 - p ) ) ] ⟩;
-          · rw [ abs_of_nonneg ( fillingProb_nonneg' p hp0 hp1 d ) ] ; exact fillingProb_le_one' p hp0 hp1 d;
+          · rw [ abs_of_nonneg ( fillingProb_nonneg p d ) ] ; exact fillingProb_le_one p d;
       · rw [ MeasureTheory.integral_const ] ; norm_num;
   · have h_bound : ∀ (t t' : {σ : Finset (Fin n) // σ.card = 3}), t ≠ t' → |∫ s, (∏ e ∈ triangleEdges t, (if s.edge e.1 e.2 then (1 : ℝ) - p else -p)) * (if s.fill t then (1 : ℝ) - fillingProb p d else -fillingProb p d) * (∏ e ∈ triangleEdges t', (if s.edge e.1 e.2 then (1 : ℝ) - p else -p)) * (if s.fill t' then (1 : ℝ) - fillingProb p d else -fillingProb p d) ∂(cechMeasure n d (matchRadius p d) |> MeasureTheory.Measure.map (cechObservation (matchRadius p d)))| ≤ if (t.val ∩ t'.val).card = 2 then 1 else (geometricCov p d) ^ 2 := by
       intros t t' htt';
@@ -198,8 +199,8 @@ lemma cech_second_moment_structured (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p
             rw [ Finset.abs_prod ] ; exact Finset.prod_le_one ( fun _ _ => abs_nonneg _ ) fun _ _ => by split_ifs <;> exact abs_le.mpr ⟨ by linarith, by linarith ⟩ ;
           have h_abs_fill : |if s.fill t = true then 1 - fillingProb p d else -fillingProb p d| ≤ 1 := by
             split_ifs <;> norm_num [ abs_le ];
-            · exact ⟨ le_trans ( fillingProb_le_one' p hp0 hp1 d ) ( by norm_num ), fillingProb_nonneg' p hp0 hp1 d ⟩;
-            · exact ⟨ by linarith [ fillingProb_nonneg' p hp0 hp1 d ], by linarith [ fillingProb_le_one' p hp0 hp1 d ] ⟩
+            · exact ⟨ le_trans ( fillingProb_le_one p d ) ( by norm_num ), fillingProb_nonneg p d ⟩;
+            · exact ⟨ by linarith [ fillingProb_nonneg p d ], by linarith [ fillingProb_le_one p d ] ⟩
           generalize_proofs at *; (
           simpa only [ abs_mul ] using mul_le_one₀ ( mul_le_one₀ ( mul_le_one₀ h_abs ( abs_nonneg _ ) h_abs_fill ) ( abs_nonneg _ ) h_abs ) ( abs_nonneg _ ) h_abs_fill);
         refine' le_of_abs_le _;
@@ -231,8 +232,8 @@ lemma cech_second_moment_structured (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p
               rw [ Finset.abs_prod ];
               exact Finset.prod_le_one ( fun _ _ => abs_nonneg _ ) fun _ _ => abs_le.mpr ⟨ by split_ifs <;> linarith, by split_ifs <;> linarith ⟩;
             split_ifs <;> norm_num [ abs_mul, h_bound ];
-            · exact mul_le_one₀ h_bound ( abs_nonneg _ ) ( abs_le.mpr ⟨ by linarith [ show fillingProb p d ≤ 1 from fillingProb_le_one' p hp0 hp1 d ], by linarith [ show fillingProb p d ≥ 0 from fillingProb_nonneg' p hp0 hp1 d ] ⟩ );
-            · exact mul_le_one₀ h_bound ( abs_nonneg _ ) ( abs_le.mpr ⟨ by linarith [ fillingProb_nonneg' p hp0 hp1 d ], by linarith [ fillingProb_le_one' p hp0 hp1 d ] ⟩ );
+            · exact mul_le_one₀ h_bound ( abs_nonneg _ ) ( abs_le.mpr ⟨ by linarith [ show fillingProb p d ≤ 1 from fillingProb_le_one p d ], by linarith [ show fillingProb p d ≥ 0 from fillingProb_nonneg p d ] ⟩ );
+            · exact mul_le_one₀ h_bound ( abs_nonneg _ ) ( abs_le.mpr ⟨ by linarith [ fillingProb_nonneg p d ], by linarith [ fillingProb_le_one p d ] ⟩ );
           convert mul_le_mul ( h_bound t s ) ( h_bound i s ) ( by positivity ) ( by positivity ) using 1 ; ring;
           · norm_num [ abs_mul ];
             split_ifs <;> norm_num [ abs_mul ] <;> ring;
@@ -251,8 +252,8 @@ lemma cech_second_moment_structured (n d : ℕ) (p : ℝ) (hp0 : 0 < p) (hp1 : p
               rw [ Finset.abs_prod ];
               exact Finset.prod_le_one ( fun _ _ => abs_nonneg _ ) fun _ _ => abs_le.mpr ⟨ by split_ifs <;> linarith, by split_ifs <;> linarith ⟩;
             split_ifs <;> norm_num [ abs_mul, h_bound ];
-            · exact mul_le_one₀ h_bound ( abs_nonneg _ ) ( abs_le.mpr ⟨ by linarith [ show fillingProb p d ≤ 1 from fillingProb_le_one' p hp0 hp1 d ], by linarith [ show fillingProb p d ≥ 0 from fillingProb_nonneg' p hp0 hp1 d ] ⟩ );
-            · exact mul_le_one₀ h_bound ( abs_nonneg _ ) ( abs_le.mpr ⟨ by linarith [ fillingProb_nonneg' p hp0 hp1 d ], by linarith [ fillingProb_le_one' p hp0 hp1 d ] ⟩ );
+            · exact mul_le_one₀ h_bound ( abs_nonneg _ ) ( abs_le.mpr ⟨ by linarith [ show fillingProb p d ≤ 1 from fillingProb_le_one p d ], by linarith [ show fillingProb p d ≥ 0 from fillingProb_nonneg p d ] ⟩ );
+            · exact mul_le_one₀ h_bound ( abs_nonneg _ ) ( abs_le.mpr ⟨ by linarith [ fillingProb_nonneg p d ], by linarith [ fillingProb_le_one p d ] ⟩ );
           convert mul_le_mul ( h_bound t s ) ( h_bound i s ) ( by positivity ) ( by positivity ) using 1 ; ring;
           · norm_num [ abs_mul ];
             split_ifs <;> norm_num [ abs_mul ] <;> ring;

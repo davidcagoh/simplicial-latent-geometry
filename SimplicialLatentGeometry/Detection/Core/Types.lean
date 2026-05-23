@@ -398,21 +398,5 @@ lemma fillingProb_le_one (p : ℝ) (d : ℕ) : fillingProb p d ≤ 1 := by
 
 
 
-open Classical in
-lemma fillingProb_nonneg' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) (d : ℕ) : 0 ≤ fillingProb p d := by
-  unfold fillingProb
-  apply MeasureTheory.integral_nonneg
-  intro pts; simp only
-  split_ifs <;> norm_num
-
-
--- `torus_pi_measure_real_univ'`, `fillingProb_nonneg`, `fillingProb_le_one` moved earlier.
-
-open Classical in
-lemma fillingProb_le_one' (p : ℝ) (hp0 : 0 < p) (hp1 : p < 1) (d : ℕ) : fillingProb p d ≤ 1 := by
-  unfold fillingProb
-  refine le_trans (MeasureTheory.integral_mono_of_nonneg ?_ (MeasureTheory.integrable_const 1) ?_) ?_
-  · exact Filter.Eventually.of_forall fun pts => by simp only; split_ifs <;> norm_num
-  · exact Filter.Eventually.of_forall fun pts => by simp only; split_ifs <;> norm_num
-  · simp only [MeasureTheory.integral_const, smul_eq_mul, mul_one]
-    exact le_of_eq (torus_pi_measure_real_univ' d)
+-- OQ-6 (session 97): `fillingProb_nonneg'` and `fillingProb_le_one'` deleted as dead
+-- forward-reference workarounds; all callers now use `fillingProb_nonneg` / `fillingProb_le_one`.

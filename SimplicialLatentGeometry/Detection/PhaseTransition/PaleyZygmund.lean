@@ -6,6 +6,7 @@ import SimplicialLatentGeometry.TorusIntegrals
 import SimplicialLatentGeometry.Detection.Core.MeasureScaffold
 import SimplicialLatentGeometry.Detection.Core.Types
 import SimplicialLatentGeometry.Detection.DeepRegime.GeometricCov
+import SimplicialLatentGeometry.Detection.DeepRegime.CechDoublySigned
 import SimplicialLatentGeometry.Detection.PhaseTransition.SecondMoment
 
 set_option linter.style.longLine false
